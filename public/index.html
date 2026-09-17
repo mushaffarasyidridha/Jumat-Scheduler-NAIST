@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jumat Scheduler — NAIST</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <h1>🕌 Jumat Scheduler <span class="muted">— NAIST</span></h1>
+        <p class="muted small">Friday prayer khatib &amp; imam schedule. Mark your availability, or assign yourself or a friend to an open slot.</p>
+      </div>
+      <div class="whoami">
+        <label for="whoami-select">You are</label>
+        <select id="whoami-select"></select>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="upcoming" class="card">
+      <div class="card-header">
+        <h2>Upcoming schedule</h2>
+        <button id="refresh-btn" class="btn btn-ghost" type="button">Refresh</button>
+      </div>
+      <div id="upcoming-list" class="schedule-list">Loading…</div>
+    </section>
+
+    <section id="roster" class="card">
+      <div class="card-header">
+        <h2>Khatib &amp; Imam roster</h2>
+        <button id="add-person-btn" class="btn btn-ghost" type="button">+ Add person</button>
+      </div>
+      <div id="roster-list" class="roster-list">Loading…</div>
+    </section>
+
+    <section id="history" class="card">
+      <div class="card-header">
+        <h2>Archive (2025)</h2>
+        <button id="toggle-history-btn" class="btn btn-ghost" type="button">Show</button>
+      </div>
+      <div id="history-list" class="schedule-list history hidden">Loading…</div>
+    </section>
+  </main>
+
+  <footer class="muted small">
+    <p>Read-only for anyone with the link. Editing (assigning khatib, marking availability, editing the roster) needs the community access code.</p>
+  </footer>
+
+  <div id="access-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Community access code</h3>
+      <p class="small muted">Ask the group coordinator for the code used to edit the schedule.</p>
+      <input id="access-code-input" type="password" placeholder="Access code" autocomplete="off" />
+      <div class="modal-actions">
+        <button id="access-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="access-save-btn" class="btn btn-primary" type="button">Save</button>
+      </div>
+      <p id="access-error" class="error small hidden">Incorrect code, try again.</p>
+    </div>
+  </div>
+
+  <div id="add-person-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Add a person</h3>
+      <label>Name<input id="new-person-name" type="text" placeholder="e.g. Firoz" /></label>
+      <label>Country<input id="new-person-country" type="text" placeholder="e.g. Bangladesh" /></label>
+      <label>Role
+        <select id="new-person-role">
+          <option value="khatib">Khatib</option>
+          <option value="imam">Imam</option>
+          <option value="both">Khatib &amp; Imam</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button id="add-person-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="add-person-save-btn" class="btn btn-primary" type="button">Add</button>
+      </div>
+      <p id="add-person-error" class="error small hidden"></p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

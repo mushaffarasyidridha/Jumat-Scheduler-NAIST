@@ -1,0 +1,15 @@
+{
+  "name": "jumat-scheduler-naist",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Live Friday prayer khatib/imam scheduler for the NAIST community.",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "migrate:local": "wrangler d1 migrations apply jumat-scheduler-naist-db --local",
+    "migrate:remote": "wrangler d1 migrations apply jumat-scheduler-naist-db --remote",
+    "deploy": "wrangler pages deploy public --project-name=jumat-scheduler-naist"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}
