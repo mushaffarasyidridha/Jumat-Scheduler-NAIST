@@ -196,7 +196,13 @@ main {
 .roster-row.inactive { opacity: 0.55; }
 .roster-name { font-weight: 500; }
 .roster-meta { color: var(--muted); font-size: 0.8rem; }
-.roster-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.roster-row-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.roster-header-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+@media (max-width: 480px) {
+  .roster-row { flex-direction: column; align-items: stretch; }
+  .roster-row-actions { justify-content: flex-start; margin-top: 4px; }
+}
 
 footer {
   max-width: 900px;

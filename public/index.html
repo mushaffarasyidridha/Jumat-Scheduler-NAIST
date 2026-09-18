@@ -45,7 +45,11 @@
     <section id="roster" class="card">
       <div class="card-header">
         <h2>Khatib &amp; Imam roster</h2>
-        <button id="add-person-btn" class="btn btn-ghost" type="button">+ Add person</button>
+        <div class="roster-header-actions">
+          <button id="unlock-btn" class="btn btn-ghost btn-sm hidden" type="button">🔑 Enter access code</button>
+          <button id="add-person-btn" class="btn btn-ghost btn-sm hidden" type="button">+ Add person</button>
+          <button id="lock-btn" class="btn btn-ghost btn-sm hidden" type="button" title="Hide editing controls again">🔒 Lock</button>
+        </div>
       </div>
       <div id="roster-list" class="roster-list">Loading…</div>
     </section>
