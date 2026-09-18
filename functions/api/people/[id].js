@@ -1,4 +1,4 @@
-import { json, badRequest, notFound, requireAccess } from "../_utils.js";
+import { json, badRequest, notFound, requireAccess, ROLES, AFFILIATIONS } from "../_utils.js";
 
 export async function onRequestDelete({ request, env, params }) {
   const denied = requireAccess(request, env);
@@ -35,13 +35,21 @@ export async function onRequestPatch({ request, env, params }) {
   const fields = [];
   const values = [];
 
+  if (typeof body.name === "string" && body.name.trim()) {
+    fields.push("name = ?");
+    values.push(body.name.trim());
+  }
   if (typeof body.country === "string" || body.country === null) {
     fields.push("country = ?");
     values.push(body.country ? body.country.trim() : null);
   }
-  if (["khatib", "imam", "both"].includes(body.role)) {
+  if (ROLES.includes(body.role)) {
     fields.push("role = ?");
     values.push(body.role);
+  }
+  if (AFFILIATIONS.includes(body.affiliation)) {
+    fields.push("affiliation = ?");
+    values.push(body.affiliation);
   }
   if (["active", "inactive"].includes(body.status)) {
     fields.push("status = ?");
@@ -51,20 +59,32 @@ export async function onRequestPatch({ request, env, params }) {
     fields.push("note = ?");
     values.push(body.note ? body.note.trim() : null);
   }
+  if (typeof body.contact === "string" || body.contact === null) {
+    fields.push("contact = ?");
+    values.push(body.contact ? body.contact.trim() : null);
+  }
 
   if (fields.length === 0) return badRequest("nothing to update");
 
   fields.push("updated_at = datetime('now')");
   values.push(id);
 
-  const result = await env.DB.prepare(`UPDATE people SET ${fields.join(", ")} WHERE id = ?`)
-    .bind(...values)
-    .run();
+  let result;
+  try {
+    result = await env.DB.prepare(`UPDATE people SET ${fields.join(", ")} WHERE id = ?`)
+      .bind(...values)
+      .run();
+  } catch (e) {
+    if (String(e.message || e).includes("UNIQUE")) {
+      return badRequest(`"${body.name}" is already on the roster`);
+    }
+    throw e;
+  }
 
   if (result.meta.changes === 0) return notFound("person not found");
 
   const person = await env.DB.prepare(
-    "SELECT id, name, country, role, status, note FROM people WHERE id = ?"
+    "SELECT id, name, country, role, status, note, affiliation, contact FROM people WHERE id = ?"
   )
     .bind(id)
     .first();

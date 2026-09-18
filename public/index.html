@@ -78,23 +78,36 @@
     </div>
   </div>
 
-  <div id="add-person-modal" class="modal hidden">
+  <div id="person-modal" class="modal hidden">
     <div class="modal-box">
-      <h3>Add a person</h3>
-      <label>Name<input id="new-person-name" type="text" placeholder="e.g. Firoz" /></label>
-      <label>Country<input id="new-person-country" type="text" placeholder="e.g. Bangladesh" /></label>
+      <h3 id="person-modal-title">Add a person</h3>
+      <label>Name<input id="person-name" type="text" placeholder="e.g. Firoz" /></label>
+      <label>Affiliation
+        <select id="person-affiliation">
+          <option value="naist">NAIST (student/staff)</option>
+          <option value="outside">Outside NAIST</option>
+        </select>
+      </label>
+      <label>Country<input id="person-country" type="text" placeholder="e.g. Bangladesh" /></label>
       <label>Role
-        <select id="new-person-role">
+        <select id="person-role">
           <option value="khatib">Khatib</option>
           <option value="imam">Imam</option>
           <option value="both">Khatib &amp; Imam</option>
+          <option value="sensei">Sensei</option>
         </select>
       </label>
+      <label>Note <span class="muted small">(e.g. expected to leave NAIST around ...)</span>
+        <input id="person-note" type="text" placeholder="optional" />
+      </label>
+      <label>Contact <span class="muted small">(only visible to people with the access code)</span>
+        <input id="person-contact" type="text" placeholder="e.g. phone / WhatsApp / email" />
+      </label>
       <div class="modal-actions">
-        <button id="add-person-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
-        <button id="add-person-save-btn" class="btn btn-primary" type="button">Add</button>
+        <button id="person-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="person-save-btn" class="btn btn-primary" type="button">Add</button>
       </div>
-      <p id="add-person-error" class="error small hidden"></p>
+      <p id="person-error" class="error small hidden"></p>
     </div>
   </div>
 
