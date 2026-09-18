@@ -50,6 +50,19 @@
 
   // ---------- Access code modal ----------
 
+  function hasAccessCode() {
+    return !!localStorage.getItem(LS_ACCESS);
+  }
+
+  // Roster edit controls only render once editing is unlocked, to keep the
+  // roster compact for the (usual) read-only viewer, especially on a phone.
+  function updateUnlockUI() {
+    const unlocked = hasAccessCode();
+    $("#unlock-btn").classList.toggle("hidden", unlocked);
+    $("#add-person-btn").classList.toggle("hidden", !unlocked);
+    $("#lock-btn").classList.toggle("hidden", !unlocked);
+  }
+
   function openAccessModal() {
     $("#access-error").classList.add("hidden");
     $("#access-code-input").value = "";
@@ -61,24 +74,51 @@
     pendingRetry = null;
   }
   $("#access-cancel-btn").addEventListener("click", closeAccessModal);
+  $("#unlock-btn").addEventListener("click", () => openAccessModal()); // proactive: pendingRetry stays null
+  $("#lock-btn").addEventListener("click", () => {
+    localStorage.removeItem(LS_ACCESS);
+    updateUnlockUI();
+    renderRoster();
+    toast("Editing locked");
+  });
+
   $("#access-save-btn").addEventListener("click", async () => {
     const code = $("#access-code-input").value.trim();
     if (!code) return;
-    localStorage.setItem(LS_ACCESS, code);
     const retry = pendingRetry;
     pendingRetry = null;
-    $("#access-modal").classList.add("hidden");
+
     if (retry) {
+      // Reactive: a write already failed with 401. Trust the code enough to
+      // retry once - if it's still wrong, that retry throws and we bail below.
+      localStorage.setItem(LS_ACCESS, code);
+      $("#access-modal").classList.add("hidden");
       try {
         await retry();
-        // Now-authorized reads (e.g. contact info on /api/people) weren't in
-        // whatever was already loaded before the code was entered - refresh.
-        await loadAll();
+        await loadAll(); // now-authorized reads (e.g. contact info) weren't loaded yet
+        updateUnlockUI();
       } catch (e) {
         localStorage.removeItem(LS_ACCESS);
         $("#access-error").classList.remove("hidden");
         openAccessModal();
       }
+      return;
+    }
+
+    // Proactive ("Enter access code" button): nothing to retry, so verify
+    // for real before unlocking edit controls the code can't actually use.
+    try {
+      const { authorized } = await fetch("/api/access-check", { headers: { "x-access-code": code } }).then((r) => r.json());
+      if (!authorized) {
+        $("#access-error").classList.remove("hidden");
+        return;
+      }
+      localStorage.setItem(LS_ACCESS, code);
+      $("#access-modal").classList.add("hidden");
+      await loadAll();
+      updateUnlockUI();
+    } catch (e) {
+      toast("Could not verify the code, try again", true);
     }
   });
 
@@ -93,6 +133,7 @@
     state.people = people;
     state.fridays = fridays;
     state.availability = availability;
+    updateUnlockUI();
     renderWhoami();
     renderCalendar();
     renderRoster();
@@ -372,6 +413,7 @@
     const active = state.people.filter((p) => p.status === "active");
     const inactive = state.people.filter((p) => p.status !== "active");
 
+    const unlocked = hasAccessCode();
     const row = (p) => `
       <div class="roster-row ${p.status !== "active" ? "inactive" : ""}" data-id="${p.id}">
         <div>
@@ -379,11 +421,15 @@
           <div class="roster-meta">${[p.affiliation === "outside" ? "outside NAIST" : null, p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
           ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
         </div>
-        <div class="roster-row-actions">
-          <button class="btn btn-sm" data-edit-person type="button">Edit</button>
-          <button class="btn btn-sm" data-toggle-status type="button">${p.status === "active" ? "Mark left NAIST" : "Mark active"}</button>
-          <button class="btn btn-sm btn-danger" data-delete-person type="button" title="Remove this person entirely (use this for a mistyped or duplicate name, not someone who just left NAIST)">Delete</button>
-        </div>
+        ${
+          unlocked
+            ? `<div class="roster-row-actions">
+                <button class="btn btn-sm" data-edit-person type="button">Edit</button>
+                <button class="btn btn-sm" data-toggle-status type="button">${p.status === "active" ? "Mark left NAIST" : "Mark active"}</button>
+                <button class="btn btn-sm btn-danger" data-delete-person type="button" title="Remove this person entirely (use this for a mistyped or duplicate name, not someone who just left NAIST)">Delete</button>
+              </div>`
+            : ""
+        }
       </div>`;
 
     container.innerHTML =
