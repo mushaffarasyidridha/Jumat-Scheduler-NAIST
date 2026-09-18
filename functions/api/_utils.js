@@ -36,13 +36,14 @@ export function requireAccess(request, env) {
   return null;
 }
 
-// Next `count` Fridays strictly after `from` (a Date), as ISO yyyy-mm-dd strings.
+// Next `count` Fridays on or after `from` (a Date), as ISO yyyy-mm-dd
+// strings - including today itself when today is a Friday, so today's
+// khatib can still be assigned or fixed up until Jumat actually happens.
 export function upcomingFridays(from, count) {
   const dates = [];
   const d = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
   const dayOfWeek = d.getUTCDay(); // 0=Sun .. 5=Fri
-  let offset = (5 - dayOfWeek + 7) % 7;
-  if (offset === 0) offset = 7; // always strictly future, never "today"
+  const offset = (5 - dayOfWeek + 7) % 7;
   d.setUTCDate(d.getUTCDate() + offset);
   for (let i = 0; i < count; i++) {
     dates.push(d.toISOString().slice(0, 10));
