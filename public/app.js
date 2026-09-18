@@ -20,11 +20,10 @@
 
   async function api(path, opts = {}) {
     const headers = { "content-type": "application/json", ...(opts.headers || {}) };
-    const method = (opts.method || "GET").toUpperCase();
-    if (method !== "GET") {
-      const code = localStorage.getItem(LS_ACCESS);
-      if (code) headers["x-access-code"] = code;
-    }
+    // Sent on GETs too (not just writes): /api/people only returns each
+    // person's contact info when this matches the server's access code.
+    const code = localStorage.getItem(LS_ACCESS);
+    if (code) headers["x-access-code"] = code;
     const res = await fetch(path, { ...opts, headers });
     if (res.status === 401) {
       return new Promise((resolve, reject) => {
@@ -72,6 +71,9 @@
     if (retry) {
       try {
         await retry();
+        // Now-authorized reads (e.g. contact info on /api/people) weren't in
+        // whatever was already loaded before the code was entered - refresh.
+        await loadAll();
       } catch (e) {
         localStorage.removeItem(LS_ACCESS);
         $("#access-error").classList.remove("hidden");
@@ -374,9 +376,11 @@
       <div class="roster-row ${p.status !== "active" ? "inactive" : ""}" data-id="${p.id}">
         <div>
           <div class="roster-name">${escapeHtml(p.name)}</div>
-          <div class="roster-meta">${[p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
+          <div class="roster-meta">${[p.affiliation === "outside" ? "outside NAIST" : null, p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
+          ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
         </div>
         <div class="roster-row-actions">
+          <button class="btn btn-sm" data-edit-person type="button">Edit</button>
           <button class="btn btn-sm" data-toggle-status type="button">${p.status === "active" ? "Mark left NAIST" : "Mark active"}</button>
           <button class="btn btn-sm btn-danger" data-delete-person type="button" title="Remove this person entirely (use this for a mistyped or duplicate name, not someone who just left NAIST)">Delete</button>
         </div>
@@ -407,6 +411,13 @@
       });
     });
 
+    container.querySelectorAll("[data-edit-person]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.closest(".roster-row").dataset.id);
+        openPersonModal(state.people.find((p) => p.id === id));
+      });
+    });
+
     container.querySelectorAll("[data-delete-person]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const rowEl = btn.closest(".roster-row");
@@ -425,38 +436,65 @@
     });
   }
 
-  // ---------- Add person modal ----------
+  // ---------- Add / edit person modal ----------
 
-  function openAddPersonModal() {
-    $("#new-person-name").value = "";
-    $("#new-person-country").value = "";
-    $("#new-person-role").value = "khatib";
-    $("#add-person-error").classList.add("hidden");
-    $("#add-person-modal").classList.remove("hidden");
-    $("#new-person-name").focus();
+  let editingPersonId = null;
+
+  function openPersonModal(person) {
+    editingPersonId = person ? person.id : null;
+    $("#person-modal-title").textContent = person ? "Edit person" : "Add a person";
+    $("#person-save-btn").textContent = person ? "Save" : "Add";
+    $("#person-name").value = person ? person.name : "";
+    $("#person-affiliation").value = person ? person.affiliation || "naist" : "naist";
+    $("#person-country").value = person ? person.country || "" : "";
+    $("#person-role").value = person ? person.role : "khatib";
+    $("#person-note").value = person ? person.note || "" : "";
+    // Blank (not "no contact") when we don't have read access to it, so
+    // saving from this state can't accidentally overwrite it with nothing.
+    $("#person-contact").value = person && "contact" in person ? person.contact || "" : "";
+    $("#person-error").classList.add("hidden");
+    $("#person-modal").classList.remove("hidden");
+    $("#person-name").focus();
   }
-  $("#add-person-btn").addEventListener("click", openAddPersonModal);
-  $("#add-person-cancel-btn").addEventListener("click", () => $("#add-person-modal").classList.add("hidden"));
-  $("#add-person-save-btn").addEventListener("click", async () => {
-    const name = $("#new-person-name").value.trim();
-    const country = $("#new-person-country").value.trim();
-    const role = $("#new-person-role").value;
+  $("#add-person-btn").addEventListener("click", () => openPersonModal(null));
+  $("#person-cancel-btn").addEventListener("click", () => $("#person-modal").classList.add("hidden"));
+  $("#person-save-btn").addEventListener("click", async () => {
+    const name = $("#person-name").value.trim();
+    const payload = {
+      name,
+      affiliation: $("#person-affiliation").value,
+      country: $("#person-country").value.trim(),
+      role: $("#person-role").value,
+      note: $("#person-note").value.trim(),
+    };
+    const editingPerson = editingPersonId ? state.people.find((p) => p.id === editingPersonId) : null;
+    // Only send contact when we actually have it loaded (see openPersonModal),
+    // or when adding a brand-new person, so an unauthorized edit never wipes it.
+    if (!editingPerson || "contact" in editingPerson) {
+      payload.contact = $("#person-contact").value.trim();
+    }
     if (!name) {
-      $("#add-person-error").textContent = "Name is required";
-      $("#add-person-error").classList.remove("hidden");
+      $("#person-error").textContent = "Name is required";
+      $("#person-error").classList.remove("hidden");
       return;
     }
     try {
-      const person = await api("/api/people", { method: "POST", body: JSON.stringify({ name, country, role }) });
-      state.people.push(person);
+      if (editingPersonId) {
+        const updated = await api(`/api/people/${editingPersonId}`, { method: "PATCH", body: JSON.stringify(payload) });
+        Object.assign(editingPerson, updated);
+        toast(`${name} updated`);
+      } else {
+        const person = await api("/api/people", { method: "POST", body: JSON.stringify(payload) });
+        state.people.push(person);
+        toast(`${name} added to the roster`);
+      }
       renderRoster();
       renderWhoami();
       renderCalendar();
-      $("#add-person-modal").classList.add("hidden");
-      toast(`${name} added to the roster`);
+      $("#person-modal").classList.add("hidden");
     } catch (e) {
-      $("#add-person-error").textContent = e.message;
-      $("#add-person-error").classList.remove("hidden");
+      $("#person-error").textContent = e.message;
+      $("#person-error").classList.remove("hidden");
     }
   });
 
