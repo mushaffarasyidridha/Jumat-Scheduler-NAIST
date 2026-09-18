@@ -14,6 +14,7 @@ export async function onRequestDelete({ request, env, params }) {
     env.DB.prepare("DELETE FROM availability WHERE person_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET primary_khatib_id = NULL WHERE primary_khatib_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET secondary_khatib_id = NULL WHERE secondary_khatib_id = ?").bind(id),
+    env.DB.prepare("UPDATE fridays SET imam_id = NULL WHERE imam_id = ?").bind(id),
   ]);
 
   const result = await env.DB.prepare("DELETE FROM people WHERE id = ?").bind(id).run();

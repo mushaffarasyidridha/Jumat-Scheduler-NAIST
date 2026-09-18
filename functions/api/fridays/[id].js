@@ -35,6 +35,14 @@ export async function onRequestPatch({ request, env, params }) {
     values.push(null, body.secondary_khatib_name ? String(body.secondary_khatib_name).trim() : null);
   }
 
+  if ("imam_id" in body) {
+    fields.push("imam_id = ?", "imam_name = ?");
+    values.push(body.imam_id || null, body.imam_id ? null : body.imam_name || null);
+  } else if ("imam_name" in body) {
+    fields.push("imam_id = ?", "imam_name = ?");
+    values.push(null, body.imam_name ? String(body.imam_name).trim() : null);
+  }
+
   if (typeof body.venue === "string" || body.venue === null) {
     fields.push("venue = ?");
     values.push(body.venue ? body.venue.trim() : null);
@@ -60,10 +68,12 @@ export async function onRequestPatch({ request, env, params }) {
   const row = await env.DB.prepare(
     `SELECT f.id, f.date, f.venue, f.info, f.is_history, f.updated_by, f.updated_at,
             f.primary_khatib_id, COALESCE(pp.name, f.primary_khatib_name) AS primary_name,
-            f.secondary_khatib_id, COALESCE(sp.name, f.secondary_khatib_name) AS secondary_name
+            f.secondary_khatib_id, COALESCE(sp.name, f.secondary_khatib_name) AS secondary_name,
+            f.imam_id, COALESCE(ip.name, f.imam_name) AS imam_name
      FROM fridays f
      LEFT JOIN people pp ON pp.id = f.primary_khatib_id
      LEFT JOIN people sp ON sp.id = f.secondary_khatib_id
+     LEFT JOIN people ip ON ip.id = f.imam_id
      WHERE f.id = ?`
   )
     .bind(id)

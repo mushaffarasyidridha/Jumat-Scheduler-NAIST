@@ -325,6 +325,7 @@
         <p class="day-modal-readonly-note small muted">Archived entry — read only.</p>
         <p class="small"><strong>Primary:</strong> ${escapeHtml(friday.primary_name || "—")}</p>
         <p class="small"><strong>Secondary:</strong> ${escapeHtml(friday.secondary_name || "—")}</p>
+        ${friday.imam_name ? `<p class="small"><strong>Imam:</strong> ${escapeHtml(friday.imam_name)}</p>` : ""}
         ${friday.venue ? `<p class="small"><strong>Venue:</strong> ${escapeHtml(friday.venue)}</p>` : ""}
         ${friday.info ? `<p class="small muted">${escapeHtml(friday.info)}</p>` : ""}
       `;
@@ -344,6 +345,10 @@
         <div class="slot">
           <label>Secondary khatib</label>
           <select data-role="secondary_khatib_id">${peopleOptions(friday.secondary_khatib_id)}</select>
+        </div>
+        <div class="slot">
+          <label>Imam</label>
+          <select data-role="imam_id">${peopleOptions(friday.imam_id)}</select>
         </div>
       </div>
       <div class="meta-row">
@@ -374,7 +379,7 @@
 
   async function saveFridayField(friday, role, value) {
     const payload = {};
-    if (role === "primary_khatib_id" || role === "secondary_khatib_id") {
+    if (role === "primary_khatib_id" || role === "secondary_khatib_id" || role === "imam_id") {
       payload[role] = value ? Number(value) : null;
     } else {
       payload[role] = value;

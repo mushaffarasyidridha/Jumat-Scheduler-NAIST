@@ -16,10 +16,12 @@ const SELECT = `
   SELECT
     f.id, f.date, f.venue, f.info, f.is_history, f.updated_by, f.updated_at,
     f.primary_khatib_id, COALESCE(pp.name, f.primary_khatib_name) AS primary_name,
-    f.secondary_khatib_id, COALESCE(sp.name, f.secondary_khatib_name) AS secondary_name
+    f.secondary_khatib_id, COALESCE(sp.name, f.secondary_khatib_name) AS secondary_name,
+    f.imam_id, COALESCE(ip.name, f.imam_name) AS imam_name
   FROM fridays f
   LEFT JOIN people pp ON pp.id = f.primary_khatib_id
   LEFT JOIN people sp ON sp.id = f.secondary_khatib_id
+  LEFT JOIN people ip ON ip.id = f.imam_id
 `;
 
 export async function onRequestGet({ request, env }) {
