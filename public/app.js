@@ -191,11 +191,18 @@
     return AFFILIATION_LABELS[affiliation] || null;
   }
 
-  function peopleOptions(selectedId) {
-    const active = state.people.filter((p) => p.status === "active" || p.id === selectedId);
+  // allowedRoles scopes the list to who can actually fill that slot (e.g. the
+  // Imam dropdown shouldn't offer someone whose role is plainly "khatib").
+  // The currently-selected person always stays listed regardless, even if
+  // inactive or their role changed since - so the UI never silently drops
+  // the existing assignment from view.
+  function peopleOptions(selectedId, allowedRoles) {
+    const candidates = state.people.filter(
+      (p) => p.id === selectedId || (p.status === "active" && (!allowedRoles || allowedRoles.includes(p.role)))
+    );
     return (
       '<option value="">— open —</option>' +
-      active
+      candidates
         .map((p) => `<option value="${p.id}" ${p.id === selectedId ? "selected" : ""}>${escapeHtml(p.name)}</option>`)
         .join("")
     );
@@ -340,15 +347,15 @@
       <div class="slots">
         <div class="slot">
           <label>Primary khatib</label>
-          <select data-role="primary_khatib_id">${peopleOptions(friday.primary_khatib_id)}</select>
+          <select data-role="primary_khatib_id">${peopleOptions(friday.primary_khatib_id, ["khatib", "both"])}</select>
         </div>
         <div class="slot">
           <label>Secondary khatib</label>
-          <select data-role="secondary_khatib_id">${peopleOptions(friday.secondary_khatib_id)}</select>
+          <select data-role="secondary_khatib_id">${peopleOptions(friday.secondary_khatib_id, ["khatib", "both"])}</select>
         </div>
         <div class="slot">
           <label>Imam</label>
-          <select data-role="imam_id">${peopleOptions(friday.imam_id)}</select>
+          <select data-role="imam_id">${peopleOptions(friday.imam_id, ["imam", "both"])}</select>
         </div>
       </div>
       <div class="meta-row">
