@@ -1,5 +1,27 @@
 import { json, badRequest, notFound, requireAccess } from "../_utils.js";
 
+export async function onRequestDelete({ request, env, params }) {
+  const denied = requireAccess(request, env);
+  if (denied) return denied;
+
+  const id = Number(params.id);
+  if (!Number.isInteger(id)) return badRequest("invalid id");
+
+  // Clean up references rather than leaving dangling ids behind: past
+  // availability for this person is no longer meaningful, and any Friday
+  // they were assigned to just reopens rather than pointing at a ghost.
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM availability WHERE person_id = ?").bind(id),
+    env.DB.prepare("UPDATE fridays SET primary_khatib_id = NULL WHERE primary_khatib_id = ?").bind(id),
+    env.DB.prepare("UPDATE fridays SET secondary_khatib_id = NULL WHERE secondary_khatib_id = ?").bind(id),
+  ]);
+
+  const result = await env.DB.prepare("DELETE FROM people WHERE id = ?").bind(id).run();
+  if (result.meta.changes === 0) return notFound("person not found");
+
+  return json({ id });
+}
+
 export async function onRequestPatch({ request, env, params }) {
   const denied = requireAccess(request, env);
   if (denied) return denied;

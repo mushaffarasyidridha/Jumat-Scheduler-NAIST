@@ -98,6 +98,8 @@ main {
 .btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
 .btn-primary:hover { background: var(--primary-dark); }
 .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: white; }
 
 .calendar-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 #calendar-month-label { font-weight: 600; min-width: 120px; text-align: center; }
@@ -194,6 +196,7 @@ main {
 .roster-row.inactive { opacity: 0.55; }
 .roster-name { font-weight: 500; }
 .roster-meta { color: var(--muted); font-size: 0.8rem; }
+.roster-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 footer {
   max-width: 900px;

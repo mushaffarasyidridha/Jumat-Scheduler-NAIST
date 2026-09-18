@@ -376,7 +376,10 @@
           <div class="roster-name">${escapeHtml(p.name)}</div>
           <div class="roster-meta">${[p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
         </div>
-        <button class="btn btn-sm" data-toggle-status type="button">${p.status === "active" ? "Mark left NAIST" : "Mark active"}</button>
+        <div class="roster-row-actions">
+          <button class="btn btn-sm" data-toggle-status type="button">${p.status === "active" ? "Mark left NAIST" : "Mark active"}</button>
+          <button class="btn btn-sm btn-danger" data-delete-person type="button" title="Remove this person entirely (use this for a mistyped or duplicate name, not someone who just left NAIST)">Delete</button>
+        </div>
       </div>`;
 
     container.innerHTML =
@@ -398,6 +401,23 @@
           renderWhoami();
           renderCalendar();
           toast("Roster updated");
+        } catch (e) {
+          toast(e.message, true);
+        }
+      });
+    });
+
+    container.querySelectorAll("[data-delete-person]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const rowEl = btn.closest(".roster-row");
+        const id = Number(rowEl.dataset.id);
+        const person = state.people.find((p) => p.id === id);
+        if (!confirm(`Delete "${person.name}" from the roster? This can't be undone.`)) return;
+        try {
+          await api(`/api/people/${id}`, { method: "DELETE" });
+          if (localStorage.getItem(LS_WHOAMI) === String(id)) localStorage.removeItem(LS_WHOAMI);
+          await loadAll(); // deleting can clear their khatib assignments/availability, so refresh everything
+          toast(`${person.name} removed`);
         } catch (e) {
           toast(e.message, true);
         }
