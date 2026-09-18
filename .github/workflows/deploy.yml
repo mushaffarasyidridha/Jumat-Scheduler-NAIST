@@ -1,5 +1,7 @@
 name: Deploy to Cloudflare Pages
 
+# Runs automatically on every push to main, and can also be triggered
+# manually from the Actions tab.
 on:
   push:
     branches: [main]
