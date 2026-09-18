@@ -1,29 +1,47 @@
-import { json, badRequest, requireAccess } from "../_utils.js";
+import { json, badRequest, checkAccess } from "../_utils.js";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const fridayId = url.searchParams.get("friday_id");
+  const personId = url.searchParams.get("person_id");
+  const authorized = checkAccess(request, env);
 
-  let query = `
-    SELECT a.id, a.person_id, p.name AS person_name, a.friday_id, a.status, a.note, a.updated_at
-    FROM availability a
-    JOIN people p ON p.id = a.person_id
-  `;
+  // Without the community access code, availability is only visible for
+  // whichever person_id you ask for (yourself) - not everyone's status.
+  if (!authorized && !personId) {
+    return json([]);
+  }
+
+  const conditions = [];
   const binds = [];
   if (fridayId) {
-    query += " WHERE a.friday_id = ?";
+    conditions.push("a.friday_id = ?");
     binds.push(Number(fridayId));
   }
-  query += " ORDER BY a.updated_at DESC";
+  if (personId) {
+    conditions.push("a.person_id = ?");
+    binds.push(Number(personId));
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
-  const { results } = await env.DB.prepare(query).bind(...binds).all();
+  const { results } = await env.DB.prepare(
+    `SELECT a.id, a.person_id, p.name AS person_name, a.friday_id, a.status, a.note, a.updated_at
+     FROM availability a
+     JOIN people p ON p.id = a.person_id
+     ${where}
+     ORDER BY a.updated_at DESC`
+  )
+    .bind(...binds)
+    .all();
   return json(results);
 }
 
+// No access code needed: marking your own availability is self-service and
+// low-stakes, unlike assigning khatib/imam or editing the roster. There's
+// no real per-person login in this app (the shared code isn't one either),
+// so this can't verify the caller is only marking themselves - accepted
+// here the same way the shared code already is, for a small trusted group.
 export async function onRequestPost({ request, env }) {
-  const denied = requireAccess(request, env);
-  if (denied) return denied;
-
   const body = await request.json().catch(() => null);
   const personId = Number(body?.person_id);
   const fridayId = Number(body?.friday_id);

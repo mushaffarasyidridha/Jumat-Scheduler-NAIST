@@ -124,11 +124,20 @@
 
   // ---------- Loading ----------
 
+  function availabilityUrl() {
+    if (hasAccessCode()) return "/api/availability"; // full picture
+    const whoamiId = localStorage.getItem(LS_WHOAMI);
+    // Without the code, the API only returns availability for a specific
+    // person_id anyway - so there's nothing to fetch until one is picked.
+    return whoamiId ? `/api/availability?person_id=${whoamiId}` : null;
+  }
+
   async function loadAll() {
+    const availUrl = availabilityUrl();
     const [people, fridays, availability] = await Promise.all([
       api("/api/people"),
       api("/api/fridays"),
-      api("/api/availability"),
+      availUrl ? api(availUrl) : Promise.resolve([]),
     ]);
     state.people = people;
     state.fridays = fridays;
@@ -154,8 +163,11 @@
       active.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
     select.value = current;
   }
-  $("#whoami-select").addEventListener("change", (e) => {
+  $("#whoami-select").addEventListener("change", async (e) => {
     localStorage.setItem(LS_WHOAMI, e.target.value);
+    // Without the access code, availability is fetched scoped to whoever is
+    // selected - re-fetch so switching names shows the right person's marks.
+    if (!hasAccessCode()) await loadAll();
   });
 
   // ---------- Formatting / date helpers ----------
