@@ -1,14 +1,15 @@
 import { json, upcomingFridays } from "../_utils.js";
 
 const WEEKS_AHEAD = 16;
+const DEFAULT_VENUE = "Assembly Room - SENTAN";
 
 async function ensureUpcomingRows(env) {
   const dates = upcomingFridays(new Date(), WEEKS_AHEAD);
   const stmt = env.DB.prepare(
-    `INSERT INTO fridays (date, is_history) VALUES (?, 0)
+    `INSERT INTO fridays (date, venue, is_history) VALUES (?, ?, 0)
      ON CONFLICT(date) DO NOTHING`
   );
-  await env.DB.batch(dates.map((d) => stmt.bind(d)));
+  await env.DB.batch(dates.map((d) => stmt.bind(d, DEFAULT_VENUE)));
 }
 
 const SELECT = `
