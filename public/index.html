@@ -21,12 +21,25 @@
   </header>
 
   <main>
-    <section id="upcoming" class="card">
+    <section id="calendar" class="card">
       <div class="card-header">
-        <h2>Upcoming schedule</h2>
-        <button id="refresh-btn" class="btn btn-ghost" type="button">Refresh</button>
+        <h2>Schedule</h2>
       </div>
-      <div id="upcoming-list" class="schedule-list">Loading…</div>
+      <div class="calendar-nav">
+        <button id="cal-prev-btn" class="btn btn-ghost btn-sm" type="button" aria-label="Previous month">‹</button>
+        <span id="calendar-month-label">—</span>
+        <button id="cal-next-btn" class="btn btn-ghost btn-sm" type="button" aria-label="Next month">›</button>
+        <button id="cal-today-btn" class="btn btn-ghost btn-sm" type="button">Today</button>
+      </div>
+      <div class="calendar-weekdays">
+        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+      <div id="calendar-grid" class="calendar-grid">Loading…</div>
+      <p class="small muted cal-legend">
+        <span class="chip available">assigned</span>
+        <span class="chip">open</span>
+        <span class="chip unavailable">archived</span>
+      </p>
     </section>
 
     <section id="roster" class="card">
@@ -35,14 +48,6 @@
         <button id="add-person-btn" class="btn btn-ghost" type="button">+ Add person</button>
       </div>
       <div id="roster-list" class="roster-list">Loading…</div>
-    </section>
-
-    <section id="history" class="card">
-      <div class="card-header">
-        <h2>Archive (2025)</h2>
-        <button id="toggle-history-btn" class="btn btn-ghost" type="button">Show</button>
-      </div>
-      <div id="history-list" class="schedule-list history hidden">Loading…</div>
     </section>
   </main>
 
@@ -60,6 +65,16 @@
         <button id="access-save-btn" class="btn btn-primary" type="button">Save</button>
       </div>
       <p id="access-error" class="error small hidden">Incorrect code, try again.</p>
+    </div>
+  </div>
+
+  <div id="day-modal" class="modal hidden">
+    <div class="modal-box day-modal-box">
+      <div class="modal-header">
+        <h3 id="day-modal-title">Friday</h3>
+        <button id="day-modal-close-btn" class="btn btn-ghost btn-sm" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="day-modal-body"></div>
     </div>
   </div>
 

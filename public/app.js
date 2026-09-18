@@ -6,10 +6,10 @@
 
   const state = {
     people: [],
-    upcoming: [],
-    history: [],
+    fridays: [], // all rows, upcoming + history
     availability: [],
-    historyLoaded: false,
+    calendarMonth: startOfMonthUTC(new Date()),
+    openFridayId: null,
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -83,23 +83,21 @@
   // ---------- Loading ----------
 
   async function loadAll() {
-    const [people, upcoming, availability] = await Promise.all([
+    const [people, fridays, availability] = await Promise.all([
       api("/api/people"),
-      api("/api/fridays?scope=upcoming"),
+      api("/api/fridays"),
       api("/api/availability"),
     ]);
     state.people = people;
-    state.upcoming = upcoming;
+    state.fridays = fridays;
     state.availability = availability;
     renderWhoami();
-    renderUpcoming();
+    renderCalendar();
     renderRoster();
-  }
-
-  async function loadHistory() {
-    state.history = await api("/api/fridays?scope=history");
-    state.historyLoaded = true;
-    renderHistory();
+    if (state.openFridayId) {
+      const friday = state.fridays.find((f) => f.id === state.openFridayId);
+      if (friday) renderDayModalBody(friday);
+    }
   }
 
   // ---------- Who am I ----------
@@ -117,7 +115,7 @@
     localStorage.setItem(LS_WHOAMI, e.target.value);
   });
 
-  // ---------- Formatting ----------
+  // ---------- Formatting / date helpers ----------
 
   function escapeHtml(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({
@@ -125,14 +123,22 @@
     }[c]));
   }
 
-  function formatDate(iso) {
-    const d = new Date(iso + "T00:00:00Z");
-    return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  function isoDate(d) {
+    return d.toISOString().slice(0, 10);
   }
-
-  function isNextFriday(iso, list) {
-    const upcomingSorted = list.map((f) => f.date).sort();
-    return upcomingSorted.length && upcomingSorted[0] === iso;
+  function startOfMonthUTC(d) {
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+  }
+  function todayISO() {
+    const n = new Date();
+    return isoDate(new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())));
+  }
+  function formatDateLong(iso) {
+    const d = new Date(iso + "T00:00:00Z");
+    return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  }
+  function monthLabel(d) {
+    return d.toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
   }
 
   function peopleOptions(selectedId) {
@@ -145,49 +151,159 @@
     );
   }
 
-  // ---------- Upcoming schedule ----------
+  // ---------- Calendar ----------
 
-  function renderUpcoming() {
-    const container = $("#upcoming-list");
-    if (!state.upcoming.length) {
-      container.innerHTML = '<p class="muted">No upcoming Fridays loaded yet.</p>';
-      return;
-    }
-    container.innerHTML = state.upcoming.map((f) => renderWeekRow(f)).join("");
-    attachWeekRowHandlers(container, state.upcoming);
+  function fridaysByDate() {
+    const map = {};
+    for (const f of state.fridays) map[f.date] = f;
+    return map;
   }
 
-  function renderWeekRow(f) {
-    const next = isNextFriday(f.date, state.upcoming);
-    const avail = state.availability.filter((a) => a.friday_id === f.id);
-    const chips = avail
-      .map((a) => `<span class="chip ${a.status}">${escapeHtml(a.person_name)}</span>`)
+  function nextJumatDate() {
+    const today = todayISO();
+    const upcoming = state.fridays.filter((f) => !f.is_history && f.date >= today).map((f) => f.date).sort();
+    return upcoming[0] || null;
+  }
+
+  function renderCalendar() {
+    $("#calendar-month-label").textContent = monthLabel(state.calendarMonth);
+
+    const byDate = fridaysByDate();
+    const nextJumat = nextJumatDate();
+    const today = todayISO();
+
+    const year = state.calendarMonth.getUTCFullYear();
+    const month = state.calendarMonth.getUTCMonth();
+    const firstOfMonth = new Date(Date.UTC(year, month, 1));
+    const startOffset = firstOfMonth.getUTCDay(); // 0=Sun
+    const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+
+    const cells = [];
+    for (let i = 0; i < startOffset; i++) {
+      const d = new Date(Date.UTC(year, month, 1 - (startOffset - i)));
+      cells.push({ date: d, otherMonth: true });
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      cells.push({ date: new Date(Date.UTC(year, month, day)), otherMonth: false });
+    }
+    while (cells.length % 7 !== 0 || cells.length < 35) {
+      const last = cells[cells.length - 1].date;
+      const d = new Date(last);
+      d.setUTCDate(d.getUTCDate() + 1);
+      cells.push({ date: d, otherMonth: true });
+    }
+
+    $("#calendar-grid").innerHTML = cells
+      .map((cell) => {
+        const iso = isoDate(cell.date);
+        const isFriday = cell.date.getUTCDay() === 5;
+        const friday = isFriday ? byDate[iso] : null;
+        const classes = ["cal-day"];
+        if (cell.otherMonth) classes.push("other-month");
+        if (iso === today) classes.push("is-today");
+        if (isFriday) classes.push("friday");
+        if (friday) classes.push("clickable");
+
+        let summary = "";
+        if (friday) {
+          const assigned = friday.primary_name || friday.secondary_name;
+          const statusClass = friday.is_history ? "unavailable" : assigned ? "available" : "";
+          const label = friday.is_history
+            ? friday.primary_name || "archived"
+            : assigned
+            ? [friday.primary_name, friday.secondary_name].filter(Boolean).join(" / ")
+            : "open";
+          summary = `<span class="cal-day-summary"><span class="chip ${statusClass} name">${escapeHtml(label)}</span></span>`;
+        }
+
+        const tag = friday ? "button" : "div";
+        const dataAttr = friday ? `data-friday-id="${friday.id}"` : "";
+        const typeAttr = friday ? 'type="button"' : "";
+        const isNext = friday && friday.date === nextJumat ? ' title="Next Jumat"' : "";
+        return `<${tag} class="${classes.join(" ")}" ${dataAttr} ${typeAttr}${isNext}>
+          <span class="cal-day-num">${cell.date.getUTCDate()}</span>
+          ${summary}
+        </${tag}>`;
+      })
       .join("");
 
-    return `
-    <article class="week-row ${next ? "is-next" : ""}" data-id="${f.id}">
-      <div class="week-row-head">
-        <span class="week-date">${formatDate(f.date)}</span>
-        ${next ? '<span class="week-badge">Next Jumat</span>' : ""}
-      </div>
+    $("#calendar-grid").querySelectorAll("button.cal-day").forEach((btn) => {
+      btn.addEventListener("click", () => openDayModal(Number(btn.dataset.fridayId)));
+    });
+  }
+
+  $("#cal-prev-btn").addEventListener("click", () => {
+    const d = state.calendarMonth;
+    state.calendarMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
+    renderCalendar();
+  });
+  $("#cal-next-btn").addEventListener("click", () => {
+    const d = state.calendarMonth;
+    state.calendarMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+    renderCalendar();
+  });
+  $("#cal-today-btn").addEventListener("click", () => {
+    state.calendarMonth = startOfMonthUTC(new Date());
+    renderCalendar();
+  });
+
+  // ---------- Day detail modal ----------
+
+  function openDayModal(fridayId) {
+    const friday = state.fridays.find((f) => f.id === fridayId);
+    if (!friday) return;
+    state.openFridayId = fridayId;
+    renderDayModalBody(friday);
+    $("#day-modal").classList.remove("hidden");
+  }
+  function closeDayModal() {
+    $("#day-modal").classList.add("hidden");
+    state.openFridayId = null;
+  }
+  $("#day-modal-close-btn").addEventListener("click", closeDayModal);
+  $("#day-modal").addEventListener("click", (e) => {
+    if (e.target.id === "day-modal") closeDayModal();
+  });
+
+  function renderDayModalBody(friday) {
+    $("#day-modal-title").textContent = friday.is_history ? "Archived Jumat" : "Jumat schedule";
+    const body = $("#day-modal-body");
+
+    if (friday.is_history) {
+      body.innerHTML = `
+        <p class="day-modal-date">${formatDateLong(friday.date)}</p>
+        <p class="day-modal-readonly-note small muted">Archived entry — read only.</p>
+        <p class="small"><strong>Primary:</strong> ${escapeHtml(friday.primary_name || "—")}</p>
+        <p class="small"><strong>Secondary:</strong> ${escapeHtml(friday.secondary_name || "—")}</p>
+        ${friday.venue ? `<p class="small"><strong>Venue:</strong> ${escapeHtml(friday.venue)}</p>` : ""}
+        ${friday.info ? `<p class="small muted">${escapeHtml(friday.info)}</p>` : ""}
+      `;
+      return;
+    }
+
+    const avail = state.availability.filter((a) => a.friday_id === friday.id);
+    const chips = avail.map((a) => `<span class="chip ${a.status}">${escapeHtml(a.person_name)}</span>`).join("");
+
+    body.innerHTML = `
+      <p class="day-modal-date">${formatDateLong(friday.date)}</p>
       <div class="slots">
         <div class="slot">
           <label>Primary khatib</label>
-          <select data-role="primary_khatib_id">${peopleOptions(f.primary_khatib_id)}</select>
+          <select data-role="primary_khatib_id">${peopleOptions(friday.primary_khatib_id)}</select>
         </div>
         <div class="slot">
           <label>Secondary khatib</label>
-          <select data-role="secondary_khatib_id">${peopleOptions(f.secondary_khatib_id)}</select>
+          <select data-role="secondary_khatib_id">${peopleOptions(friday.secondary_khatib_id)}</select>
         </div>
       </div>
       <div class="meta-row">
         <div class="slot">
           <label>Venue</label>
-          <input type="text" data-role="venue" value="${escapeHtml(f.venue || "")}" placeholder="e.g. Assembly Room - SENTAN" />
+          <input type="text" data-role="venue" value="${escapeHtml(friday.venue || "")}" placeholder="e.g. Assembly Room - SENTAN" />
         </div>
         <div class="slot">
           <label>Info / notes</label>
-          <input type="text" data-role="info" value="${escapeHtml(f.info || "")}" placeholder="optional note" />
+          <input type="text" data-role="info" value="${escapeHtml(friday.info || "")}" placeholder="optional note" />
         </div>
       </div>
       <div class="avail-row">
@@ -197,39 +313,32 @@
           <button class="btn btn-sm" data-role="mark-unavailable" type="button">I'm unavailable</button>
         </div>
       </div>
-    </article>`;
+    `;
+
+    body.querySelectorAll("select[data-role], input[data-role]").forEach((field) => {
+      field.addEventListener("change", () => saveFridayField(friday, field.dataset.role, field.value));
+    });
+    body.querySelector('[data-role="mark-available"]').addEventListener("click", () => setAvailability(friday.id, "available"));
+    body.querySelector('[data-role="mark-unavailable"]').addEventListener("click", () => setAvailability(friday.id, "unavailable"));
   }
 
-  function attachWeekRowHandlers(container, list) {
-    container.querySelectorAll(".week-row").forEach((row) => {
-      const fridayId = Number(row.dataset.id);
-      const friday = list.find((f) => f.id === fridayId);
-
-      row.querySelectorAll("select[data-role], input[data-role]").forEach((field) => {
-        const role = field.dataset.role;
-        const eventName = field.tagName === "SELECT" ? "change" : "change";
-        field.addEventListener(eventName, async () => {
-          const payload = {};
-          if (role === "primary_khatib_id" || role === "secondary_khatib_id") {
-            payload[role] = field.value ? Number(field.value) : null;
-          } else {
-            payload[role] = field.value;
-          }
-          const whoami = state.people.find((p) => String(p.id) === localStorage.getItem(LS_WHOAMI));
-          if (whoami) payload.updated_by = whoami.name;
-          try {
-            const updated = await api(`/api/fridays/${fridayId}`, { method: "PATCH", body: JSON.stringify(payload) });
-            Object.assign(friday, updated);
-            toast("Saved");
-          } catch (e) {
-            toast(e.message, true);
-          }
-        });
-      });
-
-      row.querySelector('[data-role="mark-available"]').addEventListener("click", () => setAvailability(fridayId, "available"));
-      row.querySelector('[data-role="mark-unavailable"]').addEventListener("click", () => setAvailability(fridayId, "unavailable"));
-    });
+  async function saveFridayField(friday, role, value) {
+    const payload = {};
+    if (role === "primary_khatib_id" || role === "secondary_khatib_id") {
+      payload[role] = value ? Number(value) : null;
+    } else {
+      payload[role] = value;
+    }
+    const whoami = state.people.find((p) => String(p.id) === localStorage.getItem(LS_WHOAMI));
+    if (whoami) payload.updated_by = whoami.name;
+    try {
+      const updated = await api(`/api/fridays/${friday.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      Object.assign(friday, updated);
+      renderCalendar();
+      toast("Saved");
+    } catch (e) {
+      toast(e.message, true);
+    }
   }
 
   async function setAvailability(fridayId, status) {
@@ -246,7 +355,8 @@
       const idx = state.availability.findIndex((a) => a.person_id === row.person_id && a.friday_id === row.friday_id);
       if (idx >= 0) state.availability[idx] = row;
       else state.availability.push(row);
-      renderUpcoming();
+      const friday = state.fridays.find((f) => f.id === fridayId);
+      if (friday) renderDayModalBody(friday);
       toast(status === "available" ? "Marked available" : "Marked unavailable");
     } catch (e) {
       toast(e.message, true);
@@ -286,7 +396,7 @@
           Object.assign(person, updated);
           renderRoster();
           renderWhoami();
-          renderUpcoming();
+          renderCalendar();
           toast("Roster updated");
         } catch (e) {
           toast(e.message, true);
@@ -321,7 +431,7 @@
       state.people.push(person);
       renderRoster();
       renderWhoami();
-      renderUpcoming();
+      renderCalendar();
       $("#add-person-modal").classList.add("hidden");
       toast(`${name} added to the roster`);
     } catch (e) {
@@ -329,46 +439,6 @@
       $("#add-person-error").classList.remove("hidden");
     }
   });
-
-  // ---------- History ----------
-
-  function renderHistory() {
-    const container = $("#history-list");
-    if (!state.history.length) {
-      container.innerHTML = '<p class="muted">No archived rows.</p>';
-      return;
-    }
-    container.innerHTML = state.history
-      .map(
-        (f) => `
-      <article class="week-row">
-        <div class="week-row-head"><span class="week-date">${formatDate(f.date)}</span></div>
-        <p class="small">
-          <strong>Primary:</strong> ${escapeHtml(f.primary_name || "—")} &nbsp;|&nbsp;
-          <strong>Secondary:</strong> ${escapeHtml(f.secondary_name || "—")}
-          ${f.venue ? ` &nbsp;|&nbsp; <strong>Venue:</strong> ${escapeHtml(f.venue)}` : ""}
-        </p>
-        ${f.info ? `<p class="small muted">${escapeHtml(f.info)}</p>` : ""}
-      </article>`
-      )
-      .join("");
-  }
-
-  $("#toggle-history-btn").addEventListener("click", async () => {
-    const list = $("#history-list");
-    const btn = $("#toggle-history-btn");
-    const showing = !list.classList.contains("hidden");
-    if (showing) {
-      list.classList.add("hidden");
-      btn.textContent = "Show";
-      return;
-    }
-    if (!state.historyLoaded) await loadHistory();
-    list.classList.remove("hidden");
-    btn.textContent = "Hide";
-  });
-
-  $("#refresh-btn").addEventListener("click", () => loadAll().catch((e) => toast(e.message, true)));
 
   loadAll().catch((e) => toast(e.message, true));
 })();
