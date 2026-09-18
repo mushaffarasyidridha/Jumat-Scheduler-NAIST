@@ -1,0 +1,39 @@
+name: One-time Cloudflare setup
+
+# Manually triggered, run once (from the Actions tab) after adding
+# CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and SCHEDULER_ACCESS_CODE
+# as repository secrets. Creates the D1 database and Pages project, and
+# sets the community access code, all from the secrets already stored in
+# GitHub - no local terminal or Wrangler install needed.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install
+
+      - name: Create D1 database
+        # Fails harmlessly if it already exists (e.g. re-running this workflow) -
+        # the id printed here is only needed the first time.
+        continue-on-error: true
+        run: npx wrangler d1 create jumat-scheduler-naist-db
+
+      - name: Create Pages project
+        continue-on-error: true
+        run: npx wrangler pages project create jumat-scheduler-naist --production-branch=main
+
+      - name: Set community access code
+        run: echo "${{ secrets.SCHEDULER_ACCESS_CODE }}" | npx wrangler pages secret put ACCESS_CODE --project-name=jumat-scheduler-naist
