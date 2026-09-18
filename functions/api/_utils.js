@@ -1,4 +1,4 @@
-export const ROLES = ["khatib", "imam", "both", "sensei"];
+export const ROLES = ["khatib", "imam", "both"];
 export const AFFILIATIONS = ["naist_student", "naist_staff", "dependent", "outside"];
 
 export function json(data, init = {}) {
