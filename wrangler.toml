@@ -7,4 +7,4 @@ compatibility_date = "2024-09-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "jumat-scheduler-naist-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "656524ac-1829-42e4-a686-0aefaf80ce3d"
