@@ -385,6 +385,7 @@
         <div class="avail-actions">
           <button class="btn btn-sm" data-role="mark-available" type="button">I'm available</button>
           <button class="btn btn-sm" data-role="mark-unavailable" type="button">I'm unavailable</button>
+          <button class="btn btn-sm btn-ghost" data-role="clear-availability" type="button">Clear my mark</button>
         </div>
       </div>
     `;
@@ -394,6 +395,7 @@
     });
     body.querySelector('[data-role="mark-available"]').addEventListener("click", () => setAvailability(friday.id, "available"));
     body.querySelector('[data-role="mark-unavailable"]').addEventListener("click", () => setAvailability(friday.id, "unavailable"));
+    body.querySelector('[data-role="clear-availability"]').addEventListener("click", () => clearAvailability(friday.id));
   }
 
   async function saveFridayField(friday, role, value) {
@@ -432,6 +434,23 @@
       const friday = state.fridays.find((f) => f.id === fridayId);
       if (friday) renderDayModalBody(friday);
       toast(status === "available" ? "Marked available" : "Marked unavailable");
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  async function clearAvailability(fridayId) {
+    const personId = Number(localStorage.getItem(LS_WHOAMI) || "");
+    if (!personId) {
+      toast("Pick your name from “You are” first", true);
+      return;
+    }
+    try {
+      await api(`/api/availability?person_id=${personId}&friday_id=${fridayId}`, { method: "DELETE" });
+      state.availability = state.availability.filter((a) => !(a.person_id === personId && a.friday_id === fridayId));
+      const friday = state.fridays.find((f) => f.id === fridayId);
+      if (friday) renderDayModalBody(friday);
+      toast("Cleared your mark");
     } catch (e) {
       toast(e.message, true);
     }

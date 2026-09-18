@@ -74,3 +74,20 @@ export async function onRequestPost({ request, env }) {
 
   return json(row);
 }
+
+// Clears a mark back to "nothing stated" - same self-service reasoning as
+// the POST above, so no access code is required here either.
+export async function onRequestDelete({ request, env }) {
+  const url = new URL(request.url);
+  const personId = Number(url.searchParams.get("person_id"));
+  const fridayId = Number(url.searchParams.get("friday_id"));
+  if (!Number.isInteger(personId) || !Number.isInteger(fridayId)) {
+    return badRequest("person_id and friday_id are required");
+  }
+
+  await env.DB.prepare("DELETE FROM availability WHERE person_id = ? AND friday_id = ?")
+    .bind(personId, fridayId)
+    .run();
+
+  return json({ person_id: personId, friday_id: fridayId });
+}
