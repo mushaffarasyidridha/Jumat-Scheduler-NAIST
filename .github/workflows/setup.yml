@@ -26,14 +26,23 @@ jobs:
       - run: npm install
 
       - name: Create D1 database
-        # Fails harmlessly if it already exists (e.g. re-running this workflow) -
-        # the id printed here is only needed the first time.
-        continue-on-error: true
-        run: npx wrangler d1 create jumat-scheduler-naist-db
+        # Checked first (rather than continue-on-error on the create call) so a
+        # real failure - e.g. an API token missing D1 permission - still fails
+        # this step loudly instead of being swallowed as "already exists".
+        run: |
+          if npx wrangler d1 list | grep -q "jumat-scheduler-naist-db"; then
+            echo "D1 database already exists, skipping."
+          else
+            npx wrangler d1 create jumat-scheduler-naist-db
+          fi
 
       - name: Create Pages project
-        continue-on-error: true
-        run: npx wrangler pages project create jumat-scheduler-naist --production-branch=main
+        run: |
+          if npx wrangler pages project list | grep -q "jumat-scheduler-naist"; then
+            echo "Pages project already exists, skipping."
+          else
+            npx wrangler pages project create jumat-scheduler-naist --production-branch=main
+          fi
 
       - name: Set community access code
         run: echo "${{ secrets.SCHEDULER_ACCESS_CODE }}" | npx wrangler pages secret put ACCESS_CODE --project-name=jumat-scheduler-naist
