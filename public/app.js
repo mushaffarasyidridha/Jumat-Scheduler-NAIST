@@ -184,6 +184,13 @@
     return d.toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
   }
 
+  // "naist_student" is the common case (most of the roster), so it's left
+  // off the roster line entirely rather than stated on every row.
+  const AFFILIATION_LABELS = { naist_staff: "NAIST Staff", dependent: "Dependent", outside: "Outside NAIST" };
+  function affiliationLabel(affiliation) {
+    return AFFILIATION_LABELS[affiliation] || null;
+  }
+
   function peopleOptions(selectedId) {
     const active = state.people.filter((p) => p.status === "active" || p.id === selectedId);
     return (
@@ -418,7 +425,7 @@
       <div class="roster-row ${p.status !== "active" ? "inactive" : ""}" data-id="${p.id}">
         <div>
           <div class="roster-name">${escapeHtml(p.name)}</div>
-          <div class="roster-meta">${[p.affiliation === "outside" ? "outside NAIST" : null, p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
+          <div class="roster-meta">${[affiliationLabel(p.affiliation), p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
           ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
         </div>
         ${
@@ -491,7 +498,7 @@
     $("#person-modal-title").textContent = person ? "Edit person" : "Add a person";
     $("#person-save-btn").textContent = person ? "Save" : "Add";
     $("#person-name").value = person ? person.name : "";
-    $("#person-affiliation").value = person ? person.affiliation || "naist" : "naist";
+    $("#person-affiliation").value = person ? person.affiliation || "naist_student" : "naist_student";
     $("#person-country").value = person ? person.country || "" : "";
     $("#person-role").value = person ? person.role : "khatib";
     $("#person-note").value = person ? person.note || "" : "";

@@ -1,5 +1,5 @@
 export const ROLES = ["khatib", "imam", "both", "sensei"];
-export const AFFILIATIONS = ["naist", "outside"];
+export const AFFILIATIONS = ["naist_student", "naist_staff", "dependent", "outside"];
 
 export function json(data, init = {}) {
   return new Response(JSON.stringify(data), {

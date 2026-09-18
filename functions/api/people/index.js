@@ -24,7 +24,7 @@ export async function onRequestPost({ request, env }) {
   const name = body.name.trim();
   const country = typeof body.country === "string" ? body.country.trim() || null : null;
   const role = ROLES.includes(body.role) ? body.role : "khatib";
-  const affiliation = AFFILIATIONS.includes(body.affiliation) ? body.affiliation : "naist";
+  const affiliation = AFFILIATIONS.includes(body.affiliation) ? body.affiliation : "naist_student";
   const note = typeof body.note === "string" ? body.note.trim() || null : null;
   const contact = typeof body.contact === "string" ? body.contact.trim() || null : null;
 
