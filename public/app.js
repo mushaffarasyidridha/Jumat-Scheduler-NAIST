@@ -388,6 +388,9 @@
           <button class="btn btn-sm btn-ghost" data-role="clear-availability" type="button">Clear my mark</button>
         </div>
       </div>
+      <div class="announce-row">
+        <button class="btn btn-sm" data-role="generate-announcement" type="button">📢 Generate announcement</button>
+      </div>
     `;
 
     body.querySelectorAll("select[data-role], input[data-role]").forEach((field) => {
@@ -396,6 +399,7 @@
     body.querySelector('[data-role="mark-available"]').addEventListener("click", () => setAvailability(friday.id, "available"));
     body.querySelector('[data-role="mark-unavailable"]').addEventListener("click", () => setAvailability(friday.id, "unavailable"));
     body.querySelector('[data-role="clear-availability"]').addEventListener("click", () => clearAvailability(friday.id));
+    body.querySelector('[data-role="generate-announcement"]').addEventListener("click", () => openAnnouncementModal(friday));
   }
 
   async function saveFridayField(friday, role, value) {
@@ -455,6 +459,125 @@
       toast(e.message, true);
     }
   }
+
+  // ---------- Jumat announcement generator ----------
+
+  // Each entry verified against sunnah.com/dorar.net references (English +
+  // Arabic cross-checked, not generated from memory alone) - reference and
+  // in-book numbering match the citation style already used for these
+  // collections. Kept small and fully verified rather than large and guessed.
+  const HADITHS = [
+    {
+      reference: "Sahih Muslim 851a",
+      inBook: "Book 7, Hadith 15",
+      intro: "Abu Huraira reported Allah's Messenger (ﷺ) as saying:",
+      english: "If you (even) ask your companion to be quiet on Friday while the Imam is delivering the sermon, you have in fact talked irrelevance.",
+      arabic: "إذا قلت لصاحبك أنصت يوم الجمعة والإمام يخطب فقد لغوت",
+    },
+    {
+      reference: "Sahih al-Bukhari 879",
+      inBook: "Book 11, Hadith 4",
+      intro: "Narrated Abu Sa'id al-Khudri: Allah's Messenger (ﷺ) said:",
+      english: "Taking a bath on Friday is compulsory for every Muslim who has attained the age of puberty, and also the cleaning of his teeth with Siwak, and the using of perfume if it is available.",
+      arabic: "الغسل يوم الجمعة واجب على كل محتلم، وأن يستن، وأن يمس طيبًا إن وجد",
+    },
+    {
+      reference: "Sahih al-Bukhari 881",
+      inBook: "Book 11, Hadith 6",
+      intro: "Narrated Abu Huraira: Allah's Messenger (ﷺ) said:",
+      english: "Whoever takes a bath on Friday like the bath of Janaba and then goes for the prayer in the first hour, it is as if he had sacrificed a camel; whoever goes in the second hour, it is as if he had sacrificed a cow; whoever goes in the third hour, then it is as if he had sacrificed a horned ram; whoever goes in the fourth hour, then it is as if he had sacrificed a hen; and whoever goes in the fifth hour, then it is as if he had offered an egg.",
+      arabic: "من اغتسل يوم الجمعة غسل الجنابة ثم راح في الساعة الأولى فكأنما قرب بدنة، ومن راح في الساعة الثانية فكأنما قرب بقرة، ومن راح في الساعة الثالثة فكأنما قرب كبشًا أقرن، ومن راح في الساعة الرابعة فكأنما قرب دجاجة، ومن راح في الساعة الخامسة فكأنما قرب بيضة",
+    },
+    {
+      reference: "Sahih al-Bukhari 935",
+      inBook: "Book 11, Hadith 59",
+      intro: "Narrated Abu Huraira: Allah's Messenger (ﷺ) mentioned Friday and said:",
+      english: "There is an hour on Friday, and if a Muslim slave happens to pray at that time and asks Allah for something good, Allah will give it to him. (He pointed with his hand to indicate how short that time is.)",
+      arabic: "فيه ساعة لا يوافقها عبد مسلم وهو قائم يصلي يسأل الله تعالى شيئًا إلا أعطاه إياه",
+    },
+    {
+      reference: "Sahih Muslim 854b",
+      inBook: "Book 7, Hadith 27",
+      intro: "Abu Huraira reported Allah's Messenger (ﷺ) as saying:",
+      english: "The best day on which the sun has risen is Friday; on it Adam was created, on it he was made to enter Paradise, on it he was expelled from it, and the Last Hour will take place on no day other than Friday.",
+      arabic: "خير يوم طلعت عليه الشمس يوم الجمعة، فيه خلق آدم، وفيه أدخل الجنة، وفيه أخرج منها، ولا تقوم الساعة إلا في يوم الجمعة",
+    },
+  ];
+
+  function randomHadith() {
+    return HADITHS[Math.floor(Math.random() * HADITHS.length)];
+  }
+
+  const MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  function formatDateAnnouncement(iso) {
+    const d = new Date(iso + "T00:00:00Z");
+    // Fixed "D Month YYYY" order rather than toLocaleDateString, whose field
+    // order depends on the viewer's browser locale (would show US-style
+    // "September 25, 2026" for some visitors).
+    return `${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  }
+
+  function khatibLine(friday) {
+    const p = friday.primary_name;
+    const s = friday.secondary_name;
+    if (p && s) return `${p} / ${s} (Secondary)`;
+    if (p) return p;
+    if (s) return `${s} (Secondary)`;
+    return "TBA";
+  }
+
+  function buildAnnouncementText(friday, hadith) {
+    return `Assalamualaikum Warrahmatullah Wabarakatuh,
+Dear Brothers,
+
+Friday Prayer will be held in sha Allah at ${friday.venue || "TBA"}.
+Date: ${formatDateAnnouncement(friday.date)}
+Time: 12.40 pm (start)
+Khatib: ${khatibLine(friday)}
+Imam: ${friday.imam_name || "TBA"}
+
+To uphold cleanliness and hygiene in our prayer space, we kindly ask all brothers to bring their own prayer mats. We appreciate your cooperation.
+
+${hadith.reference} (${hadith.inBook})
+
+${hadith.intro}
+
+${hadith.english}
+
+${hadith.arabic}`;
+  }
+
+  let announcementFriday = null;
+  let announcementHadith = null;
+
+  function renderAnnouncementText() {
+    $("#announcement-text").value = buildAnnouncementText(announcementFriday, announcementHadith);
+  }
+
+  function openAnnouncementModal(friday) {
+    announcementFriday = friday;
+    announcementHadith = randomHadith();
+    renderAnnouncementText();
+    $("#announcement-modal").classList.remove("hidden");
+  }
+  $("#announcement-close-btn").addEventListener("click", () => $("#announcement-modal").classList.add("hidden"));
+  $("#announcement-reroll-btn").addEventListener("click", () => {
+    announcementHadith = randomHadith();
+    renderAnnouncementText();
+  });
+  $("#announcement-copy-btn").addEventListener("click", async () => {
+    const text = $("#announcement-text").value;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Copied to clipboard");
+    } catch (e) {
+      $("#announcement-text").select();
+      toast("Press Ctrl/Cmd+C to copy (clipboard access was blocked)", true);
+    }
+  });
 
   // ---------- Roster ----------
 

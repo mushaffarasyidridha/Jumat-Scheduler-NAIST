@@ -171,8 +171,26 @@ main {
 @media (max-width: 560px) { .meta-row { grid-template-columns: 1fr; } }
 
 .avail-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.avail-actions { display: flex; gap: 6px; }
+.avail-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .avail-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+
+.announce-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+.announcement-modal-box { max-width: 480px; }
+#announcement-text {
+  width: 100%;
+  min-height: 320px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  resize: vertical;
+  direction: ltr;
+}
 .chip {
   font-size: 0.75rem;
   padding: 2px 9px;

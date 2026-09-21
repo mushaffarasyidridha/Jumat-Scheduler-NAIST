@@ -82,6 +82,21 @@
     </div>
   </div>
 
+  <div id="announcement-modal" class="modal hidden">
+    <div class="modal-box announcement-modal-box">
+      <div class="modal-header">
+        <h3>Jumat announcement</h3>
+        <button id="announcement-close-btn" class="btn btn-ghost btn-sm" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="small muted">Includes a random authentic hadith about Friday prayer each time — reroll for a different one.</p>
+      <textarea id="announcement-text" readonly></textarea>
+      <div class="modal-actions">
+        <button id="announcement-reroll-btn" class="btn btn-ghost" type="button">🎲 New hadith</button>
+        <button id="announcement-copy-btn" class="btn btn-primary" type="button">📋 Copy</button>
+      </div>
+    </div>
+  </div>
+
   <div id="person-modal" class="modal hidden">
     <div class="modal-box">
       <h3 id="person-modal-title">Add a person</h3>
