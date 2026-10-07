@@ -10,6 +10,7 @@
     availability: [],
     calendarMonth: startOfMonthUTC(new Date()),
     openFridayId: null,
+    plannerShowAll: false,
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -61,6 +62,7 @@
     $("#unlock-btn").classList.toggle("hidden", unlocked);
     $("#add-person-btn").classList.toggle("hidden", !unlocked);
     $("#lock-btn").classList.toggle("hidden", !unlocked);
+    $("#planner").classList.toggle("hidden", !unlocked);
   }
 
   function openAccessModal() {
@@ -75,10 +77,12 @@
   }
   $("#access-cancel-btn").addEventListener("click", closeAccessModal);
   $("#unlock-btn").addEventListener("click", () => openAccessModal()); // proactive: pendingRetry stays null
-  $("#lock-btn").addEventListener("click", () => {
+  $("#lock-btn").addEventListener("click", async () => {
     localStorage.removeItem(LS_ACCESS);
     updateUnlockUI();
-    renderRoster();
+    // Reload without the code so contact info and everyone's availability,
+    // which were only sent because of it, don't linger on the page.
+    await loadAll();
     toast("Editing locked");
   });
 
@@ -415,9 +419,11 @@
       const updated = await api(`/api/fridays/${friday.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       Object.assign(friday, updated);
       renderCalendar();
+      renderPlanner();
       toast("Saved");
     } catch (e) {
       toast(e.message, true);
+      renderPlanner(); // snap any planner dropdown back to what's actually saved
     }
   }
 
@@ -437,6 +443,7 @@
       else state.availability.push(row);
       const friday = state.fridays.find((f) => f.id === fridayId);
       if (friday) renderDayModalBody(friday);
+      renderPlanner();
       toast(status === "available" ? "Marked available" : "Marked unavailable");
     } catch (e) {
       toast(e.message, true);
@@ -454,9 +461,208 @@
       state.availability = state.availability.filter((a) => !(a.person_id === personId && a.friday_id === fridayId));
       const friday = state.fridays.find((f) => f.id === fridayId);
       if (friday) renderDayModalBody(friday);
+      renderPlanner();
       toast("Cleared your mark");
     } catch (e) {
       toast(e.message, true);
+    }
+  }
+
+  // ---------- Admin planner (unlocked only) ----------
+
+  // Two turns closer together than this get a warning marker.
+  const CLOSE_GAP_WEEKS = 4;
+  const PLANNER_DEFAULT_ROWS = 8;
+  const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const PLANNER_SLOTS = [
+    { field: "primary_khatib_id", label: "Primary khatib", turns: "khatib", roles: ["khatib", "both"] },
+    { field: "secondary_khatib_id", label: "Secondary khatib", turns: "khatib", roles: ["khatib", "both"] },
+    { field: "imam_id", label: "Imam", turns: "imam", roles: ["imam", "both"] },
+  ];
+
+  function normName(s) {
+    return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
+  // Archived and guest rows only carry free-text names. Match them to the
+  // roster by exact name (or a unique first word when the archive used just a
+  // first name); anything ambiguous stays unmatched rather than guessed.
+  function rosterIdForName(name) {
+    const key = normName(name);
+    if (!key) return null;
+    const exact = state.people.filter((p) => normName(p.name) === key);
+    if (exact.length) return exact.length === 1 ? exact[0].id : null;
+    if (!key.includes(" ")) {
+      const byFirstWord = state.people.filter((p) => normName(p.name).split(" ")[0] === key);
+      if (byFirstWord.length === 1) return byFirstWord[0].id;
+    }
+    return null;
+  }
+
+  // personId -> ascending ISO dates of their turns. Khatib counts the primary
+  // only (the person who actually gives the khutbah; secondary is standby).
+  function buildTurns(kind) {
+    const turns = new Map();
+    for (const f of state.fridays) {
+      const id =
+        kind === "imam"
+          ? f.imam_id ?? rosterIdForName(f.imam_name)
+          : f.primary_khatib_id ?? rosterIdForName(f.primary_name);
+      if (id == null) continue;
+      if (!turns.has(id)) turns.set(id, []);
+      turns.get(id).push(f.date);
+    }
+    for (const dates of turns.values()) dates.sort();
+    return turns;
+  }
+
+  function weeksBetween(fromIso, toIso) {
+    return Math.round((Date.parse(toIso) - Date.parse(fromIso)) / MS_PER_WEEK);
+  }
+
+  // Weeks from this person's previous turn to `date`, and from `date` to their
+  // next one. A turn on `date` itself is the row being edited, so it's skipped.
+  function turnGaps(turns, personId, date) {
+    let prev = null;
+    let next = null;
+    for (const d of turns.get(personId) || []) {
+      if (d === date) continue;
+      if (d < date) prev = d;
+      else if (next === null) next = d;
+    }
+    return {
+      prevWeeks: prev === null ? null : weeksBetween(prev, date),
+      nextWeeks: next === null ? null : weeksBetween(date, next),
+    };
+  }
+
+  function plannerOptions(friday, slot, turnsByKind, availability) {
+    const selectedId = friday[slot.field];
+    const otherKhatibId =
+      slot.field === "primary_khatib_id" ? friday.secondary_khatib_id
+      : slot.field === "secondary_khatib_id" ? friday.primary_khatib_id
+      : null;
+    const rank = { available: 0, unavailable: 2 };
+
+    const entries = state.people
+      .filter((p) => p.id === selectedId || (p.status === "active" && slot.roles.includes(p.role)))
+      .map((p) => {
+        const status = availability.get(p.id) || null;
+        const gaps = turnGaps(turnsByKind[slot.turns], p.id, friday.date);
+        return { p, status, ...gaps };
+      })
+      .sort(
+        (a, b) =>
+          (rank[a.status] ?? 1) - (rank[b.status] ?? 1) ||
+          (b.prevWeeks ?? Infinity) - (a.prevWeeks ?? Infinity) ||
+          a.p.name.localeCompare(b.p.name)
+      );
+
+    const options = entries.map(({ p, status, prevWeeks, nextWeeks }) => {
+      const mark = status === "available" ? "✓ " : status === "unavailable" ? "✗ " : "";
+      const prev = prevWeeks === null ? "no prior record" : `prev ${prevWeeks}w`;
+      const next = nextWeeks === null ? "" : ` · next +${nextWeeks}w`;
+      const close = (prevWeeks !== null && prevWeeks < CLOSE_GAP_WEEKS) || (nextWeeks !== null && nextWeeks < CLOSE_GAP_WEEKS);
+      const dup = otherKhatibId === p.id && p.id !== selectedId ? " · already set as the other khatib" : "";
+      const label = `${mark}${p.name} · ${prev}${next}${close ? " ⚠" : ""}${dup}`;
+      return `<option value="${p.id}" ${p.id === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    });
+    return '<option value="">— open —</option>' + options.join("");
+  }
+
+  function renderPlanner() {
+    const section = $("#planner");
+    const unlocked = hasAccessCode();
+    section.classList.toggle("hidden", !unlocked);
+    if (!unlocked) return;
+
+    const list = $("#planner-list");
+    // Re-rendering after every save keeps the labels honest (assigning someone
+    // changes the gaps shown in every other row), so put focus back afterwards.
+    const active = document.activeElement;
+    const focusKey = list.contains(active) && active.dataset.slot ? `${active.closest(".planner-row").dataset.id}:${active.dataset.slot}` : null;
+
+    const today = todayISO();
+    const upcoming = state.fridays.filter((f) => !f.is_history && f.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+    const turnsByKind = { khatib: buildTurns("khatib"), imam: buildTurns("imam") };
+
+    const legend = `
+      <p class="small muted planner-legend">
+        Every upcoming Friday in one place — pick directly from each list.
+        <strong>✓</strong> available · <strong>✗</strong> unavailable ·
+        <strong>prev</strong> / <strong>next</strong> = weeks between that person's turns around that Friday ·
+        <strong>⚠</strong> = closer than ${CLOSE_GAP_WEEKS} weeks. Each list shows available people first, then whoever has gone longest since their last turn.
+      </p>
+      <details class="small muted planner-notes">
+        <summary>How these numbers are worked out</summary>
+        <p>Khatib turns count the <em>primary</em> khatib only (the one who gives the khutbah); the secondary is standby. "No prior record" only means none was found in the schedule — the archive covers 2025 and the weeks in this app. Archived names are matched to the roster by exact name (or a unique first name), so a differently spelled name won't be counted.</p>
+      </details>`;
+
+    if (!upcoming.length) {
+      list.innerHTML = legend + '<p class="muted">No upcoming Fridays yet.</p>';
+      return;
+    }
+
+    // Hidden rows still count toward everyone's prev/next gaps (those come
+    // from state.fridays); this only limits how many cards are drawn.
+    const visible = state.plannerShowAll ? upcoming : upcoming.slice(0, PLANNER_DEFAULT_ROWS);
+    const rows = visible.map((f) => {
+      const availability = new Map(state.availability.filter((a) => a.friday_id === f.id).map((a) => [a.person_id, a.status]));
+      const chips = (status) =>
+        state.availability
+          .filter((a) => a.friday_id === f.id && a.status === status)
+          .map((a) => `<span class="chip ${status}">${escapeHtml(a.person_name)}</span>`)
+          .join("");
+      const yes = chips("available");
+      const no = chips("unavailable");
+      const availHtml =
+        yes || no
+          ? `${yes ? `<span class="planner-avail-label">Available</span> ${yes}` : ""}${no ? ` <span class="planner-avail-label">Not available</span> ${no}` : ""}`
+          : '<span class="muted small">No availability marked yet</span>';
+
+      const selects = PLANNER_SLOTS.map(
+        (slot) => `
+          <label class="planner-slot">
+            <span>${slot.label}</span>
+            <select data-slot="${slot.field}">${plannerOptions(f, slot, turnsByKind, availability)}</select>
+          </label>`
+      ).join("");
+
+      return `
+        <article class="planner-row" data-id="${f.id}">
+          <div class="planner-row-head">
+            <strong>${formatDateLong(f.date)}</strong>
+            <button class="btn btn-sm btn-ghost" data-planner-open type="button">Details &amp; announcement</button>
+          </div>
+          <div class="planner-slots">${selects}</div>
+          <div class="planner-avail">${availHtml}</div>
+        </article>`;
+    });
+
+    const toggle =
+      upcoming.length > PLANNER_DEFAULT_ROWS
+        ? `<button class="btn btn-sm btn-ghost planner-more" type="button">${
+            state.plannerShowAll ? "Show fewer" : `Show all ${upcoming.length} Fridays`
+          }</button>`
+        : "";
+    list.innerHTML = legend + rows.join("") + toggle;
+
+    list.querySelector(".planner-more")?.addEventListener("click", () => {
+      state.plannerShowAll = !state.plannerShowAll;
+      renderPlanner();
+    });
+
+    list.querySelectorAll(".planner-row").forEach((row) => {
+      const friday = state.fridays.find((f) => f.id === Number(row.dataset.id));
+      row.querySelector("[data-planner-open]").addEventListener("click", () => openDayModal(friday.id));
+      row.querySelectorAll("select[data-slot]").forEach((select) => {
+        select.addEventListener("change", () => saveFridayField(friday, select.dataset.slot, select.value));
+      });
+    });
+
+    if (focusKey) {
+      const [id, slot] = focusKey.split(":");
+      list.querySelector(`.planner-row[data-id="${id}"] select[data-slot="${slot}"]`)?.focus();
     }
   }
 
@@ -529,11 +735,24 @@
     return "TBA";
   }
 
+  // Map links only for venues we actually have one for - never guessed for
+  // the others (the venue is free text and changes week to week).
+  const VENUE_MAP_LINKS = {
+    "assembly room - sentan": "https://maps.app.goo.gl/Dd44PcXYVqFm7KDA6",
+  };
+
+  function venueLine(friday) {
+    const venue = (friday.venue || "").trim();
+    if (!venue) return "Friday Prayer will be held in sha Allah (venue to be announced).";
+    const link = VENUE_MAP_LINKS[venue.toLowerCase()];
+    return `Friday Prayer will be held in sha Allah at ${venue}${link ? ` (${link})` : ""}.`;
+  }
+
   function buildAnnouncementText(friday, hadith) {
     return `Assalamualaikum Warrahmatullah Wabarakatuh,
 Dear Brothers,
 
-Friday Prayer will be held in sha Allah at ${friday.venue || "TBA"}.
+${venueLine(friday)}
 Date: ${formatDateAnnouncement(friday.date)}
 Time: 12.40 pm (start)
 Khatib: ${khatibLine(friday)}
@@ -653,6 +872,10 @@ ${hadith.arabic}`;
         }
       });
     });
+
+    // The planner's dropdowns are built from the same roster, so any roster
+    // change (add, edit, left NAIST, delete) has to refresh it too.
+    renderPlanner();
   }
 
   // ---------- Add / edit person modal ----------

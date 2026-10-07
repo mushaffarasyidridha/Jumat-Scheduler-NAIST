@@ -176,6 +176,41 @@ main {
 
 .announce-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 
+.planner-list { display: flex; flex-direction: column; gap: 10px; }
+.planner-legend { margin: 0; }
+.planner-more { align-self: center; }
+.planner-notes { margin: 0 0 4px; }
+.planner-notes summary { cursor: pointer; }
+.planner-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--bg);
+}
+.planner-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.planner-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.planner-slot span { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 3px; }
+.planner-slot select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.planner-avail { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.planner-avail-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+@media (max-width: 640px) { .planner-slots { grid-template-columns: 1fr; } }
+
 .announcement-modal-box { max-width: 480px; }
 #announcement-text {
   width: 100%;
