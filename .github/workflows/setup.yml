@@ -46,3 +46,19 @@ jobs:
 
       - name: Set community access code
         run: echo "${{ secrets.SCHEDULER_ACCESS_CODE }}" | npx wrangler pages secret put ACCESS_CODE --project-name=jumat-scheduler-naist
+
+      # Optional: only needed for LINE reminders. The website itself receives
+      # LINE's webhook (to link people's accounts), so it needs these two too;
+      # the daily reminder job reads its own copy from GitHub secrets.
+      - name: Copy LINE secrets to the website (if provided)
+        env:
+          LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+        run: |
+          if [ -n "$LINE_CHANNEL_SECRET" ] && [ -n "$LINE_CHANNEL_ACCESS_TOKEN" ]; then
+            printf '%s' "$LINE_CHANNEL_SECRET" | npx wrangler pages secret put LINE_CHANNEL_SECRET --project-name=jumat-scheduler-naist
+            printf '%s' "$LINE_CHANNEL_ACCESS_TOKEN" | npx wrangler pages secret put LINE_CHANNEL_ACCESS_TOKEN --project-name=jumat-scheduler-naist
+            echo "LINE secrets copied. Run 'Deploy to Cloudflare Pages' once so the site picks them up."
+          else
+            echo "LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN not set - skipping (LINE reminders stay off)."
+          fi

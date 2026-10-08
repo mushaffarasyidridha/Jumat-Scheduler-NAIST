@@ -11,6 +11,7 @@
     calendarMonth: startOfMonthUTC(new Date()),
     openFridayId: null,
     plannerShowAll: false,
+    reminderStatus: null, // admin only: when the daily reminder job last ran
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -136,16 +137,30 @@
     return whoamiId ? `/api/availability?person_id=${whoamiId}` : null;
   }
 
+  // Plain fetch (not api()) so a stale access code can't pop the code dialog
+  // for what is only an informational line in the planner.
+  async function fetchReminderStatus() {
+    if (!hasAccessCode()) return null;
+    try {
+      const res = await fetch("/api/reminders/status", { headers: { "x-access-code": localStorage.getItem(LS_ACCESS) } });
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function loadAll() {
     const availUrl = availabilityUrl();
-    const [people, fridays, availability] = await Promise.all([
+    const [people, fridays, availability, reminderStatus] = await Promise.all([
       api("/api/people"),
       api("/api/fridays"),
       availUrl ? api(availUrl) : Promise.resolve([]),
+      fetchReminderStatus(),
     ]);
     state.people = people;
     state.fridays = fridays;
     state.availability = availability;
+    state.reminderStatus = reminderStatus;
     updateUnlockUI();
     renderWhoami();
     renderCalendar();
@@ -480,6 +495,35 @@
     { field: "imam_id", label: "Imam", turns: "imam", roles: ["imam", "both"] },
   ];
 
+  // How reminders can reach this person. null when we don't hold their contact
+  // details (no access code), so nothing is shown rather than a wrong "none".
+  function reminderReach(person) {
+    if (!person || !("email" in person)) return null;
+    const channels = [];
+    if (person.email) channels.push("email");
+    if (person.line_linked) channels.push("LINE");
+    if (!person.reminders) return { text: "🔕 reminders switched off", warn: true };
+    if (!channels.length) return { text: "⚠ no reminder channel (add an email or link LINE)", warn: true };
+    return { text: `🔔 reminders by ${channels.join(" + ")}`, warn: false };
+  }
+
+  function reminderStatusHtml() {
+    const status = state.reminderStatus;
+    if (!status) return "";
+    if (!status.last_run) {
+      return '<p class="small planner-status warn">🔔 Automatic reminders haven\'t run yet. They start once the daily job is set up (see the README).</p>';
+    }
+    const last = status.last_run;
+    const ranAt = new Date(last.ran_at);
+    const stale = Date.now() - ranAt.getTime() > 2 * 24 * 60 * 60 * 1000;
+    const when = ranAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    const counts = `${last.sent} sent${last.failed ? `, ${last.failed} failed` : ""}`;
+    const warning = stale
+      ? " That is more than 2 days ago: GitHub switches scheduled jobs off after 60 days without repository activity. Open the repo's Actions tab, choose “Send Jumat reminders” and re-enable it."
+      : "";
+    return `<p class="small planner-status ${stale || last.failed ? "warn" : ""}">${stale ? "⚠" : "🔔"} Automatic reminders last ran ${escapeHtml(when)} (${counts}).${warning}</p>`;
+  }
+
   function normName(s) {
     return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
   }
@@ -587,6 +631,7 @@
     const turnsByKind = { khatib: buildTurns("khatib"), imam: buildTurns("imam") };
 
     const legend = `
+      ${reminderStatusHtml()}
       <p class="small muted planner-legend">
         Every upcoming Friday in one place — pick directly from each list.
         <strong>✓</strong> available · <strong>✗</strong> unavailable ·
@@ -620,13 +665,15 @@
           ? `${yes ? `<span class="planner-avail-label">Available</span> ${yes}` : ""}${no ? ` <span class="planner-avail-label">Not available</span> ${no}` : ""}`
           : '<span class="muted small">No availability marked yet</span>';
 
-      const selects = PLANNER_SLOTS.map(
-        (slot) => `
+      const selects = PLANNER_SLOTS.map((slot) => {
+        const reach = reminderReach(state.people.find((p) => p.id === f[slot.field]));
+        return `
           <label class="planner-slot">
             <span>${slot.label}</span>
             <select data-slot="${slot.field}">${plannerOptions(f, slot, turnsByKind, availability)}</select>
-          </label>`
-      ).join("");
+            ${reach ? `<small class="planner-reach ${reach.warn ? "warn" : ""}">${escapeHtml(reach.text)}</small>` : ""}
+          </label>`;
+      }).join("");
 
       return `
         <article class="planner-row" data-id="${f.id}">
@@ -812,6 +859,7 @@ ${hadith.arabic}`;
           <div class="roster-name">${escapeHtml(p.name)}</div>
           <div class="roster-meta">${[affiliationLabel(p.affiliation), p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
           ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
+          ${reminderReach(p) ? `<div class="roster-meta">${escapeHtml(reminderReach(p).text)}</div>` : ""}
         </div>
         ${
           unlocked
@@ -894,9 +942,90 @@ ${hadith.arabic}`;
     // Blank (not "no contact") when we don't have read access to it, so
     // saving from this state can't accidentally overwrite it with nothing.
     $("#person-contact").value = person && "contact" in person ? person.contact || "" : "";
+    $("#person-email").value = person && "email" in person ? person.email || "" : "";
+    $("#person-reminders").checked = person && "reminders" in person ? !!person.reminders : true;
+    renderPersonLineBox(person);
     $("#person-error").classList.add("hidden");
     $("#person-modal").classList.remove("hidden");
     $("#person-name").focus();
+  }
+
+  // LINE can only message people who added the bot, so linking is a handshake:
+  // the admin generates a one-time code here, the person sends it to the bot,
+  // and the server stores their LINE user id. `codeInfo` is the freshly
+  // generated {code, expires_at}, shown until the box is next re-rendered.
+  function renderPersonLineBox(person, codeInfo = null) {
+    const box = $("#person-line");
+    if (!hasAccessCode()) {
+      box.classList.add("hidden");
+      return;
+    }
+    box.classList.remove("hidden");
+
+    if (!person) {
+      box.innerHTML = '<p class="muted">LINE reminders: save this person first, then edit them to link LINE.</p>';
+      return;
+    }
+    if (!("line_linked" in person)) {
+      box.classList.add("hidden");
+      return;
+    }
+    if (state.reminderStatus && !state.reminderStatus.line_configured) {
+      box.innerHTML = `<p class="muted"><strong>LINE:</strong> the LINE bot isn't set up on this site yet (see the README), so LINE can't be linked.</p>`;
+      return;
+    }
+
+    if (person.line_linked) {
+      box.innerHTML = `
+        <p><strong>LINE:</strong> ✅ linked — reminders also go to their LINE.</p>
+        <div class="line-box-actions"><button class="btn btn-sm btn-danger" data-line-unlink type="button">Unlink LINE</button></div>`;
+    } else if (codeInfo) {
+      const until = new Date(codeInfo.expires_at).toLocaleDateString(undefined, { dateStyle: "medium" });
+      box.innerHTML = `
+        <p><strong>LINE:</strong> ask ${escapeHtml(person.name)} to add the LINE bot as a friend, then send the bot this message:</p>
+        <div class="line-code">${escapeHtml(codeInfo.code)}</div>
+        <p class="muted small">Works once, until ${escapeHtml(until)}.</p>
+        <div class="line-box-actions"><button class="btn btn-sm" data-line-check type="button">Check if linked</button></div>`;
+    } else {
+      box.innerHTML = `
+        <p><strong>LINE:</strong> not linked.</p>
+        <div class="line-box-actions"><button class="btn btn-sm" data-line-code type="button">Get LINE link code</button></div>`;
+    }
+
+    box.querySelector("[data-line-code]")?.addEventListener("click", async () => {
+      try {
+        renderPersonLineBox(person, await api(`/api/people/${person.id}/line`, { method: "POST" }));
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    box.querySelector("[data-line-check]")?.addEventListener("click", async () => {
+      try {
+        const fresh = (await api("/api/people")).find((p) => p.id === person.id);
+        if (!fresh) return;
+        Object.assign(person, fresh);
+        if (person.line_linked) {
+          renderRoster();
+          toast("LINE linked");
+        } else {
+          toast("Not linked yet - they haven't sent the code");
+        }
+        renderPersonLineBox(person, person.line_linked ? null : codeInfo);
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    box.querySelector("[data-line-unlink]")?.addEventListener("click", async () => {
+      if (!confirm(`Unlink ${person.name}'s LINE? They will stop getting LINE reminders.`)) return;
+      try {
+        await api(`/api/people/${person.id}/line`, { method: "DELETE" });
+        person.line_linked = false;
+        renderPersonLineBox(person);
+        renderRoster();
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
   }
   $("#add-person-btn").addEventListener("click", () => openPersonModal(null));
   $("#person-cancel-btn").addEventListener("click", () => $("#person-modal").classList.add("hidden"));
@@ -914,6 +1043,12 @@ ${hadith.arabic}`;
     // or when adding a brand-new person, so an unauthorized edit never wipes it.
     if (!editingPerson || "contact" in editingPerson) {
       payload.contact = $("#person-contact").value.trim();
+    }
+    // Same rule for email and the reminders switch: only when we really hold
+    // them, so an edit made without access can't blank them.
+    if (!editingPerson || "email" in editingPerson) {
+      payload.email = $("#person-email").value.trim();
+      payload.reminders = $("#person-reminders").checked;
     }
     if (!name) {
       $("#person-error").textContent = "Name is required";

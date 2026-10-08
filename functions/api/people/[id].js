@@ -1,4 +1,14 @@
-import { json, badRequest, notFound, requireAccess, ROLES, AFFILIATIONS } from "../_utils.js";
+import {
+  json,
+  badRequest,
+  notFound,
+  requireAccess,
+  ROLES,
+  AFFILIATIONS,
+  PERSON_COLUMNS,
+  shapePerson,
+  parseEmail,
+} from "../_utils.js";
 
 export async function onRequestDelete({ request, env, params }) {
   const denied = requireAccess(request, env);
@@ -12,6 +22,7 @@ export async function onRequestDelete({ request, env, params }) {
   // they were assigned to just reopens rather than pointing at a ghost.
   await env.DB.batch([
     env.DB.prepare("DELETE FROM availability WHERE person_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM reminder_log WHERE person_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET primary_khatib_id = NULL WHERE primary_khatib_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET secondary_khatib_id = NULL WHERE secondary_khatib_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET imam_id = NULL WHERE imam_id = ?").bind(id),
@@ -64,6 +75,16 @@ export async function onRequestPatch({ request, env, params }) {
     fields.push("contact = ?");
     values.push(body.contact ? body.contact.trim() : null);
   }
+  if (body.email !== undefined) {
+    const email = parseEmail(body.email);
+    if (email.error) return badRequest(email.error);
+    fields.push("email = ?");
+    values.push(email.value);
+  }
+  if (typeof body.reminders === "boolean") {
+    fields.push("reminders = ?");
+    values.push(body.reminders ? 1 : 0);
+  }
 
   if (fields.length === 0) return badRequest("nothing to update");
 
@@ -84,10 +105,8 @@ export async function onRequestPatch({ request, env, params }) {
 
   if (result.meta.changes === 0) return notFound("person not found");
 
-  const person = await env.DB.prepare(
-    "SELECT id, name, country, role, status, note, affiliation, contact FROM people WHERE id = ?"
-  )
+  const person = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`)
     .bind(id)
     .first();
-  return json(person);
+  return json(shapePerson(person, true));
 }
