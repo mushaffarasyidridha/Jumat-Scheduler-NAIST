@@ -128,8 +128,16 @@
         <input id="person-note" type="text" placeholder="optional" />
       </label>
       <label>Contact <span class="muted small">(only visible to people with the access code)</span>
-        <input id="person-contact" type="text" placeholder="e.g. phone / WhatsApp / email" />
+        <input id="person-contact" type="text" placeholder="e.g. phone / WhatsApp / Facebook" />
       </label>
+      <label>Email <span class="muted small">(for automatic reminders, only visible to people with the access code)</span>
+        <input id="person-email" type="email" placeholder="optional" autocomplete="off" />
+      </label>
+      <label class="check-row">
+        <input id="person-reminders" type="checkbox" checked />
+        <span>Send reminders before this person's Friday</span>
+      </label>
+      <div id="person-line" class="line-box hidden"></div>
       <div class="modal-actions">
         <button id="person-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
         <button id="person-save-btn" class="btn btn-primary" type="button">Add</button>

@@ -36,6 +36,71 @@ export function requireAccess(request, env) {
   return null;
 }
 
+// Everything the API ever returns about a person. The LINE user id, link code
+// and unsubscribe token are deliberately not in this list - they never leave
+// the server (the reminder job reads them straight from the database).
+export const PERSON_COLUMNS = `id, name, country, role, status, note, affiliation, contact,
+  email, reminders, line_user_id IS NOT NULL AS line_linked`;
+
+// Contact details and reminder settings are only for people who hold the
+// access code. Dropped server-side, not just hidden in the UI.
+const PRIVATE_PERSON_KEYS = ["contact", "email", "reminders", "line_linked"];
+
+export function shapePerson(row, authorized) {
+  const person = { ...row, reminders: !!row.reminders, line_linked: !!row.line_linked };
+  if (!authorized) {
+    for (const key of PRIVATE_PERSON_KEYS) delete person[key];
+  }
+  return person;
+}
+
+// Blank clears the address. Whitespace is rejected outright so a stray
+// newline can never end up inside an email header.
+export function parseEmail(value) {
+  if (value === null || value === undefined) return { value: null };
+  if (typeof value !== "string") return { error: "email must be text" };
+  const email = value.trim().toLowerCase();
+  if (!email) return { value: null };
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "That email address doesn't look valid" };
+  }
+  return { value: email };
+}
+
+export function newToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// One-time code a person sends to the LINE bot to link their account. No
+// 0/1/I/O so it survives being read out or retyped.
+export const LINK_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function newLinkCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  // 256 is a multiple of 32, so the modulo adds no bias.
+  return Array.from(bytes, (b) => LINK_CODE_ALPHABET[b % 32]).join("");
+}
+
+export function formatLinkCode(code) {
+  return `JMT-${code.slice(0, 4)}-${code.slice(4)}`;
+}
+
+// Accepts "JMT-ABCD-2345" however it was typed (case, spaces, dashes). The JMT
+// prefix is required so ordinary chat messages are never mistaken for a code.
+export function parseLinkCode(text) {
+  const compact = String(text || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!compact.startsWith("JMT")) return null;
+  const code = compact.slice(3);
+  return /^[A-HJ-NP-Z2-9]{8}$/.test(code) ? code : null;
+}
+
+// SQLite's datetime('now') is UTC without a zone marker; make it unambiguous
+// for browsers.
+export function sqliteUtcToIso(value) {
+  return value ? `${String(value).replace(" ", "T")}Z` : null;
+}
+
 // Next `count` Fridays on or after `from` (a Date), as ISO yyyy-mm-dd
 // strings - including today itself when today is a Friday, so today's
 // khatib can still be assigned or fixed up until Jumat actually happens.

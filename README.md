@@ -85,6 +85,74 @@ and confirm the `DB` D1 binding is attached (it's normally picked up
 automatically from `wrangler.toml`, but older Pages projects sometimes need
 it set once by hand).
 
+## Automatic reminders (email + LINE)
+
+Every day at 09:00 Japan time, a GitHub Actions job (`.github/workflows/reminders.yml`)
+reminds everyone scheduled as primary khatib, secondary khatib (told they are
+standby) or imam: **7 days before** their Friday and again **the day before**.
+Each person is reached on whatever you've set up for them in the roster:
+
+| Channel | How it's sent | What a person needs |
+|---|---|---|
+| Email | The community Gmail account (app password) | An email address in their roster entry |
+| LINE | The LINE Messaging API (your own bot) | To add the bot and send it a one-time link code |
+
+WhatsApp and Facebook are **not** automated: WhatsApp's API bills per message and
+needs a Meta business account, and Facebook Messenger only lets a Page message
+someone who messaged it in the last 24 hours. Keep those in the plain *Contact* box.
+
+Nobody is contacted until you give them an email address or link their LINE.
+Every email has a "stop these reminders" link, and each person has a *Send
+reminders* switch in Edit. A delivered reminder is logged in the database, so
+nothing is ever sent twice.
+
+### Set up email
+
+1. In the community Gmail account, turn on **2-Step Verification** (Google Account → Security).
+2. Still under Security → 2-Step Verification, create an **App password** (any name,
+   e.g. "Jumat scheduler"). Google shows 16 characters once.
+3. In GitHub: *Settings → Secrets and variables → Actions → New repository secret*:
+   - `GMAIL_USER` — the Gmail address
+   - `GMAIL_APP_PASSWORD` — the 16 characters
+   Never paste the app password into a chat or commit it; if it leaks, delete it in your Google account.
+4. *Actions → Send Jumat reminders → Run workflow*, type your own address in **test_email**:
+   you should get a test email (check spam the first time). Replies to reminders land in this Gmail inbox.
+
+### Set up LINE (optional)
+
+1. Open <https://developers.line.biz/console/>, create a *Provider*, then a **Messaging API** channel
+   (this also creates the LINE Official Account).
+2. On the channel's *Basic settings* tab copy the **Channel secret**. On the *Messaging API* tab issue a
+   **Channel access token (long-lived)**.
+3. Add both as GitHub secrets: `LINE_CHANNEL_SECRET` and `LINE_CHANNEL_ACCESS_TOKEN`.
+4. *Actions → One-time Cloudflare setup → Run* (copies the two secrets to the website), then
+   *Actions → Deploy to Cloudflare Pages → Run* so the site picks them up.
+5. In the LINE console set the **Webhook URL** to `https://jumat-scheduler-naist.pages.dev/api/line/webhook`,
+   switch *Use webhook* on and press *Verify*. In LINE Official Account Manager → *Response settings*, turn
+   off *Auto-response* and *Greeting message* so LINE doesn't send its own canned replies.
+6. For each person: roster → *Edit* → **Get LINE link code**. The person adds the bot (QR code on the
+   *Messaging API* tab) and sends it the code. Press *Check if linked* to confirm.
+
+### Checking it works
+
+- *Actions → Send Jumat reminders → Run workflow* with **dry_run** ticked (the default) lists exactly what
+  would be sent today, without sending or recording anything.
+- The **Admin planner** shows, under each assigned person, whether reminders can reach them, and when the
+  daily job last ran.
+
+### Limits worth knowing
+
+- **LINE free plan:** about 200 pushed messages a month in Japan (LINE's docs; check your own account).
+  The job checks what is left before sending and reports it if the quota runs out. Replies to people are free.
+- **Gmail:** about 500 emails a day for a personal account — far more than this needs.
+- **GitHub switches scheduled workflows off after 60 days without repository activity** in a public repo, and
+  does it silently. The planner turns red if the job hasn't run for 2 days; fix it under *Actions → Send
+  Jumat reminders* (re-enable the workflow).
+- **Default branch:** GitHub runs scheduled workflows from the repository's default branch. Set it to `main`
+  (*Settings → Branches*). The job always runs the code on `main` regardless.
+- **Logs are public** (public repo). The job prints names and counts only — never email addresses, LINE ids or
+  unsubscribe links.
+
 ## Local development
 
 ```bash
@@ -95,6 +163,10 @@ npm run dev
 Opens the site at `http://localhost:8788` against a local D1 database (no
 Cloudflare account needed for this part). Local writes work without an
 access code unless you also set one in `.dev.vars` (`ACCESS_CODE=yourcode`).
+
+`npm test` runs the unit tests for the reminder logic. `npm run reminders:dry-run`
+runs the reminder job in dry-run mode (needs `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` in your environment, and reads the real database).
 
 ## Data notes
 

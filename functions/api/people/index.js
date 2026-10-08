@@ -1,16 +1,26 @@
-import { json, badRequest, requireAccess, checkAccess, ROLES, AFFILIATIONS } from "../_utils.js";
+import {
+  json,
+  badRequest,
+  requireAccess,
+  checkAccess,
+  ROLES,
+  AFFILIATIONS,
+  PERSON_COLUMNS,
+  shapePerson,
+  parseEmail,
+  newToken,
+} from "../_utils.js";
 
 export async function onRequestGet({ request, env }) {
   const authorized = checkAccess(request, env);
   const { results } = await env.DB.prepare(
-    `SELECT id, name, country, role, status, note, affiliation, contact
+    `SELECT ${PERSON_COLUMNS}
      FROM people ORDER BY status ASC, name COLLATE NOCASE ASC`
   ).all();
-  // Contact info is only for people who already have the community access
-  // code - dropping the key server-side, not just hiding it in the UI, so
-  // it never reaches an unauthorized client in the first place.
-  const people = authorized ? results : results.map(({ contact, ...rest }) => rest);
-  return json(people);
+  // Contact info and reminder settings are only for people who already have
+  // the community access code - dropping the keys server-side, not just
+  // hiding them in the UI, so they never reach an unauthorized client.
+  return json(results.map((row) => shapePerson(row, authorized)));
 }
 
 export async function onRequestPost({ request, env }) {
@@ -27,18 +37,21 @@ export async function onRequestPost({ request, env }) {
   const affiliation = AFFILIATIONS.includes(body.affiliation) ? body.affiliation : "naist_student";
   const note = typeof body.note === "string" ? body.note.trim() || null : null;
   const contact = typeof body.contact === "string" ? body.contact.trim() || null : null;
+  const email = parseEmail(body.email);
+  if (email.error) return badRequest(email.error);
+  const reminders = body.reminders === false ? 0 : 1;
 
   try {
     const result = await env.DB.prepare(
-      `INSERT INTO people (name, country, role, status, note, affiliation, contact)
-       VALUES (?, ?, ?, 'active', ?, ?, ?)`
+      `INSERT INTO people (name, country, role, status, note, affiliation, contact, email, reminders, reminder_token)
+       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`
     )
-      .bind(name, country, role, note, affiliation, contact)
+      .bind(name, country, role, note, affiliation, contact, email.value, reminders, newToken())
       .run();
-    return json(
-      { id: result.meta.last_row_id, name, country, role, status: "active", note, affiliation, contact },
-      { status: 201 }
-    );
+    const person = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`)
+      .bind(result.meta.last_row_id)
+      .first();
+    return json(shapePerson(person, true), { status: 201 });
   } catch (e) {
     if (String(e.message || e).includes("UNIQUE")) {
       return badRequest(`"${name}" is already on the roster`);

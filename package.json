@@ -5,11 +5,16 @@
   "description": "Live Friday prayer khatib/imam scheduler for the NAIST community.",
   "scripts": {
     "dev": "wrangler pages dev",
+    "test": "node --test scripts/reminder-lib.test.mjs",
+    "reminders:dry-run": "node scripts/send-reminders.mjs --dry-run",
     "migrate:local": "wrangler d1 migrations apply jumat-scheduler-naist-db --local",
     "migrate:remote": "wrangler d1 migrations apply jumat-scheduler-naist-db --remote",
     "deploy": "wrangler pages deploy public --project-name=jumat-scheduler-naist"
   },
   "devDependencies": {
     "wrangler": "^3.90.0"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.16"
   }
 }
