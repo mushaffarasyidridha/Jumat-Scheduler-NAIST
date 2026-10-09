@@ -317,3 +317,76 @@ test("admin email: subject, steps, unsubscribe link", () => {
   assert.ok(text.includes(unsubscribeUrl));
   assert.ok(!/undefined|null/.test(text));
 });
+
+// ---------- Google Calendar ----------
+
+const gcal = (link) => {
+  const url = new URL(link);
+  return { origin: url.origin + url.pathname, p: Object.fromEntries(url.searchParams) };
+};
+
+test("calendar link: a Google 'new event' link with the prayer time in UTC (12.35 JST = 03:35Z)", () => {
+  const { origin, p } = gcal(shared.calendarLink({ friday: friday(), roles: ["Primary khatib"] }));
+  assert.equal(origin, "https://calendar.google.com/calendar/render");
+  assert.equal(p.action, "TEMPLATE");
+  assert.equal(p.text, "Jumat prayer: Primary khatib");
+  assert.equal(p.dates, "20261016T033500Z/20261016T042000Z"); // 45 minutes
+  assert.equal(p.location, "Assembly Room - SENTAN");
+  assert.match(p.details, /Your role: Primary khatib\./);
+  assert.match(p.details, /tell the coordinator/);
+});
+
+test("calendar link: starts at the same time the messages announce", () => {
+  assert.equal(PRAYER_TIME, "12.35 pm (start)");
+  assert.ok(gcal(shared.calendarLink({ friday: friday(), roles: [] })).p.dates.startsWith("20261016T0335"));
+});
+
+test("calendar link: a Friday near New Year rolls the date correctly", () => {
+  // 00:30 JST on 1 Jan would be 15:30Z the day before; the prayer is at noon so
+  // this only checks plain date arithmetic across a year boundary.
+  const { p } = gcal(shared.calendarLink({ friday: friday({ date: "2027-01-01" }), roles: ["Imam"] }));
+  assert.equal(p.dates, "20270101T033500Z/20270101T042000Z");
+});
+
+test("calendar link: no role => generic title; no venue => no location; standby is explained", () => {
+  const generic = gcal(shared.calendarLink({ friday: friday({ venue: null }), roles: [] }));
+  assert.equal(generic.p.text, "Jumat prayer");
+  assert.ok(!("location" in generic.p));
+  assert.ok(!/Your role/.test(generic.p.details));
+  const standby = gcal(shared.calendarLink({ friday: friday(), roles: ["Secondary khatib (standby)"] }));
+  assert.match(standby.p.details, /on standby/);
+});
+
+test("calendar link: two roles in one title", () => {
+  const { p } = gcal(shared.calendarLink({ friday: friday(), roles: ["Primary khatib", "Imam"] }));
+  assert.equal(p.text, "Jumat prayer: Primary khatib + Imam");
+});
+
+test("role codes round-trip, unknown letters are ignored", () => {
+  assert.deepEqual(shared.rolesFromCodes("pi"), ["Primary khatib", "Imam"]);
+  assert.deepEqual(shared.rolesFromCodes("S"), ["Secondary khatib (standby)"]);
+  assert.deepEqual(shared.rolesFromCodes("xyz"), []);
+  assert.deepEqual(shared.rolesFromCodes(null), []);
+  const link = shared.calendarShortLink({ siteUrl: "https://x.test", friday: friday(), roles: ["Imam", "Primary khatib"] });
+  assert.equal(link, "https://x.test/api/calendar/add?friday=10&roles=pi");
+});
+
+test("chat text carries a short calendar link only when it has a site and a saved Friday", () => {
+  const args = { friday: friday(), person: person(), roles: ["Primary khatib"], days: 3 };
+  const withLink = shared.chatText({ ...args, siteUrl: "https://x.test" });
+  assert.match(withLink, /📆 Add to Google Calendar: https:\/\/x\.test\/api\/calendar\/add\?friday=10&roles=p\n/);
+  assert.ok(withLink.length < 600, "still short enough for a chat message");
+  assert.ok(!shared.chatText(args).includes("Google Calendar"));
+  assert.ok(!shared.chatText({ ...args, friday: friday({ id: undefined }), siteUrl: "https://x.test" }).includes("Google Calendar"));
+});
+
+test("the page's text and the LINE text stay identical with the calendar link", () => {
+  const args = { friday: friday(), person: person(), roles: ["Primary khatib", "Imam"], days: 7, siteUrl: "https://x.test" };
+  assert.equal(shared.chatText(args), buildLineText(args));
+});
+
+test("reminder email links to the calendar", () => {
+  const { text } = buildEmail({ friday: friday(), person: person(), roles: ["Imam"], days: 1, siteUrl: "https://x.test" });
+  assert.match(text, /Add it to your Google Calendar: https:\/\/x\.test\/api\/calendar\/add\?friday=10&roles=i\n/);
+  assert.ok(!/undefined|null/.test(text));
+});

@@ -97,7 +97,7 @@ function emailFor(item) {
 }
 
 function chatFor(item) {
-  return item.type === "admin" ? buildAdminChatText({ ...item, siteUrl: SITE_URL }) : buildLineText(item);
+  return item.type === "admin" ? buildAdminChatText({ ...item, siteUrl: SITE_URL }) : buildLineText({ ...item, siteUrl: SITE_URL });
 }
 
 async function sendEmail(item) {

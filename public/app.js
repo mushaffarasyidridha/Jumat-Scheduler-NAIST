@@ -525,7 +525,7 @@
     const shared = window.JumatReminderMessage;
     const roles = shared.ROLE_SLOTS.filter((s) => friday[s.field] === person.id).map((s) => s.label);
     const days = Math.round((Date.parse(friday.date) - Date.parse(todayISO())) / 86400000);
-    return shared.chatText({ friday, person, roles, days });
+    return shared.chatText({ friday, person, roles, days, siteUrl: location.origin });
   }
 
   async function copyText(text) {

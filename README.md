@@ -117,6 +117,15 @@ Account (which asks for a phone number). The two buttons above avoid all of that
 LINE can still be switched on later (see *LINE (optional)* below); the page hides
 everything about it until its two secrets are set.
 
+**Google Calendar.** Every reminder (the emails, the LINE message, and the text from
+*Copy reminder* / *WhatsApp*) has an **Add to Google Calendar** link. It opens a ready-made
+event (12.35 pm, the venue, the person's role) in their Google Calendar; they press Save, and
+Google then reminds them with their own calendar notifications. The link is short
+(`/api/calendar/add?friday=…`) and reads the Friday's venue when it is opened, so a venue
+changed after the message went out is still right. The event is set to last 45 minutes
+(`PRAYER_DURATION_MIN` in `public/reminder-message.js`; only the start time is announced).
+It needs no Google account setup on our side, because the person adds the event themselves.
+
 Nobody is emailed until you give them an address. Every email has a "stop these
 reminders" link, and each person has an *automatic email reminders* switch in
 Edit. A delivered reminder is logged in the database, so nothing is sent twice.
