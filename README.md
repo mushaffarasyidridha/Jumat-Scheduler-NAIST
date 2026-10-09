@@ -87,11 +87,17 @@ it set once by hand).
 
 ## Reminders (automatic email, plus copy / WhatsApp by hand)
 
-**Automatic, by email.** Every day at 09:00 Japan time, a GitHub Actions job
-(`.github/workflows/reminders.yml`) emails everyone scheduled as primary khatib,
-secondary khatib (told they are standby) or imam: **7 days before** their Friday
-and again **the day before**. It uses the community Gmail account (app password)
-and only reaches people who have an email address in their roster entry.
+**Automatic, by email.** Every morning (about 08:30 Japan time, plus a catch-up
+run at about 14:30), a GitHub Actions job (`.github/workflows/reminders.yml`)
+emails everyone scheduled as primary khatib, secondary khatib (told they are
+standby) or imam: **7 days before** their Friday and again **the day before**.
+It uses the community Gmail account (app password) and only reaches people who
+have an email address in their roster entry.
+
+GitHub starts scheduled jobs when it has capacity, so "about" can mean minutes
+or, at busy moments, hours late. Reminders are therefore for the *day before*
+(plenty of slack). A reminder for a prayer that is *today* is dropped after
+11:00 Japan time, because by then it would be too late to help.
 
 **By hand, for everyone else.** In the **Admin planner**, every assigned person
 has two buttons:

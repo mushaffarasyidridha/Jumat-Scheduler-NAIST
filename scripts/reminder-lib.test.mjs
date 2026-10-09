@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   todayInTokyo,
+  minutesInTokyo,
+  tooLateToSend,
   addDays,
   daysUntil,
   formatDateLong,
@@ -28,6 +30,20 @@ test("todayInTokyo rolls over at 15:00 UTC, not midnight UTC", () => {
   assert.equal(todayInTokyo(new Date("2026-10-08T14:59:00Z")), "2026-10-08");
   assert.equal(todayInTokyo(new Date("2026-10-08T15:00:00Z")), "2026-10-09");
   assert.equal(todayInTokyo(new Date("2026-10-09T00:00:00Z")), "2026-10-09"); // the 09:00 JST cron
+});
+
+test("minutesInTokyo is minutes since midnight in Japan", () => {
+  assert.equal(minutesInTokyo(new Date("2026-10-09T00:00:00Z")), 9 * 60); // the 09:00 JST cron
+  assert.equal(minutesInTokyo(new Date("2026-10-09T05:46:00Z")), 14 * 60 + 46); // the run that came 5h46m late
+  assert.equal(minutesInTokyo(new Date("2026-10-08T15:00:00Z")), 0);
+});
+
+test("a same-day reminder is dropped from 11:00 JST on; other days are never dropped", () => {
+  assert.equal(tooLateToSend(0, 10 * 60 + 59), false);
+  assert.equal(tooLateToSend(0, 11 * 60), true);
+  assert.equal(tooLateToSend(0, 14 * 60 + 46), true);
+  assert.equal(tooLateToSend(1, 23 * 60), false);
+  assert.equal(tooLateToSend(7, 23 * 60), false);
 });
 
 test("date helpers", () => {

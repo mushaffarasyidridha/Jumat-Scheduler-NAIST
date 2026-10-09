@@ -18,6 +18,8 @@ import { readFileSync } from "node:fs";
 import {
   DEFAULT_SITE_URL,
   todayInTokyo,
+  minutesInTokyo,
+  tooLateToSend,
   addDays,
   dueReminders,
   sentKey,
@@ -197,8 +199,17 @@ async function main() {
     sentKeys = new Set(rows.map((r) => sentKey(r.friday_id, r.person_id, r.kind, r.channel)));
   }
 
-  const due = dueReminders({ today, fridays, people, sentKeys });
+  const allDue = dueReminders({ today, fridays, people, sentKeys });
+  // Not logged as sent: it was never sent, and it is moot once the day is over.
+  const nowMinutes = minutesInTokyo();
+  const tooLate = allDue.filter((d) => tooLateToSend(d.days, nowMinutes));
+  const due = allDue.filter((d) => !tooLateToSend(d.days, nowMinutes));
   console.log(`${fridays.length} Friday(s) in the next ${WINDOW_DAYS} days; ${due.length} reminder(s) due.`);
+  if (tooLate.length) {
+    console.log(
+      `Skipped ${tooLate.length} same-day reminder(s): it is already past 11:00 in Japan, too late to help.`
+    );
+  }
 
   let sent = 0;
   let failed = 0;

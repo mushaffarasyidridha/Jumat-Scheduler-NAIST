@@ -1,16 +1,23 @@
 name: Send Jumat reminders
 
-# Every day at 09:00 Japan time: emails (from the community Gmail account) and
-# LINE messages to whoever is scheduled as khatib or imam in the next 7 days -
-# a week-ahead heads-up and a last reminder the day before. Each delivery is
-# logged in the database, so re-running never sends the same reminder twice.
+# Every morning (about 08:30 Japan time, with an afternoon catch-up run): emails
+# (from the community Gmail account) and LINE messages to whoever is scheduled
+# as khatib or imam in the next 7 days - a week-ahead heads-up and a last
+# reminder the day before. Each delivery is logged in the database, so
+# re-running never sends the same reminder twice. A reminder for a prayer that
+# is today is dropped once it is past 11:00 in Japan (see scripts/reminder-lib.mjs).
 #
 # Run it by hand from the Actions tab to check the setup:
 #   - dry_run (default): lists what WOULD be sent; nothing is sent or recorded.
 #   - test_email: sends one test email to that address and stops.
 on:
   schedule:
-    - cron: "0 0 * * *" # 00:00 UTC = 09:00 JST
+    # GitHub starts scheduled jobs late when it is busy, and 00:00 UTC (the top
+    # of the hour, and of the day) is its busiest moment: the first run here
+    # started 5 h 46 min late. So use quiet minutes, and run twice a day - the
+    # second run only sends what the first one missed (every delivery is logged).
+    - cron: "23 23 * * *" # 23:23 UTC = 08:23 JST
+    - cron: "23 5 * * *" # 05:23 UTC = 14:23 JST
   workflow_dispatch:
     inputs:
       dry_run:
