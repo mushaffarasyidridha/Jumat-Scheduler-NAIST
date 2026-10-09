@@ -21,6 +21,21 @@ export function todayInTokyo(now = new Date()) {
   return new Date(now.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+// Minutes since midnight, Japan time.
+export function minutesInTokyo(now = new Date()) {
+  const jst = new Date(now.getTime() + JST_OFFSET_MS);
+  return jst.getUTCHours() * 60 + jst.getUTCMinutes();
+}
+
+// A reminder for a prayer that is TODAY only helps early in the day. GitHub
+// starts scheduled jobs late (once by almost 6 hours), so without this cut-off
+// a "you are scheduled today" message can arrive after the prayer is over.
+export const SAME_DAY_CUTOFF_MINUTES = 11 * 60; // 11:00 JST
+
+export function tooLateToSend(days, nowMinutes) {
+  return days === 0 && nowMinutes >= SAME_DAY_CUTOFF_MINUTES;
+}
+
 export function addDays(iso, days) {
   return new Date(Date.parse(iso) + days * DAY_MS).toISOString().slice(0, 10);
 }
