@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  PRAYER_TIME,
   todayInTokyo,
   minutesInTokyo,
   tooLateToSend,
@@ -30,6 +31,12 @@ test("todayInTokyo rolls over at 15:00 UTC, not midnight UTC", () => {
   assert.equal(todayInTokyo(new Date("2026-10-08T14:59:00Z")), "2026-10-08");
   assert.equal(todayInTokyo(new Date("2026-10-08T15:00:00Z")), "2026-10-09");
   assert.equal(todayInTokyo(new Date("2026-10-09T00:00:00Z")), "2026-10-09"); // the 09:00 JST cron
+});
+
+// The one place the prayer time lives is public/reminder-message.js; the
+// announcement, the emails and the Copy / WhatsApp texts all read it from there.
+test("the prayer time is 12.35 pm", () => {
+  assert.equal(PRAYER_TIME, "12.35 pm (start)");
 });
 
 test("minutesInTokyo is minutes since midnight in Japan", () => {
@@ -137,7 +144,7 @@ test("email text carries the date, time, venue, role, line-up and unsubscribe li
   assert.equal(subject, "Jumat reminder: Primary khatib on 16 October 2026");
   assert.match(text, /Assalamu'alaikum Ahmad,/);
   assert.match(text, /Friday, 16 October 2026 \(in 7 days\)/);
-  assert.match(text, /12\.40 pm \(start\)/);
+  assert.ok(text.includes(PRAYER_TIME));
   assert.match(text, /Assembly Room - SENTAN/);
   assert.match(text, /Khatib: Ahmad \/ Bilal \(Secondary\)/);
   assert.match(text, /Imam: Chris/);
@@ -168,7 +175,7 @@ test("LINE text is short and has the essentials", () => {
   const text = buildLineText({ friday: friday(), person: person(), roles: ["Primary khatib", "Imam"], days: 7 });
   assert.match(text, /Primary khatib \+ Imam/);
   assert.match(text, /Friday, 16 October 2026/);
-  assert.match(text, /12\.40 pm/);
+  assert.ok(text.includes(PRAYER_TIME));
   assert.ok(text.length < 600);
   assert.ok(!text.includes("unsubscribe")); // LINE users stop by blocking the bot
 });
