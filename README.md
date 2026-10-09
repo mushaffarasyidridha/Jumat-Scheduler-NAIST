@@ -85,26 +85,36 @@ and confirm the `DB` D1 binding is attached (it's normally picked up
 automatically from `wrangler.toml`, but older Pages projects sometimes need
 it set once by hand).
 
-## Automatic reminders (email + LINE)
+## Reminders (automatic email, plus copy / WhatsApp by hand)
 
-Every day at 09:00 Japan time, a GitHub Actions job (`.github/workflows/reminders.yml`)
-reminds everyone scheduled as primary khatib, secondary khatib (told they are
-standby) or imam: **7 days before** their Friday and again **the day before**.
-Each person is reached on whatever you've set up for them in the roster:
+**Automatic, by email.** Every day at 09:00 Japan time, a GitHub Actions job
+(`.github/workflows/reminders.yml`) emails everyone scheduled as primary khatib,
+secondary khatib (told they are standby) or imam: **7 days before** their Friday
+and again **the day before**. It uses the community Gmail account (app password)
+and only reaches people who have an email address in their roster entry.
 
-| Channel | How it's sent | What a person needs |
-|---|---|---|
-| Email | The community Gmail account (app password) | An email address in their roster entry |
-| LINE | The LINE Messaging API (your own bot) | To add the bot and send it a one-time link code |
+**By hand, for everyone else.** In the **Admin planner**, every assigned person
+has two buttons:
 
-WhatsApp and Facebook are **not** automated: WhatsApp's API bills per message and
-needs a Meta business account, and Facebook Messenger only lets a Page message
-someone who messaged it in the last 24 hours. Keep those in the plain *Contact* box.
+- **📋 Copy reminder** puts the reminder text on your clipboard, to paste into
+  any chat (LINE, WhatsApp, Facebook, SMS...). It is exactly the text the
+  automatic reminders use.
+- **💬 WhatsApp** opens WhatsApp with that text already typed for that person;
+  you just press send. It appears once you save their WhatsApp number in the
+  roster (*Edit → WhatsApp number*, international format with `+`, e.g.
+  `+81 90 1234 5678`: leave out the `0` after the country code).
 
-Nobody is contacted until you give them an email address or link their LINE.
-Every email has a "stop these reminders" link, and each person has a *Send
-reminders* switch in Edit. A delivered reminder is logged in the database, so
-nothing is ever sent twice.
+Nothing is automated for WhatsApp, Facebook or LINE: WhatsApp's API bills per
+message and needs a Meta business account, Facebook Messenger only lets a Page
+message someone who messaged it in the last 24 hours, and LINE needs an Official
+Account (which asks for a phone number). The two buttons above avoid all of that.
+LINE can still be switched on later (see *LINE (optional)* below); the page hides
+everything about it until its two secrets are set.
+
+Nobody is emailed until you give them an address. Every email has a "stop these
+reminders" link, and each person has an *automatic email reminders* switch in
+Edit. A delivered reminder is logged in the database, so nothing is sent twice.
+The two manual buttons always work, whatever that switch says.
 
 ### Set up email
 
@@ -118,7 +128,10 @@ nothing is ever sent twice.
 4. *Actions → Send Jumat reminders → Run workflow*, type your own address in **test_email**:
    you should get a test email (check spam the first time). Replies to reminders land in this Gmail inbox.
 
-### Set up LINE (optional)
+### LINE (optional, off unless you set it up)
+
+Not needed for email or the manual buttons. LINE can only message people who added your
+bot, and creating the bot needs a LINE Official Account, which asks for a phone number.
 
 1. Open <https://developers.line.biz/console/>, create a *Provider*, then a **Messaging API** channel
    (this also creates the LINE Official Account).
@@ -133,7 +146,7 @@ nothing is ever sent twice.
 6. For each person: roster → *Edit* → **Get LINE link code**. The person adds the bot (QR code on the
    *Messaging API* tab) and sends it the code. Press *Check if linked* to confirm.
 
-### Checking it works
+### Checking the automatic email
 
 - *Actions → Send Jumat reminders → Run workflow* with **dry_run** ticked (the default) lists exactly what
   would be sent today, without sending or recording anything.

@@ -1,22 +1,19 @@
 // Pure logic for the daily reminder job: who is due a reminder today and what
 // it says. No network or database access here, so it can be unit-tested.
 
+import { createRequire } from "node:module";
+
+// The wording and date helpers live in one file shared with the web page (the
+// planner's manual "Copy reminder" / WhatsApp buttons), so hand-sent and
+// automatic reminders can never drift apart.
+const shared = createRequire(import.meta.url)("../public/reminder-message.js");
+const { PRAYER_TIME, whenPhrase, venueOf, standbyNote, chatText } = shared;
+export const { ROLE_SLOTS, formatDateShort, formatDateLong } = shared;
+
 export const DEFAULT_SITE_URL = "https://jumat-scheduler-naist.pages.dev";
 
-// Same fixed start time the announcement generator prints (public/app.js).
-const PRAYER_TIME = "12.40 pm (start)";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000; // Japan has no daylight saving
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-export const ROLE_SLOTS = [
-  { field: "primary_khatib_id", label: "Primary khatib" },
-  { field: "secondary_khatib_id", label: "Secondary khatib (standby)" },
-  { field: "imam_id", label: "Imam" },
-];
 
 // "Today" as the community experiences it (NAIST is in Japan), whatever time
 // zone the runner is in.
@@ -30,22 +27,6 @@ export function addDays(iso, days) {
 
 export function daysUntil(fromIso, toIso) {
   return Math.round((Date.parse(toIso) - Date.parse(fromIso)) / DAY_MS);
-}
-
-// Fixed "16 October 2026" format - never locale-dependent.
-export function formatDateShort(iso) {
-  const [year, month, day] = iso.split("-").map(Number);
-  return `${day} ${MONTHS[month - 1]} ${year}`;
-}
-
-export function formatDateLong(iso) {
-  return `Friday, ${formatDateShort(iso)}`;
-}
-
-function whenPhrase(days) {
-  if (days <= 0) return "today";
-  if (days === 1) return "tomorrow";
-  return `in ${days} days`;
 }
 
 // A week-ahead heads-up, then a last reminder the day before. Ranges (not
@@ -102,10 +83,6 @@ export function dueReminders({ today, fridays, people, sentKeys }) {
   return due;
 }
 
-function venueOf(friday) {
-  return (friday.venue || "").trim() || "to be announced";
-}
-
 function lineupLines(friday) {
   const lines = [];
   if (friday.primary_name && friday.secondary_name) {
@@ -117,12 +94,6 @@ function lineupLines(friday) {
   }
   if (friday.imam_name) lines.push(`Imam: ${friday.imam_name}`);
   return lines;
-}
-
-function standbyNote(roles) {
-  return roles.some((r) => r.startsWith("Secondary"))
-    ? "As secondary khatib you are on standby: please be ready to step in if the primary khatib can't make it."
-    : null;
 }
 
 export function buildEmail({ friday, person, roles, days, siteUrl }) {
@@ -160,16 +131,8 @@ export function buildEmail({ friday, person, roles, days, siteUrl }) {
   };
 }
 
-export function buildLineText({ friday, person, roles, days }) {
-  const standby = standbyNote(roles);
-  return [
-    "🕌 Jumat reminder",
-    `Assalamu'alaikum ${person.name}, you are scheduled as ${roles.join(" + ")}:`,
-    `📅 ${formatDateLong(friday.date)} (${whenPhrase(days)})`,
-    `🕛 ${PRAYER_TIME}`,
-    `📍 ${venueOf(friday)}`,
-    ...(standby ? ["", standby] : []),
-    "",
-    "Can't make it? Please tell the coordinator as soon as possible.",
-  ].join("\n");
+// The chat-app version (LINE push today; the page's Copy / WhatsApp buttons use
+// the same text straight from the shared file).
+export function buildLineText(args) {
+  return chatText(args);
 }

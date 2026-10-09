@@ -78,8 +78,18 @@
   }
   $("#access-cancel-btn").addEventListener("click", closeAccessModal);
   $("#unlock-btn").addEventListener("click", () => openAccessModal()); // proactive: pendingRetry stays null
+  // Hiding a section is not enough: its HTML (WhatsApp links, emails...) would
+  // still be in the page for anyone who opens the developer tools. Empty it.
+  function clearPrivateDom() {
+    $("#planner-list").innerHTML = "";
+    $("#person-line").innerHTML = "";
+    for (const field of ["contact", "email", "whatsapp"]) $(`#person-${field}`).value = "";
+  }
+
   $("#lock-btn").addEventListener("click", async () => {
     localStorage.removeItem(LS_ACCESS);
+    state.reminderStatus = null;
+    clearPrivateDom();
     updateUnlockUI();
     // Reload without the code so contact info and everyone's availability,
     // which were only sent because of it, don't linger on the page.
@@ -495,16 +505,50 @@
     { field: "imam_id", label: "Imam", turns: "imam", roles: ["imam", "both"] },
   ];
 
-  // How reminders can reach this person. null when we don't hold their contact
-  // details (no access code), so nothing is shown rather than a wrong "none".
+  const lineEnabled = () => !!(state.reminderStatus && state.reminderStatus.line_configured);
+
+  // How the automatic reminders can reach this person. null when we don't hold
+  // their contact details (no access code), so nothing is shown rather than a
+  // wrong "none". LINE is only mentioned when the LINE bot is set up.
   function reminderReach(person) {
     if (!person || !("email" in person)) return null;
     const channels = [];
     if (person.email) channels.push("email");
-    if (person.line_linked) channels.push("LINE");
-    if (!person.reminders) return { text: "🔕 reminders switched off", warn: true };
-    if (!channels.length) return { text: "⚠ no reminder channel (add an email or link LINE)", warn: true };
+    if (lineEnabled() && person.line_linked) channels.push("LINE");
+    if (!person.reminders) return { text: "🔕 automatic reminders switched off", warn: true };
+    if (!channels.length) return { text: `⚠ no ${lineEnabled() ? "email or LINE" : "email"}: send it by hand`, warn: true };
     return { text: `🔔 reminders by ${channels.join(" + ")}`, warn: false };
+  }
+
+  // Same text the automatic reminders use, for sending by hand (Copy / WhatsApp).
+  function reminderTextFor(friday, person) {
+    const shared = window.JumatReminderMessage;
+    const roles = shared.ROLE_SLOTS.filter((s) => friday[s.field] === person.id).map((s) => s.label);
+    const days = Math.round((Date.parse(friday.date) - Date.parse(todayISO())) / 86400000);
+    return shared.chatText({ friday, person, roles, days });
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Clipboard blocked or unavailable: fall back to the old selection trick.
+    }
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    return ok;
   }
 
   function reminderStatusHtml() {
@@ -618,7 +662,10 @@
     const section = $("#planner");
     const unlocked = hasAccessCode();
     section.classList.toggle("hidden", !unlocked);
-    if (!unlocked) return;
+    if (!unlocked) {
+      clearPrivateDom();
+      return;
+    }
 
     const list = $("#planner-list");
     // Re-rendering after every save keeps the labels honest (assigning someone
@@ -666,13 +713,31 @@
           : '<span class="muted small">No availability marked yet</span>';
 
       const selects = PLANNER_SLOTS.map((slot) => {
-        const reach = reminderReach(state.people.find((p) => p.id === f[slot.field]));
+        const person = state.people.find((p) => p.id === f[slot.field]);
+        const reach = reminderReach(person);
+        // Manual sending, for people the automatic email can't reach (or any
+        // time you'd rather nudge someone yourself). Only for roster people:
+        // a free-text guest has no contact details to use.
+        let send = "";
+        if (person) {
+          const waHref = person.whatsapp
+            ? window.JumatReminderMessage.whatsappLink(person.whatsapp, reminderTextFor(f, person))
+            : null;
+          send = `
+            <div class="planner-send">
+              <button class="btn btn-sm btn-ghost" data-copy-slot="${slot.field}" type="button">📋 Copy reminder</button>
+              ${waHref ? `<a class="btn btn-sm btn-ghost" data-wa-slot="${slot.field}" href="${escapeHtml(waHref)}" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>` : ""}
+            </div>`;
+        }
         return `
-          <label class="planner-slot">
-            <span>${slot.label}</span>
-            <select data-slot="${slot.field}">${plannerOptions(f, slot, turnsByKind, availability)}</select>
-            ${reach ? `<small class="planner-reach ${reach.warn ? "warn" : ""}">${escapeHtml(reach.text)}</small>` : ""}
-          </label>`;
+          <div class="planner-slot-col">
+            <label class="planner-slot">
+              <span>${slot.label}</span>
+              <select data-slot="${slot.field}">${plannerOptions(f, slot, turnsByKind, availability)}</select>
+              ${reach ? `<small class="planner-reach ${reach.warn ? "warn" : ""}">${escapeHtml(reach.text)}</small>` : ""}
+            </label>
+            ${send}
+          </div>`;
       }).join("");
 
       return `
@@ -704,6 +769,14 @@
       row.querySelector("[data-planner-open]").addEventListener("click", () => openDayModal(friday.id));
       row.querySelectorAll("select[data-slot]").forEach((select) => {
         select.addEventListener("change", () => saveFridayField(friday, select.dataset.slot, select.value));
+      });
+      row.querySelectorAll("[data-copy-slot]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const person = state.people.find((p) => p.id === friday[btn.dataset.copySlot]);
+          if (!person) return;
+          const ok = await copyText(reminderTextFor(friday, person));
+          toast(ok ? `Reminder for ${person.name} copied - paste it into any chat` : "Couldn't copy: your browser blocked the clipboard", !ok);
+        });
       });
     });
 
@@ -859,6 +932,7 @@ ${hadith.arabic}`;
           <div class="roster-name">${escapeHtml(p.name)}</div>
           <div class="roster-meta">${[affiliationLabel(p.affiliation), p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
           ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
+          ${p.whatsapp ? `<div class="roster-meta">💬 ${escapeHtml(p.whatsapp)}</div>` : ""}
           ${reminderReach(p) ? `<div class="roster-meta">${escapeHtml(reminderReach(p).text)}</div>` : ""}
         </div>
         ${
@@ -943,6 +1017,7 @@ ${hadith.arabic}`;
     // saving from this state can't accidentally overwrite it with nothing.
     $("#person-contact").value = person && "contact" in person ? person.contact || "" : "";
     $("#person-email").value = person && "email" in person ? person.email || "" : "";
+    $("#person-whatsapp").value = person && "whatsapp" in person ? person.whatsapp || "" : "";
     $("#person-reminders").checked = person && "reminders" in person ? !!person.reminders : true;
     renderPersonLineBox(person);
     $("#person-error").classList.add("hidden");
@@ -956,7 +1031,9 @@ ${hadith.arabic}`;
   // generated {code, expires_at}, shown until the box is next re-rendered.
   function renderPersonLineBox(person, codeInfo = null) {
     const box = $("#person-line");
-    if (!hasAccessCode()) {
+    // Not shown at all unless the LINE bot is set up on this site: most
+    // installs only use email, and a box about an unavailable channel is noise.
+    if (!hasAccessCode() || !lineEnabled()) {
       box.classList.add("hidden");
       return;
     }
@@ -968,10 +1045,6 @@ ${hadith.arabic}`;
     }
     if (!("line_linked" in person)) {
       box.classList.add("hidden");
-      return;
-    }
-    if (state.reminderStatus && !state.reminderStatus.line_configured) {
-      box.innerHTML = `<p class="muted"><strong>LINE:</strong> the LINE bot isn't set up on this site yet (see the README), so LINE can't be linked.</p>`;
       return;
     }
 
@@ -1048,6 +1121,7 @@ ${hadith.arabic}`;
     // them, so an edit made without access can't blank them.
     if (!editingPerson || "email" in editingPerson) {
       payload.email = $("#person-email").value.trim();
+      payload.whatsapp = $("#person-whatsapp").value.trim();
       payload.reminders = $("#person-reminders").checked;
     }
     if (!name) {
