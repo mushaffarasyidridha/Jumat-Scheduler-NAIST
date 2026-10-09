@@ -5,8 +5,10 @@
 // It only ever carries what the public schedule page already shows: date, time,
 // venue, and who is khatib / imam. No contact details.
 import shared from "../../public/reminder-message.js";
+import announcement from "../../public/announcement.js";
 
-const { PRAYER_TIME, calendarStamp, prayerWindowUtc, venueOf } = shared;
+const { calendarStamp, prayerWindowUtc } = shared;
+const { buildAnnouncementText, hadithForDate, khatibLine } = announcement;
 
 const encoder = new TextEncoder();
 
@@ -42,25 +44,26 @@ export function foldLine(line) {
   return parts.join("\r\n ");
 }
 
-function khatibLine(friday) {
-  const { primary_name: primary, secondary_name: secondary } = friday;
-  if (primary && secondary) return `${primary} / ${secondary} (Secondary)`;
-  if (primary) return primary;
-  if (secondary) return `${secondary} (Secondary)`;
-  return "TBA";
+// What the event is called in a calendar: who is khatib and imam at a glance.
+export function eventTitle(friday) {
+  return `Jumat prayer - Khatib: ${khatibLine(friday)}, Imam: ${friday.imam_name || "TBA"}`;
 }
 
-function describe(friday, siteUrl) {
-  const lines = [
-    `Khatib: ${khatibLine(friday)}`,
-    `Imam: ${friday.imam_name || "TBA"}`,
-    `Time: ${PRAYER_TIME}`,
-    `Venue: ${venueOf(friday)}`,
-  ];
+// Where someone scheduled can say they can't make it: the website, opened on
+// that Friday. (Marking yourself unavailable needs no access code.)
+export function cantMakeItLink(siteUrl, friday) {
+  return `${siteUrl}/?friday=${friday.id}`;
+}
+
+// The description of the event is the weekly broadcast itself, so whoever opens
+// the event reads exactly what is posted in the groups, plus how to say you
+// can't make it.
+export function eventDescription(friday, siteUrl) {
+  const parts = [buildAnnouncementText(friday, hadithForDate(friday.date))];
   const info = (friday.info || "").trim();
-  if (info && info.toUpperCase() !== "TBA") lines.push(`Note: ${info}`);
-  lines.push("", `Schedule and any changes: ${siteUrl}`);
-  return lines.join("\n");
+  if (info && info.toUpperCase() !== "TBA") parts.push(`Note: ${info}`);
+  parts.push(`Can't make it? Please tell us here, so a replacement can be found: ${cantMakeItLink(siteUrl, friday)}`);
+  return parts.join("\n\n");
 }
 
 // SQLite's datetime('now') is "2026-10-09 06:01:17" in UTC.
@@ -80,9 +83,9 @@ export function buildEvent(friday, { siteUrl, nowMs }) {
     `LAST-MODIFIED:${stamp}`,
     `DTSTART:${calendarStamp(startMs)}`,
     `DTEND:${calendarStamp(endMs)}`,
-    `SUMMARY:${escapeText(friday.primary_name ? `Jumat prayer: Khatib ${friday.primary_name}` : "Jumat prayer (khatib not assigned yet)")}`,
+    `SUMMARY:${escapeText(eventTitle(friday))}`,
     ...(venue ? [`LOCATION:${escapeText(venue)}`] : []),
-    `DESCRIPTION:${escapeText(describe(friday, siteUrl))}`,
+    `DESCRIPTION:${escapeText(eventDescription(friday, siteUrl))}`,
     `URL:${siteUrl}`,
     // Informational for everyone who subscribes: it should not mark their
     // calendar as busy during the prayer.

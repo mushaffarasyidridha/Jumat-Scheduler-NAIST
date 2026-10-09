@@ -28,6 +28,9 @@ import {
   buildLineText,
   buildAdminEmail,
   buildAdminChatText,
+  alertRecipients,
+  buildAlertEmail,
+  daysUntil,
   formatDateShort,
 } from "./reminder-lib.mjs";
 
@@ -100,17 +103,20 @@ function chatFor(item) {
   return item.type === "admin" ? buildAdminChatText({ ...item, siteUrl: SITE_URL }) : buildLineText({ ...item, siteUrl: SITE_URL });
 }
 
-async function sendEmail(item) {
-  const { subject, text, unsubscribeUrl } = emailFor(item);
+async function deliverEmail({ to, subject, text, unsubscribeUrl }) {
   const mailer = await getTransporter();
   await mailer.sendMail({
     from: { name: "NAIST Jumat Scheduler", address: env.GMAIL_USER },
-    to: item.person.email,
+    to,
     subject,
     text,
     // Lets mail apps show their own "Unsubscribe" button (RFC 8058 one-click).
     headers: { "List-Unsubscribe": `<${unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
   });
+}
+
+async function sendEmail(item) {
+  await deliverEmail({ to: item.person.email, ...emailFor(item) });
 }
 
 async function sendTestEmail(to) {
@@ -174,6 +180,72 @@ const FRIDAYS_SQL = `
   LEFT JOIN people ip ON ip.id = f.imam_id
   WHERE f.is_history = 0 AND f.date >= ? AND f.date <= ?
   ORDER BY f.date`;
+
+// Someone scheduled said they can't make it: tell the admin(s) by email. The
+// website shows the same alert straight away; this is the email half. Marked
+// sent only once at least one admin was emailed, so a failure is retried.
+const ALERTS_SQL = `
+  SELECT a.id AS alert_id, a.roles, p.name AS person_name,
+         f.id, f.date, f.venue,
+         COALESCE(pp.name, f.primary_khatib_name) AS primary_name,
+         COALESCE(sp.name, f.secondary_khatib_name) AS secondary_name,
+         COALESCE(ip.name, f.imam_name) AS imam_name
+  FROM availability_alerts a
+  JOIN fridays f ON f.id = a.friday_id
+  JOIN people p ON p.id = a.person_id
+  LEFT JOIN people pp ON pp.id = f.primary_khatib_id
+  LEFT JOIN people sp ON sp.id = f.secondary_khatib_id
+  LEFT JOIN people ip ON ip.id = f.imam_id
+  WHERE a.emailed_at IS NULL AND a.resolved_at IS NULL AND a.acknowledged_at IS NULL AND f.date >= ?
+  ORDER BY f.date, a.id`;
+
+async function sendAlertEmails({ today, people }) {
+  const alerts = await d1(ALERTS_SQL, [today]);
+  if (!alerts.length) return { count: 0, sent: 0, failed: 0 };
+  console.log(`${alerts.length} "can't make it" alert(s) waiting for the admin.`);
+  const admins = alertRecipients(people);
+  if (!admins.length) {
+    console.log("No admin has an email address, so the alert email(s) wait until one is set (the website shows them already).");
+    return { count: alerts.length, sent: 0, failed: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  for (const row of alerts) {
+    const label = `alert ${row.person_name} - ${formatDateShort(row.date)} (${row.roles})`;
+    if (DRY_RUN) {
+      console.log(`would send: ${label} -> ${admins.length} admin(s)`);
+      continue;
+    }
+    let delivered = 0;
+    for (const admin of admins) {
+      const email = buildAlertEmail({
+        alert: { person_name: row.person_name, roles: row.roles },
+        friday: row,
+        admin,
+        days: daysUntil(today, row.date),
+        siteUrl: SITE_URL,
+      });
+      try {
+        await deliverEmail({ to: admin.email, ...email });
+        delivered++;
+      } catch (e) {
+        failed++;
+        console.error(`FAILED: ${label}: ${redact(e.message)}`);
+      }
+    }
+    if (!delivered) continue;
+    sent++;
+    console.log(`sent: ${label}`);
+    try {
+      await d1("UPDATE availability_alerts SET emailed_at = datetime('now') WHERE id = ?", [row.alert_id]);
+    } catch (e) {
+      failed++;
+      console.error(`!! delivered but NOT recorded (may be sent again on the next run): ${label}: ${redact(e.message)}`);
+    }
+  }
+  return { count: alerts.length, sent, failed };
+}
 
 function printSamples(due) {
   const seen = new Set();
@@ -273,6 +345,10 @@ async function main() {
     }
   }
 
+  const alertStats = await sendAlertEmails({ today, people });
+  sent += alertStats.sent;
+  failed += alertStats.failed;
+
   if (DRY_RUN) {
     printSamples(due);
     return 0;
@@ -283,7 +359,7 @@ async function main() {
   await d1("INSERT INTO reminder_runs (mode, sent, failed, note) VALUES ('send', ?, ?, ?)", [
     sent,
     failed,
-    due.length ? null : "nothing due",
+    due.length || alertStats.count ? null : "nothing due",
   ]);
   await d1("DELETE FROM reminder_runs WHERE ran_at < datetime('now', '-90 days')");
 

@@ -1,4 +1,5 @@
 import { json, badRequest, checkAccess } from "../_utils.js";
+import { recordUnavailable, resolveAlerts } from "../_alerts.mjs";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -72,7 +73,13 @@ export async function onRequestPost({ request, env }) {
     .bind(personId, fridayId)
     .first();
 
-  return json(row);
+  // A scheduled person saying they can't make it is an alert for the admin;
+  // saying they can again withdraws it.
+  let alert = null;
+  if (status === "unavailable") alert = await recordUnavailable(env, personId, fridayId);
+  else await resolveAlerts(env, personId, fridayId);
+
+  return json({ ...row, scheduled: !!alert, alerted: !!alert?.created });
 }
 
 // Clears a mark back to "nothing stated" - same self-service reasoning as
@@ -88,6 +95,7 @@ export async function onRequestDelete({ request, env }) {
   await env.DB.prepare("DELETE FROM availability WHERE person_id = ? AND friday_id = ?")
     .bind(personId, fridayId)
     .run();
+  await resolveAlerts(env, personId, fridayId);
 
   return json({ person_id: personId, friday_id: fridayId });
 }

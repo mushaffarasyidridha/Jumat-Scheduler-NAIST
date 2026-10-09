@@ -12,6 +12,7 @@
     openFridayId: null,
     plannerShowAll: false,
     reminderStatus: null, // admin only: when the daily reminder job last ran
+    alerts: [], // admin only: "can't make it" alerts waiting for the admin
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -89,6 +90,7 @@
   $("#lock-btn").addEventListener("click", async () => {
     localStorage.removeItem(LS_ACCESS);
     state.reminderStatus = null;
+    state.alerts = [];
     clearPrivateDom();
     updateUnlockUI();
     // Reload without the code so contact info and everyone's availability,
@@ -159,18 +161,31 @@
     }
   }
 
+  // Same reasoning: a plain fetch, and nothing at all without the access code.
+  async function fetchAlerts() {
+    if (!hasAccessCode()) return [];
+    try {
+      const res = await fetch("/api/alerts", { headers: { "x-access-code": localStorage.getItem(LS_ACCESS) } });
+      return res.ok ? await res.json() : [];
+    } catch {
+      return [];
+    }
+  }
+
   async function loadAll() {
     const availUrl = availabilityUrl();
-    const [people, fridays, availability, reminderStatus] = await Promise.all([
+    const [people, fridays, availability, reminderStatus, alerts] = await Promise.all([
       api("/api/people"),
       api("/api/fridays"),
       availUrl ? api(availUrl) : Promise.resolve([]),
       fetchReminderStatus(),
+      fetchAlerts(),
     ]);
     state.people = people;
     state.fridays = fridays;
     state.availability = availability;
     state.reminderStatus = reminderStatus;
+    state.alerts = alerts;
     updateUnlockUI();
     renderWhoami();
     renderCalendar();
@@ -363,6 +378,102 @@
     if (e.target.id === "day-modal") closeDayModal();
   });
 
+  // ---------- "Can't make it" (opened from the link in a calendar event) ----------
+
+  // The event description links to /?friday=ID. This shows that Friday and one
+  // button, so someone scheduled can say they can't come without hunting for the
+  // right screen. Marking yourself unavailable needs no access code.
+  function renderCantMakeItBody(friday, doneMessage = null) {
+    $("#day-modal-title").textContent = "Can't make it?";
+    const body = $("#day-modal-body");
+    const lineup = [
+      ["Khatib", friday.primary_name],
+      ["Secondary", friday.secondary_name],
+      ["Imam", friday.imam_name],
+    ]
+      .filter(([, name]) => name)
+      .map(([label, name]) => `${label}: ${name}`)
+      .join(" · ");
+
+    const passed = friday.is_history || friday.date < todayISO();
+    const scheduledIds = [friday.primary_khatib_id, friday.secondary_khatib_id, friday.imam_id].filter(Boolean);
+    const active = state.people.filter((p) => p.status === "active");
+    const scheduled = active.filter((p) => scheduledIds.includes(p.id));
+    const others = active.filter((p) => !scheduledIds.includes(p.id));
+    const mine = Number(localStorage.getItem(LS_WHOAMI) || "");
+    const option = (p) => `<option value="${p.id}" ${p.id === mine ? "selected" : ""}>${escapeHtml(p.name)}</option>`;
+
+    let action;
+    if (doneMessage) {
+      action = `<p class="cant-done">${escapeHtml(doneMessage)}</p>`;
+    } else if (passed) {
+      action = '<p class="muted">This Friday has already passed.</p>';
+    } else {
+      action = `
+        <label class="slot"><span>I am</span>
+          <select id="cant-person">
+            <option value="">Choose your name…</option>
+            ${scheduled.length ? `<optgroup label="Scheduled this Friday">${scheduled.map(option).join("")}</optgroup>` : ""}
+            <optgroup label="Everyone else">${others.map(option).join("")}</optgroup>
+          </select>
+        </label>
+        <button id="cant-submit" class="btn btn-primary" type="button">I can't make it</button>
+        <p class="small muted">The admin is told right away and will find a replacement.</p>`;
+    }
+
+    body.innerHTML = `
+      <p class="day-modal-date">${formatDateLong(friday.date)}</p>
+      ${lineup ? `<p class="small">${escapeHtml(lineup)}</p>` : ""}
+      ${action}
+      <p class="small"><button id="cant-full" class="btn btn-ghost btn-sm" type="button">Open this Friday's full details</button></p>`;
+
+    body.querySelector("#cant-full").addEventListener("click", () => openDayModal(friday.id));
+    body.querySelector("#cant-submit")?.addEventListener("click", async () => {
+      const personId = Number(body.querySelector("#cant-person").value);
+      if (!personId) {
+        toast("Choose your name first", true);
+        return;
+      }
+      try {
+        const row = await api("/api/availability", {
+          method: "POST",
+          body: JSON.stringify({ person_id: personId, friday_id: friday.id, status: "unavailable" }),
+        });
+        localStorage.setItem(LS_WHOAMI, String(personId));
+        renderWhoami();
+        const idx = state.availability.findIndex((a) => a.person_id === row.person_id && a.friday_id === row.friday_id);
+        if (idx >= 0) state.availability[idx] = row;
+        else state.availability.push(row);
+        renderPlanner();
+        renderCantMakeItBody(
+          friday,
+          row.alerted
+            ? "Thank you. The admin has been told and will find a replacement."
+            : row.scheduled
+            ? "Noted. The admin had already been told."
+            : "Noted. You are not scheduled for this Friday, so there is nothing to replace; your answer is saved."
+        );
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+  }
+
+  function openCantMakeIt(friday) {
+    renderCantMakeItBody(friday);
+    $("#day-modal").classList.remove("hidden");
+  }
+
+  // Runs once after the first load: /?friday=ID opens that Friday's "can't make it" box.
+  function openCantMakeItFromUrl() {
+    const id = Number(new URLSearchParams(location.search).get("friday"));
+    if (!Number.isInteger(id) || id <= 0) return;
+    history.replaceState(null, "", location.pathname + location.hash);
+    const friday = state.fridays.find((f) => f.id === id);
+    if (friday) openCantMakeIt(friday);
+    else toast("That Friday was not found", true);
+  }
+
   function renderDayModalBody(friday) {
     $("#day-modal-title").textContent = friday.is_history ? "Archived Jumat" : "Jumat schedule";
     const body = $("#day-modal-body");
@@ -469,7 +580,8 @@
       const friday = state.fridays.find((f) => f.id === fridayId);
       if (friday) renderDayModalBody(friday);
       renderPlanner();
-      toast(status === "available" ? "Marked available" : "Marked unavailable");
+      if (status === "available") toast("Marked available");
+      else toast(row.alerted ? "Marked unavailable. The admin has been notified." : "Marked unavailable");
     } catch (e) {
       toast(e.message, true);
     }
@@ -549,6 +661,28 @@
     }
     area.remove();
     return ok;
+  }
+
+  // "Can't make it" alerts: someone scheduled for a Friday said they can't come.
+  // Shown at the top of the planner until the admin dismisses them.
+  function alertsHtml() {
+    if (!state.alerts.length) return "";
+    const items = state.alerts
+      .map(
+        (a) => `
+        <li class="planner-alert-item">
+          <span><strong>${escapeHtml(a.person_name)}</strong> can't make it on <strong>${formatDateLong(a.date)}</strong> (${escapeHtml(a.roles)})</span>
+          <span class="planner-alert-actions">
+            <button class="btn btn-sm" data-alert-goto="${a.friday_id}" type="button">Find a replacement</button>
+            <button class="btn btn-sm btn-ghost" data-alert-ack="${a.id}" type="button">Got it</button>
+          </span>
+        </li>`
+      )
+      .join("");
+    return `<div class="planner-alerts" role="alert">
+      <p class="planner-alerts-title">🔔 ${state.alerts.length === 1 ? "1 person" : `${state.alerts.length} people`} can't make it</p>
+      <ul>${items}</ul>
+    </div>`;
   }
 
   // The admin's own to-do reminder (send the WhatsApp / Facebook reminders,
@@ -691,6 +825,7 @@
     const turnsByKind = { khatib: buildTurns("khatib"), imam: buildTurns("imam") };
 
     const legend = `
+      ${alertsHtml()}
       ${reminderStatusHtml()}
       ${adminStatusHtml()}
       <p class="small muted planner-legend">
@@ -758,6 +893,10 @@
         <article class="planner-row" data-id="${f.id}">
           <div class="planner-row-head">
             <strong>${formatDateLong(f.date)}</strong>
+            ${state.alerts
+              .filter((a) => a.friday_id === f.id)
+              .map((a) => `<span class="planner-alert-badge">⚠ ${escapeHtml(a.person_name)} can't make it</span>`)
+              .join("")}
             <button class="btn btn-sm btn-ghost" data-planner-open type="button">Details &amp; announcement</button>
           </div>
           <div class="planner-slots">${selects}</div>
@@ -776,6 +915,35 @@
     list.querySelector(".planner-more")?.addEventListener("click", () => {
       state.plannerShowAll = !state.plannerShowAll;
       renderPlanner();
+    });
+
+    list.querySelectorAll("[data-alert-ack]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.alertAck);
+        try {
+          await api(`/api/alerts/${id}`, { method: "PATCH", body: JSON.stringify({ acknowledged: true }) });
+          state.alerts = state.alerts.filter((a) => a.id !== id);
+          renderPlanner();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      });
+    });
+    list.querySelectorAll("[data-alert-goto]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.alertGoto;
+        let row = list.querySelector(`.planner-row[data-id="${id}"]`);
+        if (!row) {
+          // That Friday is past the rows shown by default.
+          state.plannerShowAll = true;
+          renderPlanner();
+          row = list.querySelector(`.planner-row[data-id="${id}"]`);
+        }
+        if (!row) return;
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+        row.classList.add("planner-row-flash");
+        setTimeout(() => row.classList.remove("planner-row-flash"), 2000);
+      });
     });
 
     list.querySelectorAll(".planner-row").forEach((row) => {
@@ -802,123 +970,26 @@
 
   // ---------- Jumat announcement generator ----------
 
-  // Each entry verified against sunnah.com/dorar.net references (English +
-  // Arabic cross-checked, not generated from memory alone) - reference and
-  // in-book numbering match the citation style already used for these
-  // collections. Kept small and fully verified rather than large and guessed.
-  const HADITHS = [
-    {
-      reference: "Sahih Muslim 851a",
-      inBook: "Book 7, Hadith 15",
-      intro: "Abu Huraira reported Allah's Messenger (ﷺ) as saying:",
-      english: "If you (even) ask your companion to be quiet on Friday while the Imam is delivering the sermon, you have in fact talked irrelevance.",
-      arabic: "إذا قلت لصاحبك أنصت يوم الجمعة والإمام يخطب فقد لغوت",
-    },
-    {
-      reference: "Sahih al-Bukhari 879",
-      inBook: "Book 11, Hadith 4",
-      intro: "Narrated Abu Sa'id al-Khudri: Allah's Messenger (ﷺ) said:",
-      english: "Taking a bath on Friday is compulsory for every Muslim who has attained the age of puberty, and also the cleaning of his teeth with Siwak, and the using of perfume if it is available.",
-      arabic: "الغسل يوم الجمعة واجب على كل محتلم، وأن يستن، وأن يمس طيبًا إن وجد",
-    },
-    {
-      reference: "Sahih al-Bukhari 881",
-      inBook: "Book 11, Hadith 6",
-      intro: "Narrated Abu Huraira: Allah's Messenger (ﷺ) said:",
-      english: "Whoever takes a bath on Friday like the bath of Janaba and then goes for the prayer in the first hour, it is as if he had sacrificed a camel; whoever goes in the second hour, it is as if he had sacrificed a cow; whoever goes in the third hour, then it is as if he had sacrificed a horned ram; whoever goes in the fourth hour, then it is as if he had sacrificed a hen; and whoever goes in the fifth hour, then it is as if he had offered an egg.",
-      arabic: "من اغتسل يوم الجمعة غسل الجنابة ثم راح في الساعة الأولى فكأنما قرب بدنة، ومن راح في الساعة الثانية فكأنما قرب بقرة، ومن راح في الساعة الثالثة فكأنما قرب كبشًا أقرن، ومن راح في الساعة الرابعة فكأنما قرب دجاجة، ومن راح في الساعة الخامسة فكأنما قرب بيضة",
-    },
-    {
-      reference: "Sahih al-Bukhari 935",
-      inBook: "Book 11, Hadith 59",
-      intro: "Narrated Abu Huraira: Allah's Messenger (ﷺ) mentioned Friday and said:",
-      english: "There is an hour on Friday, and if a Muslim slave happens to pray at that time and asks Allah for something good, Allah will give it to him. (He pointed with his hand to indicate how short that time is.)",
-      arabic: "فيه ساعة لا يوافقها عبد مسلم وهو قائم يصلي يسأل الله تعالى شيئًا إلا أعطاه إياه",
-    },
-    {
-      reference: "Sahih Muslim 854b",
-      inBook: "Book 7, Hadith 27",
-      intro: "Abu Huraira reported Allah's Messenger (ﷺ) as saying:",
-      english: "The best day on which the sun has risen is Friday; on it Adam was created, on it he was made to enter Paradise, on it he was expelled from it, and the Last Hour will take place on no day other than Friday.",
-      arabic: "خير يوم طلعت عليه الشمس يوم الجمعة، فيه خلق آدم، وفيه أدخل الجنة، وفيه أخرج منها، ولا تقوم الساعة إلا في يوم الجمعة",
-    },
-  ];
-
-  function randomHadith() {
-    return HADITHS[Math.floor(Math.random() * HADITHS.length)];
-  }
-
-  const MONTH_NAMES = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-  function formatDateAnnouncement(iso) {
-    const d = new Date(iso + "T00:00:00Z");
-    // Fixed "D Month YYYY" order rather than toLocaleDateString, whose field
-    // order depends on the viewer's browser locale (would show US-style
-    // "September 25, 2026" for some visitors).
-    return `${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-  }
-
-  function khatibLine(friday) {
-    const p = friday.primary_name;
-    const s = friday.secondary_name;
-    if (p && s) return `${p} / ${s} (Secondary)`;
-    if (p) return p;
-    if (s) return `${s} (Secondary)`;
-    return "TBA";
-  }
-
-  // Map links only for venues we actually have one for - never guessed for
-  // the others (the venue is free text and changes week to week).
-  const VENUE_MAP_LINKS = {
-    "assembly room - sentan": "https://maps.app.goo.gl/Dd44PcXYVqFm7KDA6",
-  };
-
-  function venueLine(friday) {
-    const venue = (friday.venue || "").trim();
-    if (!venue) return "Friday Prayer will be held in sha Allah (venue to be announced).";
-    const link = VENUE_MAP_LINKS[venue.toLowerCase()];
-    return `Friday Prayer will be held in sha Allah at ${venue}${link ? ` (${link})` : ""}.`;
-  }
-
-  function buildAnnouncementText(friday, hadith) {
-    return `Assalamualaikum Warrahmatullah Wabarakatuh,
-Dear Brothers,
-
-${venueLine(friday)}
-Date: ${formatDateAnnouncement(friday.date)}
-Time: ${window.JumatReminderMessage.PRAYER_TIME}
-Khatib: ${khatibLine(friday)}
-Imam: ${friday.imam_name || "TBA"}
-
-To uphold cleanliness and hygiene in our prayer space, we kindly ask all brothers to bring their own prayer mats. We appreciate your cooperation.
-
-${hadith.reference} (${hadith.inBook})
-
-${hadith.intro}
-
-${hadith.english}
-
-${hadith.arabic}`;
-  }
+  // The text itself lives in announcement.js, shared with the calendar events
+  // (whose description is this same broadcast).
+  const announcement = window.JumatAnnouncement;
 
   let announcementFriday = null;
   let announcementHadith = null;
 
   function renderAnnouncementText() {
-    $("#announcement-text").value = buildAnnouncementText(announcementFriday, announcementHadith);
+    $("#announcement-text").value = announcement.buildAnnouncementText(announcementFriday, announcementHadith);
   }
 
   function openAnnouncementModal(friday) {
     announcementFriday = friday;
-    announcementHadith = randomHadith();
+    announcementHadith = announcement.randomHadith();
     renderAnnouncementText();
     $("#announcement-modal").classList.remove("hidden");
   }
   $("#announcement-close-btn").addEventListener("click", () => $("#announcement-modal").classList.add("hidden"));
   $("#announcement-reroll-btn").addEventListener("click", () => {
-    announcementHadith = randomHadith();
+    announcementHadith = announcement.randomHadith();
     renderAnnouncementText();
   });
   $("#announcement-copy-btn").addEventListener("click", async () => {
@@ -1183,5 +1254,5 @@ ${hadith.arabic}`;
   }
 
   setupSubscribe();
-  loadAll().catch((e) => toast(e.message, true));
+  loadAll().then(openCantMakeItFromUrl).catch((e) => toast(e.message, true));
 })();

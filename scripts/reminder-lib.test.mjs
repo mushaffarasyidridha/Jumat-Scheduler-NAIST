@@ -18,8 +18,12 @@ import {
   buildLineText,
   buildAdminEmail,
   buildAdminChatText,
+  alertRecipients,
+  buildAlertEmail,
 } from "./reminder-lib.mjs";
+import { rolesHeld } from "../functions/api/_alerts.mjs";
 import { buildCalendar, buildEvent, escapeText, foldLine } from "../functions/api/_ics.mjs";
+import announcement from "../public/announcement.js";
 
 const person = (over = {}) => ({
   id: 1, name: "Ahmad", email: "a@example.com", reminders: 1, line_user_id: null, reminder_token: "t".repeat(32), ...over,
@@ -331,7 +335,7 @@ test("calendar link: a Google 'new event' link with the prayer time in UTC (12.3
   assert.equal(origin, "https://calendar.google.com/calendar/render");
   assert.equal(p.action, "TEMPLATE");
   assert.equal(p.text, "Jumat prayer: Primary khatib");
-  assert.equal(p.dates, "20261016T033500Z/20261016T042000Z"); // 45 minutes
+  assert.equal(p.dates, "20261016T033500Z/20261016T040500Z"); // 12.35 to 13.05 JST, 30 minutes
   assert.equal(p.location, "Assembly Room - SENTAN");
   assert.match(p.details, /Your role: Primary khatib\./);
   assert.match(p.details, /tell the coordinator/);
@@ -346,7 +350,7 @@ test("calendar link: a Friday near New Year rolls the date correctly", () => {
   // 00:30 JST on 1 Jan would be 15:30Z the day before; the prayer is at noon so
   // this only checks plain date arithmetic across a year boundary.
   const { p } = gcal(shared.calendarLink({ friday: friday({ date: "2027-01-01" }), roles: ["Imam"] }));
-  assert.equal(p.dates, "20270101T033500Z/20270101T042000Z");
+  assert.equal(p.dates, "20270101T033500Z/20270101T040500Z");
 });
 
 test("calendar link: no role => generic title; no venue => no location; standby is explained", () => {
@@ -430,32 +434,45 @@ test("ics: a valid VCALENDAR with CRLF line ends, one VEVENT per Friday, unique 
   assert.equal(feed([]).includes("BEGIN:VEVENT"), false);
 });
 
-test("ics: the event time is the same 12.35 JST window the calendar link uses (03:35Z, 45 min)", () => {
+test("ics: the event time is the same 12.35 JST window the calendar link uses (03:35Z to 04:05Z, 30 min)", () => {
   const ics = feed([row()]);
   assert.match(ics, /\r\nDTSTART:20261016T033500Z\r\n/);
-  assert.match(ics, /\r\nDTEND:20261016T042000Z\r\n/);
+  assert.match(ics, /\r\nDTEND:20261016T040500Z\r\n/);
   assert.match(ics, /\r\nTRANSP:TRANSPARENT\r\n/); // informational: does not mark subscribers busy
 });
 
-test("ics: summary, location and description show who is khatib / imam and where", () => {
+test("ics: the title says who is khatib and imam; the description is the weekly broadcast, word for word", () => {
   const text = unfold(feed([row()]));
-  assert.match(text, /SUMMARY:Jumat prayer: Khatib Ahmad\r\n/);
+  assert.match(text, /SUMMARY:Jumat prayer - Khatib: Ahmad \/ Bilal \(Secondary\)\\, Imam: Chris\r\n/);
   assert.match(text, /LOCATION:Assembly Room - SENTAN\r\n/);
-  assert.match(text, /DESCRIPTION:Khatib: Ahmad \/ Bilal \(Secondary\)\\nImam: Chris\\nTime: 12\.35 pm \(start\)\\nVenue: Assembly Room - SENTAN\\n\\nSchedule and any changes: https:\/\/x\.test\r\n/);
+  const broadcast = announcement.buildAnnouncementText(row(), announcement.hadithForDate("2026-10-16"));
+  assert.ok(text.includes("DESCRIPTION:" + escapeText(broadcast)), "description starts with the broadcast");
+  assert.match(text, /Time: 12\.35 pm \(start\)/);
+  assert.match(text, /Khatib: Ahmad \/ Bilal \(Secondary\)\\nImam: Chris/);
+  assert.match(text, /maps\.app\.goo\.gl/); // the venue map link is part of the broadcast
+  assert.match(text, /Can't make it\? Please tell us here\\, so a replacement can be found: https:\/\/x\.test\/\?friday=7\r\n/);
   assert.match(text, /URL:https:\/\/x\.test\r\n/);
   assert.ok(!/Note:/.test(text), "'TBA' info is not shown as a note");
   assert.match(unfold(feed([row({ info: "Bring your own mat, please" })])), /Note: Bring your own mat\\, please/);
 });
 
+test("ics: the same hadith all week, a different one next week", () => {
+  const a = unfold(feed([row()]));
+  assert.equal(a, unfold(feed([row()])));
+  const other = unfold(feed([row({ id: 8, date: "2026-10-23" })]));
+  const ref = (t) => announcement.HADITHS.find((h) => t.includes(h.reference))?.reference;
+  assert.ok(ref(a) && ref(other) && ref(a) !== ref(other));
+});
+
 test("ics: open slots, a missing venue and odd characters never produce null/undefined or broken lines", () => {
   const text = unfold(feed([row({ primary_name: null, secondary_name: null, imam_name: null, venue: null, info: null })]));
-  assert.match(text, /SUMMARY:Jumat prayer \(khatib not assigned yet\)\r\n/);
+  assert.match(text, /SUMMARY:Jumat prayer - Khatib: TBA\\, Imam: TBA\r\n/);
   assert.match(text, /Khatib: TBA\\nImam: TBA/);
-  assert.match(text, /Venue: to be announced/);
+  assert.match(text, /venue to be announced/);
   assert.ok(!/^LOCATION:/m.test(text));
   assert.ok(!/undefined|null/.test(text));
-  const odd = unfold(feed([row({ primary_name: "O'Brien, Jr; \"Q\"", venue: "Room A, Floor 2" })]));
-  assert.match(odd, /SUMMARY:Jumat prayer: Khatib O'Brien\\, Jr\\; "Q"\r\n/);
+  const odd = unfold(feed([row({ primary_name: "O'Brien, Jr; \"Q\"", secondary_name: null, venue: "Room A, Floor 2" })]));
+  assert.match(odd, /SUMMARY:Jumat prayer - Khatib: O'Brien\\, Jr\\; "Q"\\, Imam: Chris\r\n/);
   assert.match(odd, /LOCATION:Room A\\, Floor 2\r\n/);
   assert.match(feed([row({ primary_name: null, secondary_name: "Bilal" })]), /Khatib: Bilal \(Secondary\)/);
 });
@@ -471,4 +488,40 @@ test("ics: DTSTAMP follows the row's last change, so an untouched Friday looks u
 test("ics: buildEvent returns one folded line per property", () => {
   const lines = buildEvent(row({ info: "x".repeat(300) }), { siteUrl: "https://x.test", nowMs: 0 }).join("\r\n").split("\r\n");
   assert.ok(lines.every((l) => Buffer.byteLength(l) <= 75));
+});
+
+// ---------- "can't make it" alerts ----------
+
+test("alert: which roles a person holds on a Friday", () => {
+  const f = { primary_khatib_id: 1, secondary_khatib_id: 2, imam_id: 1 };
+  assert.deepEqual(rolesHeld(f, 1), ["Primary khatib", "Imam"]);
+  assert.deepEqual(rolesHeld(f, 2), ["Secondary khatib (standby)"]);
+  assert.deepEqual(rolesHeld(f, 3), []);
+  assert.deepEqual(rolesHeld({ primary_khatib_id: null, secondary_khatib_id: null, imam_id: null }, 1), []);
+});
+
+test("alert: only active admins with an email and reminders on are told", () => {
+  const a = (over) => admin(over);
+  const all = [a(), a({ id: 10, is_admin: 0 }), a({ id: 11, status: "inactive" }), a({ id: 12, reminders: 0 }), a({ id: 13, email: null, line_user_id: "U" + "a".repeat(32) })];
+  assert.deepEqual(alertRecipients(all).map((p) => p.id), [9]);
+});
+
+test("alert email: who, when, the role, the line-up now, what to do, unsubscribe", () => {
+  const { subject, text, unsubscribeUrl } = buildAlertEmail({
+    alert: { person_name: "Ahmad", roles: "Primary khatib" },
+    friday: friday({ primary_name: "Ahmad", secondary_name: "Bilal", imam_name: "Chris" }),
+    admin: admin(),
+    days: 1,
+    siteUrl: "https://x.test",
+  });
+  assert.equal(subject, "Jumat alert: Ahmad can't make it on 16 October 2026");
+  assert.match(text, /Assalamu'alaikum Admin Aisha,/);
+  assert.match(text, /Ahmad has marked themselves unavailable for Friday, 16 October 2026 \(tomorrow\)\./);
+  assert.match(text, /They were scheduled as: Primary khatib\./);
+  assert.match(text, /Khatib: Ahmad \/ Bilal \(Secondary\)/);
+  assert.match(text, /Imam: Chris/);
+  assert.match(text, /A replacement is needed/);
+  assert.equal(unsubscribeUrl, `https://x.test/api/reminders/unsubscribe?t=${"a".repeat(32)}`);
+  assert.ok(text.includes(unsubscribeUrl));
+  assert.ok(!/undefined|null/.test(text));
 });

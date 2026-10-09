@@ -1,4 +1,5 @@
 import { json, badRequest, notFound, requireAccess } from "../_utils.js";
+import { resolveStaleAlerts } from "../_alerts.mjs";
 
 export async function onRequestPatch({ request, env, params }) {
   const denied = requireAccess(request, env);
@@ -64,6 +65,7 @@ export async function onRequestPatch({ request, env, params }) {
   await env.DB.prepare(`UPDATE fridays SET ${fields.join(", ")} WHERE id = ?`)
     .bind(...values)
     .run();
+  await resolveStaleAlerts(env, id);
 
   const row = await env.DB.prepare(
     `SELECT f.id, f.date, f.venue, f.info, f.is_history, f.updated_by, f.updated_at,

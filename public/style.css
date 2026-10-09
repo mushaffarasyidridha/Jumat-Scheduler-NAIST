@@ -217,6 +217,19 @@ main {
   font-size: 0.85rem;
 }
 .planner-avail { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.planner-alerts {
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 0 0 4px;
+}
+.planner-alerts-title { margin: 0 0 6px; font-weight: 600; color: var(--danger); }
+.planner-alerts ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.planner-alert-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; font-size: 0.9rem; }
+.planner-alert-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.planner-alert-badge { font-size: 0.78rem; color: var(--danger); font-weight: 600; }
+.planner-row-flash { box-shadow: 0 0 0 2px var(--primary) inset; }
+.cant-done { font-weight: 600; color: var(--available); margin: 8px 0; }
 .planner-send { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 a.btn { display: inline-block; text-decoration: none; }
 .planner-status { margin: 0; }
