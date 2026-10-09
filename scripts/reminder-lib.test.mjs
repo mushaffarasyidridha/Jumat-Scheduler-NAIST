@@ -12,8 +12,12 @@ import {
   reminderKindFor,
   sentKey,
   dueReminders,
+  dueAdminTodos,
+  adminChecklist,
   buildEmail,
   buildLineText,
+  buildAdminEmail,
+  buildAdminChatText,
 } from "./reminder-lib.mjs";
 
 const person = (over = {}) => ({
@@ -206,4 +210,110 @@ test("whatsappLink refuses numbers that cannot be international", () => {
 
 test("each role has the wording the automatic reminders use", () => {
   assert.deepEqual(shared.ROLE_SLOTS.map((s) => s.label), ["Primary khatib", "Secondary khatib (standby)", "Imam"]);
+});
+
+// ---------- admin to-do ----------
+
+const admin = (over = {}) =>
+  person({ id: 9, name: "Admin Aisha", status: "active", is_admin: 1, email: "aisha@example.com", reminder_token: "a".repeat(32), ...over });
+const todos = (over = {}) =>
+  dueAdminTodos({ today: "2026-10-15", fridays: [friday()], people: [admin(), person()], sentKeys: new Set(), ...over });
+
+test("admin: the day before, the to-do lists who to message by hand and the group announcement", () => {
+  // Zed (id 2) has no email/LINE so he is not in `people`; the imam slot is empty.
+  const f = friday({ primary_khatib_id: 2, primary_name: "Zed" });
+  const [item] = todos({ fridays: [f] });
+  assert.equal(item.type, "admin");
+  assert.equal(item.kind, "admin-1d");
+  assert.equal(item.channel, "email");
+  assert.deepEqual(item.checklist.byHand, [{ name: "Zed", roles: ["Primary khatib"] }]);
+  assert.deepEqual(item.checklist.open, ["Imam"]);
+  const text = buildAdminChatText(item);
+  assert.match(text, /Friday, 16 October 2026 \(tomorrow\)/);
+  assert.match(text, /1\. Send the reminder by hand \(WhatsApp \/ Facebook\) to:\n {3}• Zed \(Primary khatib\)/);
+  assert.match(text, /2\. Post the announcement in the WhatsApp group and the Facebook group\./);
+  assert.match(text, /Not assigned yet: Imam/);
+  assert.ok(text.length < 1000);
+  assert.ok(!/undefined|null/.test(text));
+});
+
+test("admin: people reached by email or LINE are not on the by-hand list", () => {
+  const [item] = todos(); // Ahmad (id 1) has an email
+  assert.deepEqual(item.checklist.byHand, []);
+  assert.match(buildAdminChatText(item), /Nobody needs a reminder by hand/);
+});
+
+test("admin: someone with their reminders switched off is on the by-hand list", () => {
+  const [item] = todos({ people: [admin(), person({ reminders: 0 })] });
+  assert.deepEqual(item.checklist.byHand, [{ name: "Ahmad", roles: ["Primary khatib"] }]);
+});
+
+test("admin: a guest typed in as free text is on the by-hand list, grouped by name", () => {
+  const f = friday({ primary_khatib_id: null, primary_name: "Guest Speaker", imam_id: null, imam_name: "Guest Speaker" });
+  const checklist = adminChecklist(f, new Map());
+  assert.deepEqual(checklist.byHand, [{ name: "Guest Speaker", roles: ["Primary khatib", "Imam"] }]);
+  assert.deepEqual(checklist.open, []);
+});
+
+test("admin: an empty secondary slot is not flagged, an empty primary or imam is", () => {
+  const checklist = adminChecklist(friday({ primary_khatib_id: null, primary_name: null }), new Map());
+  assert.deepEqual(checklist.open, ["Primary khatib", "Imam"]);
+});
+
+test("admin: a week ahead it stays quiet unless there is something to do", () => {
+  const full = friday({ imam_id: 3, imam_name: "Chris" });
+  const reached = [admin(), person(), person({ id: 3, name: "Chris", email: "c@example.com" })];
+  assert.equal(todos({ today: "2026-10-09", fridays: [full], people: reached }).length, 0);
+
+  const [item] = todos({ today: "2026-10-09" }); // imam still open
+  assert.equal(item.kind, "admin-7d");
+  const text = buildAdminChatText(item);
+  assert.match(text, /Not assigned yet: Imam/);
+  assert.ok(!/Post the announcement/.test(text), "the announcement is for the day before");
+});
+
+test("admin: the day before always goes out, even if nothing is by hand and nothing is open", () => {
+  const full = friday({ imam_id: 3, imam_name: "Chris" });
+  const reached = [admin(), person(), person({ id: 3, name: "Chris", email: "c@example.com" })];
+  const due = todos({ fridays: [full], people: reached });
+  assert.equal(due.length, 1);
+  assert.match(buildAdminChatText(due[0]), /Post the announcement/);
+});
+
+test("admin: only active admins with reminders on and somewhere to send get a to-do", () => {
+  assert.equal(todos({ people: [admin({ is_admin: 0 }), person()] }).length, 0);
+  assert.equal(todos({ people: [admin({ status: "inactive" }), person()] }).length, 0);
+  assert.equal(todos({ people: [admin({ reminders: 0 }), person()] }).length, 0);
+  // email and LINE are separate deliveries
+  const both = todos({ people: [admin({ line_user_id: "U" + "a".repeat(32) }), person()] });
+  assert.deepEqual(both.map((d) => d.channel).sort(), ["email", "line"]);
+});
+
+test("admin: a to-do already sent is not sent again, and does not block the khatib's own reminder", () => {
+  const sent = new Set([sentKey(10, 9, "admin-1d", "email")]);
+  assert.equal(todos({ sentKeys: sent }).length, 0);
+  const own = dueReminders({ today: "2026-10-15", fridays: [friday()], people: [admin({ id: 1 })], sentKeys: new Set([sentKey(10, 1, "admin-1d", "email")]) });
+  assert.equal(own.length, 1, "the admin-1d log entry must not hide the 1d reminder");
+  assert.equal(own[0].kind, "1d");
+});
+
+test("admin: the same person as admin and as khatib gets both messages", () => {
+  const me = admin({ id: 1, name: "Ahmad" });
+  const reminders = dueReminders({ today: "2026-10-15", fridays: [friday()], people: [me], sentKeys: new Set() });
+  const adminTodos = dueAdminTodos({ today: "2026-10-15", fridays: [friday()], people: [me], sentKeys: new Set() });
+  assert.equal(reminders.length, 1);
+  assert.equal(adminTodos.length, 1);
+  assert.notEqual(reminders[0].key, adminTodos[0].key);
+});
+
+test("admin email: subject, steps, unsubscribe link", () => {
+  const [item] = todos({ fridays: [friday({ primary_khatib_id: 2, primary_name: "Zed" })] });
+  const { subject, text, unsubscribeUrl } = buildAdminEmail({ ...item, siteUrl: "https://example.pages.dev" });
+  assert.equal(subject, "Jumat admin to-do: 16 October 2026");
+  assert.match(text, /Assalamu'alaikum Admin Aisha,/);
+  assert.match(text, /• Zed \(Primary khatib\)/);
+  assert.match(text, /Not assigned yet: Imam/);
+  assert.equal(unsubscribeUrl, `https://example.pages.dev/api/reminders/unsubscribe?t=${"a".repeat(32)}`);
+  assert.ok(text.includes(unsubscribeUrl));
+  assert.ok(!/undefined|null/.test(text));
 });

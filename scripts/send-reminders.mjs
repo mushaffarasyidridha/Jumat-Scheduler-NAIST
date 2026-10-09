@@ -22,9 +22,12 @@ import {
   tooLateToSend,
   addDays,
   dueReminders,
+  dueAdminTodos,
   sentKey,
   buildEmail,
   buildLineText,
+  buildAdminEmail,
+  buildAdminChatText,
   formatDateShort,
 } from "./reminder-lib.mjs";
 
@@ -88,8 +91,17 @@ async function getTransporter() {
   return transporter;
 }
 
+// A reminder for a person on a Friday, or (type "admin") the admin's to-do.
+function emailFor(item) {
+  return item.type === "admin" ? buildAdminEmail({ ...item, siteUrl: SITE_URL }) : buildEmail({ ...item, siteUrl: SITE_URL });
+}
+
+function chatFor(item) {
+  return item.type === "admin" ? buildAdminChatText({ ...item, siteUrl: SITE_URL }) : buildLineText(item);
+}
+
 async function sendEmail(item) {
-  const { subject, text, unsubscribeUrl } = buildEmail({ ...item, siteUrl: SITE_URL });
+  const { subject, text, unsubscribeUrl } = emailFor(item);
   const mailer = await getTransporter();
   await mailer.sendMail({
     from: { name: "NAIST Jumat Scheduler", address: env.GMAIL_USER },
@@ -141,7 +153,7 @@ async function sendLine(item) {
   const res = await fetch(`${LINE_API}/v2/bot/message/push`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}` },
-    body: JSON.stringify({ to: item.person.line_user_id, messages: [{ type: "text", text: buildLineText(item) }] }),
+    body: JSON.stringify({ to: item.person.line_user_id, messages: [{ type: "text", text: chatFor(item) }] }),
   });
   if (!res.ok) {
     const detail = (await res.text().catch(() => "")).slice(0, 200);
@@ -166,13 +178,17 @@ const FRIDAYS_SQL = `
 function printSamples(due) {
   const seen = new Set();
   for (const item of due) {
-    if (seen.has(item.channel)) continue;
-    seen.add(item.channel);
-    const body =
-      item.channel === "email"
-        ? `Subject: ${buildEmail({ ...item, siteUrl: SITE_URL }).subject}\n${buildEmail({ ...item, siteUrl: SITE_URL }).text}`
-        : buildLineText(item);
-    console.log(`\n--- sample ${item.channel} message (not sent) ---\n${redact(body)}\n---`);
+    const sample = item.type === "admin" ? `admin ${item.channel}` : item.channel;
+    if (seen.has(sample)) continue;
+    seen.add(sample);
+    let body;
+    if (item.channel === "email") {
+      const email = emailFor(item);
+      body = `Subject: ${email.subject}\n${email.text}`;
+    } else {
+      body = chatFor(item);
+    }
+    console.log(`\n--- sample ${sample} message (not sent) ---\n${redact(body)}\n---`);
   }
 }
 
@@ -188,7 +204,7 @@ async function main() {
 
   const fridays = await d1(FRIDAYS_SQL, [today, addDays(today, WINDOW_DAYS)]);
   const people = await d1(
-    "SELECT id, name, email, reminders, line_user_id, reminder_token FROM people WHERE email IS NOT NULL OR line_user_id IS NOT NULL"
+    "SELECT id, name, status, is_admin, email, reminders, line_user_id, reminder_token FROM people WHERE email IS NOT NULL OR line_user_id IS NOT NULL"
   );
   let sentKeys = new Set();
   if (fridays.length) {
@@ -199,7 +215,9 @@ async function main() {
     sentKeys = new Set(rows.map((r) => sentKey(r.friday_id, r.person_id, r.kind, r.channel)));
   }
 
-  const allDue = dueReminders({ today, fridays, people, sentKeys });
+  const allDue = [...dueReminders({ today, fridays, people, sentKeys }), ...dueAdminTodos({ today, fridays, people, sentKeys })].sort(
+    (a, b) => a.days - b.days || a.person.name.localeCompare(b.person.name)
+  );
   // Not logged as sent: it was never sent, and it is moot once the day is over.
   const nowMinutes = minutesInTokyo();
   const tooLate = allDue.filter((d) => tooLateToSend(d.days, nowMinutes));

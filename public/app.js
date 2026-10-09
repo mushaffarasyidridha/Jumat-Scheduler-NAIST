@@ -551,6 +551,19 @@
     return ok;
   }
 
+  // The admin's own to-do reminder (send the WhatsApp / Facebook reminders,
+  // post the announcement) only works if someone is marked admin AND can be
+  // reached, so say so rather than let it silently never arrive.
+  function adminStatusHtml() {
+    const admins = state.reminderStatus && state.reminderStatus.admins;
+    if (!admins || admins.reachable > 0) return "";
+    const why =
+      admins.total === 0
+        ? "No admin is set, so nobody is reminded to send the WhatsApp / Facebook reminders and post the announcement. In the roster, Edit your own name and tick “Admin this period”."
+        : "The admin has no email or LINE link, so the to-do reminder can't reach them. In the roster, Edit them and add an email (or a LINE link).";
+    return `<p class="small planner-status warn">🛠 ${why}</p>`;
+  }
+
   function reminderStatusHtml() {
     const status = state.reminderStatus;
     if (!status) return "";
@@ -679,6 +692,7 @@
 
     const legend = `
       ${reminderStatusHtml()}
+      ${adminStatusHtml()}
       <p class="small muted planner-legend">
         Every upcoming Friday in one place — pick directly from each list.
         <strong>✓</strong> available · <strong>✗</strong> unavailable ·
@@ -934,6 +948,7 @@ ${hadith.arabic}`;
           ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
           ${p.whatsapp ? `<div class="roster-meta">💬 ${escapeHtml(p.whatsapp)}</div>` : ""}
           ${reminderReach(p) ? `<div class="roster-meta">${escapeHtml(reminderReach(p).text)}</div>` : ""}
+          ${p.is_admin ? '<div class="roster-meta">🛠 Admin this period: gets the to-do reminders</div>' : ""}
         </div>
         ${
           unlocked
@@ -1019,6 +1034,7 @@ ${hadith.arabic}`;
     $("#person-email").value = person && "email" in person ? person.email || "" : "";
     $("#person-whatsapp").value = person && "whatsapp" in person ? person.whatsapp || "" : "";
     $("#person-reminders").checked = person && "reminders" in person ? !!person.reminders : true;
+    $("#person-admin").checked = person && "is_admin" in person ? !!person.is_admin : false;
     renderPersonLineBox(person);
     $("#person-error").classList.add("hidden");
     $("#person-modal").classList.remove("hidden");
@@ -1123,6 +1139,7 @@ ${hadith.arabic}`;
       payload.email = $("#person-email").value.trim();
       payload.whatsapp = $("#person-whatsapp").value.trim();
       payload.reminders = $("#person-reminders").checked;
+      payload.is_admin = $("#person-admin").checked;
     }
     if (!name) {
       $("#person-error").textContent = "Name is required";

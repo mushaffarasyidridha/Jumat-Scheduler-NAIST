@@ -98,6 +98,134 @@ export function dueReminders({ today, fridays, people, sentKeys }) {
   return due;
 }
 
+// ---------- admin to-do ----------
+//
+// WhatsApp and Facebook can't be automated (see the README), so the admin
+// sends those reminders by hand, and posts the Friday announcement in the
+// WhatsApp and Facebook groups. This is the nudge to do both, sent at the same
+// two moments as the automatic reminders (a week ahead, and the day before).
+
+const NAME_FIELD = { primary_khatib_id: "primary_name", secondary_khatib_id: "secondary_name", imam_id: "imam_name" };
+
+function reachedAutomatically(person) {
+  return !!(person && person.reminders && (person.email || person.line_user_id));
+}
+
+// For one Friday: who the admin has to message by hand (no email / LINE, or
+// their reminders are off, or a guest typed in as free text), and which
+// essential slots are still empty. The secondary khatib is standby, so an empty
+// secondary slot is not flagged.
+export function adminChecklist(friday, peopleById) {
+  const byHand = [];
+  const seen = new Map();
+  const open = [];
+  for (const slot of ROLE_SLOTS) {
+    const id = friday[slot.field];
+    const name = friday[NAME_FIELD[slot.field]];
+    if (!name) {
+      if (slot.field !== "secondary_khatib_id") open.push(slot.label);
+      continue;
+    }
+    if (id != null && reachedAutomatically(peopleById.get(id))) continue;
+    const key = id != null ? `id:${id}` : `guest:${String(name).toLowerCase()}`;
+    if (!seen.has(key)) {
+      const entry = { name, roles: [] };
+      seen.set(key, entry);
+      byHand.push(entry);
+    }
+    seen.get(key).roles.push(slot.label);
+  }
+  return { byHand, open };
+}
+
+// One entry per admin per channel per Friday, kind "admin-7d" or "admin-1d"
+// (own kinds, so they never collide with the khatib's own reminder in the log).
+export function dueAdminTodos({ today, fridays, people, sentKeys }) {
+  const peopleById = new Map(people.map((p) => [p.id, p]));
+  const admins = people.filter((p) => p.is_admin && p.status === "active" && p.reminders);
+  const due = [];
+
+  for (const friday of fridays) {
+    const days = daysUntil(today, friday.date);
+    const reminderKind = reminderKindFor(days);
+    if (!reminderKind) continue;
+
+    const checklist = adminChecklist(friday, peopleById);
+    // A week ahead the only job is the by-hand reminders and filling empty
+    // slots: with neither, stay quiet. The day before always goes out, because
+    // the group announcement is always due.
+    if (reminderKind === "7d" && !checklist.byHand.length && !checklist.open.length) continue;
+
+    const kind = `admin-${reminderKind}`;
+    for (const person of admins) {
+      const channels = [];
+      if (person.email) channels.push("email");
+      if (person.line_user_id) channels.push("line");
+      for (const channel of channels) {
+        const key = sentKey(friday.id, person.id, kind, channel);
+        if (sentKeys.has(key)) continue;
+        due.push({ type: "admin", key, friday, person, kind, channel, days, checklist });
+      }
+    }
+  }
+  return due;
+}
+
+function adminTodoBlocks({ kind, checklist }) {
+  const blocks = [];
+  if (checklist.byHand.length) {
+    blocks.push(
+      [
+        "Send the reminder by hand (WhatsApp / Facebook) to:",
+        ...checklist.byHand.map((p) => `   • ${p.name} (${p.roles.join(" + ")})`),
+      ].join("\n")
+    );
+  } else if (kind === "admin-1d") {
+    blocks.push("Nobody needs a reminder by hand: everyone assigned is reached by email or LINE.");
+  }
+  if (kind === "admin-1d") {
+    blocks.push("Post the announcement in the WhatsApp group and the Facebook group.");
+  }
+  return blocks;
+}
+
+const ADMIN_HOWTO =
+  "In the Admin planner: the Copy reminder / WhatsApp buttons are under each assigned person; for the announcement, open the Friday on the calendar and press Generate announcement.";
+
+export function buildAdminChatText({ friday, person, kind, days, checklist, siteUrl = DEFAULT_SITE_URL }) {
+  const blocks = adminTodoBlocks({ kind, checklist });
+  return [
+    "🗂 Jumat admin to-do",
+    `Assalamu'alaikum ${person.name}, for ${formatDateLong(friday.date)} (${whenPhrase(days)}):`,
+    ...blocks.map((block, i) => `${i + 1}. ${block}`),
+    ...(checklist.open.length ? [`⚠ Not assigned yet: ${checklist.open.join(", ")}`] : []),
+    `${ADMIN_HOWTO} ${siteUrl}`,
+  ].join("\n");
+}
+
+export function buildAdminEmail({ friday, person, kind, days, checklist, siteUrl }) {
+  const unsubscribeUrl = `${siteUrl}/api/reminders/unsubscribe?t=${person.reminder_token}`;
+  const blocks = adminTodoBlocks({ kind, checklist });
+  const text = [
+    `Assalamu'alaikum ${person.name},`,
+    "",
+    `You are an admin of the NAIST Jumat schedule. To do for ${formatDateLong(friday.date)} (${whenPhrase(days)}):`,
+    "",
+    ...blocks.map((block, i) => `${i + 1}. ${block}`),
+    ...(checklist.open.length ? ["", `Not assigned yet: ${checklist.open.join(", ")}`] : []),
+    "",
+    ADMIN_HOWTO,
+    siteUrl,
+    "",
+    "JazakAllahu khairan.",
+    "",
+    "--",
+    "You get this because you are marked as an admin on the NAIST Jumat roster.",
+    `Stop these reminders: ${unsubscribeUrl}`,
+  ].join("\n");
+  return { subject: `Jumat admin to-do: ${formatDateShort(friday.date)}`, text, unsubscribeUrl };
+}
+
 function lineupLines(friday) {
   const lines = [];
   if (friday.primary_name && friday.secondary_name) {

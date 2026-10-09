@@ -122,6 +122,28 @@ reminders" link, and each person has an *automatic email reminders* switch in
 Edit. A delivered reminder is logged in the database, so nothing is sent twice.
 The two manual buttons always work, whatever that switch says.
 
+### Admin to-do (the reminder for whoever is admin)
+
+Nothing can send WhatsApp or Facebook messages, or post in your WhatsApp / Facebook
+groups, for you. So the admin gets a **to-do reminder** instead, by email and/or LINE:
+
+- **A week before** each Friday: who to message by hand (people with no email or LINE,
+  or with their reminders switched off, or a guest typed in as free text), and which
+  khatib / imam slot is still empty. If there is nothing to do, nothing is sent.
+- **The day before**: the same list, plus *post the announcement in the WhatsApp group
+  and the Facebook group*.
+
+It goes out with the other reminders (the morning job, with the afternoon run as a
+catch-up) and is logged the same way, so it is never sent twice. The buttons to do the
+work are in the Admin planner: **Copy reminder / WhatsApp** under each assigned person,
+and **Generate announcement** when you open the Friday on the calendar.
+
+Who is admin is a setting, not fixed in the code: in the roster, *Edit* a person and tick
+**Admin this period** (they need an email or a LINE link to be reachable). When the role
+changes hands, untick the old admin and tick the new one; several admins at once is fine.
+The planner shows a warning if nobody is set, or the admin can't be reached. The admin's
+*automatic email reminders* switch (and the unsubscribe link) turns these off too.
+
 ### Set up email
 
 1. In the community Gmail account, turn on **2-Step Verification** (Google Account → Security).
