@@ -8,7 +8,7 @@ import { createRequire } from "node:module";
 // automatic reminders can never drift apart.
 const shared = createRequire(import.meta.url)("../public/reminder-message.js");
 export const { ROLE_SLOTS, PRAYER_TIME, formatDateShort, formatDateLong } = shared;
-const { whenPhrase, venueOf, standbyNote, chatText } = shared;
+const { whenPhrase, venueOf, standbyNote, chatText, calendarShortLink } = shared;
 
 export const DEFAULT_SITE_URL = "https://jumat-scheduler-naist.pages.dev";
 
@@ -243,6 +243,7 @@ export function buildEmail({ friday, person, roles, days, siteUrl }) {
   const unsubscribeUrl = `${siteUrl}/api/reminders/unsubscribe?t=${person.reminder_token}`;
   const lineup = lineupLines(friday);
   const standby = standbyNote(roles);
+  const calendar = calendarShortLink({ siteUrl, friday, roles });
 
   const text = [
     `Assalamu'alaikum ${person.name},`,
@@ -256,6 +257,7 @@ export function buildEmail({ friday, person, roles, days, siteUrl }) {
     "",
     ...(lineup.length ? ["Line-up that day:", ...lineup.map((l) => `  ${l}`), ""] : []),
     ...(standby ? [standby, ""] : []),
+    ...(calendar ? [`Add it to your Google Calendar: ${calendar}`, ""] : []),
     "Can't make it? Please tell the coordinator as soon as possible (you can reply to this email) so a replacement can be found.",
     "",
     `Full schedule: ${siteUrl}`,
