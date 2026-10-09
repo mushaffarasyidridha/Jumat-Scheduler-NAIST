@@ -11,7 +11,7 @@
   "use strict";
 
   // Same fixed start time the announcement generator prints (app.js).
-  const PRAYER_TIME = "12.40 pm (start)";
+  const PRAYER_TIME = "12.35 pm (start)";
   const MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",

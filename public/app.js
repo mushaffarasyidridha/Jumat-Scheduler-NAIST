@@ -874,7 +874,7 @@ Dear Brothers,
 
 ${venueLine(friday)}
 Date: ${formatDateAnnouncement(friday.date)}
-Time: 12.40 pm (start)
+Time: ${window.JumatReminderMessage.PRAYER_TIME}
 Khatib: ${khatibLine(friday)}
 Imam: ${friday.imam_name || "TBA"}
 

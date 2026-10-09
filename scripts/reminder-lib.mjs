@@ -7,8 +7,8 @@ import { createRequire } from "node:module";
 // planner's manual "Copy reminder" / WhatsApp buttons), so hand-sent and
 // automatic reminders can never drift apart.
 const shared = createRequire(import.meta.url)("../public/reminder-message.js");
-const { PRAYER_TIME, whenPhrase, venueOf, standbyNote, chatText } = shared;
-export const { ROLE_SLOTS, formatDateShort, formatDateLong } = shared;
+export const { ROLE_SLOTS, PRAYER_TIME, formatDateShort, formatDateLong } = shared;
+const { whenPhrase, venueOf, standbyNote, chatText } = shared;
 
 export const DEFAULT_SITE_URL = "https://jumat-scheduler-naist.pages.dev";
 
