@@ -9,7 +9,9 @@ name: Send Jumat reminders
 #
 # Run it by hand from the Actions tab to check the setup:
 #   - dry_run (default): lists what WOULD be sent; nothing is sent or recorded.
-#   - test_email: sends one test email to that address and stops.
+#   - test_email_to_sender: sends one test email to the community Gmail itself
+#     and stops (nothing to type, so no address ends up in a public run page).
+#   - test_email: sends one test email to the address typed in and stops.
 on:
   schedule:
     # GitHub starts scheduled jobs late when it is busy, and 00:00 UTC (the top
@@ -24,8 +26,12 @@ on:
         description: "Dry run: only list what would be sent (nothing is sent or recorded)"
         type: boolean
         default: true
+      test_email_to_sender:
+        description: "Test the Gmail secrets: send ONE test email to the community Gmail itself and stop (nothing to type)"
+        type: boolean
+        default: false
       test_email:
-        description: "Optional: send ONE test email to this address and stop (checks the Gmail secrets)"
+        description: "Optional: send ONE test email to this address instead and stop (a public repo may show what you type)"
         type: string
         required: false
 
@@ -69,4 +75,5 @@ jobs:
           # Scheduled runs have no inputs: they always send for real.
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
           TEST_EMAIL: ${{ github.event_name == 'workflow_dispatch' && inputs.test_email || '' }}
+          TEST_EMAIL_TO_SENDER: ${{ github.event_name == 'workflow_dispatch' && inputs.test_email_to_sender }}
         run: node scripts/send-reminders.mjs

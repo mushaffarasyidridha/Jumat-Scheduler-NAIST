@@ -182,8 +182,11 @@ The planner shows a warning if nobody is set, or the admin can't be reached. The
    - `GMAIL_USER` — the Gmail address
    - `GMAIL_APP_PASSWORD` — the 16 characters
    Never paste the app password into a chat or commit it; if it leaks, delete it in your Google account.
-4. *Actions → Send Jumat reminders → Run workflow*, type your own address in **test_email**:
-   you should get a test email (check spam the first time). Replies to reminders land in this Gmail inbox.
+4. *Actions → Send Jumat reminders → Run workflow*, tick **test_email_to_sender** and run it: one test
+   email is sent to the community Gmail itself (open that inbox, and check spam the first time). Nothing to
+   type. You can instead type another address in **test_email**, but this repository is public and the run page
+   may show what you typed. If you can't see the *Run workflow* button on a phone, try the browser's
+   "Desktop site" view. Replies to reminders land in this Gmail inbox.
 
 ### LINE (optional, off unless you set it up)
 
