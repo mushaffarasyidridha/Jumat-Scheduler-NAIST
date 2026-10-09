@@ -92,8 +92,10 @@ Google account (NAIST students and staff) can add it once, from the **Add the Ju
 your calendar** box under the calendar on the home page. The khatib and imam of every Friday then
 appear in their own calendar and update by themselves, with no need to open the site.
 
-- It carries only what the public schedule page already shows: the date, 12.35 pm, the venue and
-  who is khatib / imam (no contact details), for last week and the next 16 weeks. The events do not
+- Each Friday is one event, **12.35 to 13.05**, titled with the khatib and imam. Its description is
+  **the weekly announcement itself** (the same text as *Generate announcement*, with that week's
+  hadith) plus a *Can't make it?* link (see below). It covers last week and the next 16 weeks, and
+  carries only what the public schedule page already shows (no contact details). The events do not
   mark a subscriber as busy.
 - **Google refreshes subscribed calendars only every few hours** (nothing here can force it), so a
   last-minute change can take a while to show there. The home page and the weekly announcement stay
@@ -104,6 +106,21 @@ appear in their own calendar and update by themselves, with no need to open the 
   WhatsApp / Facebook groups, and the reminders by email / LINE / hand.
 - This is separate from the per-person *Add to Google Calendar* link in each reminder (see below), which
   puts one specific duty, with its role, on that person's own calendar.
+
+## "Can't make it" (and the alert to the admin)
+
+Every calendar event ends with a link, `<site>/?friday=ID`. Whoever is scheduled and can't come opens it,
+picks their name and presses **I can't make it**. No access code is needed (marking your own availability
+never needs one). From then on:
+
+- **On the website**, the Admin planner shows a red box at the top ("Ahmad can't make it on Friday, 16
+  October (Primary khatib)") and a ⚠ badge on that Friday. **Find a replacement** jumps to the Friday;
+  **Got it** removes the alert.
+- **By email**, every admin (*Admin this period*, with an email address and reminders on) gets a short message
+  with the person, the date, the role and the line-up now. It is sent by the reminder job, so it arrives
+  with the next run (about 08:23 or 14:23 JST); if the email fails it is retried at the next run.
+- It is only raised for someone who really is scheduled that Friday, for a Friday that has not passed. If they
+  say they are available again, or you put someone else in their slot, the alert disappears by itself.
 
 ## Reminders (automatic email, plus copy / WhatsApp by hand)
 
@@ -142,8 +159,8 @@ everything about it until its two secrets are set.
 event (12.35 pm, the venue, the person's role) in their Google Calendar; they press Save, and
 Google then reminds them with their own calendar notifications. The link is short
 (`/api/calendar/add?friday=…`) and reads the Friday's venue when it is opened, so a venue
-changed after the message went out is still right. The event is set to last 45 minutes
-(`PRAYER_DURATION_MIN` in `public/reminder-message.js`; only the start time is announced).
+changed after the message went out is still right. The event runs 12.35 to 13.05
+(`PRAYER_START` and `PRAYER_DURATION_MIN` in `public/reminder-message.js`).
 It needs no Google account setup on our side, because the person adds the event themselves.
 
 Nobody is emailed until you give them an address. Every email has a "stop these

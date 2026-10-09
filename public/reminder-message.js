@@ -17,7 +17,7 @@
   const JST_OFFSET_HOURS = 9;
   // How long the calendar event lasts. Only the start time is announced; this
   // just gives the event a sensible length on someone's calendar.
-  const PRAYER_DURATION_MIN = 45;
+  const PRAYER_DURATION_MIN = 30;
 
   function clockLabel({ hour, minute }) {
     return `${hour % 12 || 12}.${String(minute).padStart(2, "0")} ${hour >= 12 ? "pm" : "am"}`;
