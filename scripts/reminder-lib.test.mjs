@@ -156,3 +156,31 @@ test("LINE text is short and has the essentials", () => {
   assert.ok(text.length < 600);
   assert.ok(!text.includes("unsubscribe")); // LINE users stop by blocking the bot
 });
+
+// ---- the wording shared with the web page (public/reminder-message.js) ----
+import { createRequire } from "node:module";
+const shared = createRequire(import.meta.url)("../public/reminder-message.js");
+
+test("the page's copy/WhatsApp text is exactly the automatic chat text", () => {
+  const args = { friday: friday(), person: person(), roles: ["Primary khatib"], days: 3 };
+  assert.equal(shared.chatText(args), buildLineText(args));
+  assert.match(shared.chatText(args), /in 3 days/);
+});
+
+test("whatsappLink builds a wa.me link with the whole message encoded", () => {
+  const text = "Line 1\nSalam & \"quotes\" 🕌";
+  const link = shared.whatsappLink("+81 90-1234-5678", text);
+  assert.ok(link.startsWith("https://wa.me/819012345678?text="));
+  assert.equal(decodeURIComponent(link.split("?text=")[1]), text);
+  assert.ok(!link.includes("\n") && !link.includes(" "));
+});
+
+test("whatsappLink refuses numbers that cannot be international", () => {
+  for (const bad of [null, undefined, "", "123", "abc", "1".repeat(16)]) {
+    assert.equal(shared.whatsappLink(bad, "hi"), null);
+  }
+});
+
+test("each role has the wording the automatic reminders use", () => {
+  assert.deepEqual(shared.ROLE_SLOTS.map((s) => s.label), ["Primary khatib", "Secondary khatib (standby)", "Imam"]);
+});

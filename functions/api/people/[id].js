@@ -8,6 +8,7 @@ import {
   PERSON_COLUMNS,
   shapePerson,
   parseEmail,
+  parseWhatsapp,
 } from "../_utils.js";
 
 export async function onRequestDelete({ request, env, params }) {
@@ -80,6 +81,12 @@ export async function onRequestPatch({ request, env, params }) {
     if (email.error) return badRequest(email.error);
     fields.push("email = ?");
     values.push(email.value);
+  }
+  if (body.whatsapp !== undefined) {
+    const whatsapp = parseWhatsapp(body.whatsapp);
+    if (whatsapp.error) return badRequest(whatsapp.error);
+    fields.push("whatsapp = ?");
+    values.push(whatsapp.value);
   }
   if (typeof body.reminders === "boolean") {
     fields.push("reminders = ?");

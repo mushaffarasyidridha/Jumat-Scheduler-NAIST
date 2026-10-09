@@ -8,6 +8,7 @@ import {
   PERSON_COLUMNS,
   shapePerson,
   parseEmail,
+  parseWhatsapp,
   newToken,
 } from "../_utils.js";
 
@@ -39,14 +40,16 @@ export async function onRequestPost({ request, env }) {
   const contact = typeof body.contact === "string" ? body.contact.trim() || null : null;
   const email = parseEmail(body.email);
   if (email.error) return badRequest(email.error);
+  const whatsapp = parseWhatsapp(body.whatsapp);
+  if (whatsapp.error) return badRequest(whatsapp.error);
   const reminders = body.reminders === false ? 0 : 1;
 
   try {
     const result = await env.DB.prepare(
-      `INSERT INTO people (name, country, role, status, note, affiliation, contact, email, reminders, reminder_token)
-       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO people (name, country, role, status, note, affiliation, contact, email, whatsapp, reminders, reminder_token)
+       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)`
     )
-      .bind(name, country, role, note, affiliation, contact, email.value, reminders, newToken())
+      .bind(name, country, role, note, affiliation, contact, email.value, whatsapp.value, reminders, newToken())
       .run();
     const person = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`)
       .bind(result.meta.last_row_id)

@@ -40,11 +40,11 @@ export function requireAccess(request, env) {
 // and unsubscribe token are deliberately not in this list - they never leave
 // the server (the reminder job reads them straight from the database).
 export const PERSON_COLUMNS = `id, name, country, role, status, note, affiliation, contact,
-  email, reminders, line_user_id IS NOT NULL AS line_linked`;
+  email, whatsapp, reminders, line_user_id IS NOT NULL AS line_linked`;
 
 // Contact details and reminder settings are only for people who hold the
 // access code. Dropped server-side, not just hidden in the UI.
-const PRIVATE_PERSON_KEYS = ["contact", "email", "reminders", "line_linked"];
+const PRIVATE_PERSON_KEYS = ["contact", "email", "whatsapp", "reminders", "line_linked"];
 
 export function shapePerson(row, authorized) {
   const person = { ...row, reminders: !!row.reminders, line_linked: !!row.line_linked };
@@ -65,6 +65,29 @@ export function parseEmail(value) {
     return { error: "That email address doesn't look valid" };
   }
   return { value: email };
+}
+
+// Country codes where people habitually type the national "0" after the code
+// (+81 090..., +62 0812...). It is never valid there and would send the
+// WhatsApp link to the wrong number, so it is refused with a hint.
+const TRUNK_ZERO_CODES = /^\+(81|82|86|90|92|93|98|20|60|62|63|66|84|880|964)0/;
+
+// Stored as "+<digits>" so the one-tap WhatsApp link (wa.me) works. A number
+// without a leading "+" is refused rather than guessed at: a local-format
+// number like 090... would open the wrong chat.
+export function parseWhatsapp(value) {
+  const hint = "Enter the WhatsApp number in international format, e.g. +81 90 1234 5678 (no 0 after the country code)";
+  if (value === null || value === undefined) return { value: null };
+  if (typeof value !== "string") return { error: hint };
+  const raw = value.trim();
+  if (!raw) return { value: null };
+  if (!raw.startsWith("+") || /[^\d\s().+-]/.test(raw)) return { error: hint };
+  const digits = raw.replace(/\D/g, "");
+  const normalized = `+${digits}`;
+  if (digits.length < 8 || digits.length > 15 || digits[0] === "0" || TRUNK_ZERO_CODES.test(normalized)) {
+    return { error: hint };
+  }
+  return { value: normalized };
 }
 
 export function newToken() {

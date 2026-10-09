@@ -104,9 +104,12 @@ main {
 .calendar-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 #calendar-month-label { font-weight: 600; min-width: 120px; text-align: center; }
 
+/* minmax(0, 1fr), not plain 1fr: a plain 1fr column can't shrink below its
+   content, so one long assigned name widened the whole calendar past a phone's
+   screen. With 0 the name is cut with an ellipsis instead. */
 .calendar-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   text-align: center;
   font-size: 0.72rem;
   text-transform: uppercase;
@@ -117,11 +120,12 @@ main {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
 }
 
 .cal-day {
+  min-width: 0;
   min-height: 64px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -208,6 +212,8 @@ main {
   font-size: 0.85rem;
 }
 .planner-avail { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.planner-send { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+a.btn { display: inline-block; text-decoration: none; }
 .planner-status { margin: 0; }
 .planner-status.warn, .planner-reach.warn { color: var(--danger); }
 .planner-reach { display: block; margin-top: 3px; font-size: 0.72rem; color: var(--muted); }

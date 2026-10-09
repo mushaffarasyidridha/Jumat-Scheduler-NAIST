@@ -135,7 +135,10 @@
       </label>
       <label class="check-row">
         <input id="person-reminders" type="checkbox" checked />
-        <span>Send reminders before this person's Friday</span>
+        <span>Send automatic email reminders before this person's Friday</span>
+      </label>
+      <label>WhatsApp number <span class="muted small">(optional: gives a one-tap WhatsApp reminder button in the planner; only visible to people with the access code)</span>
+        <input id="person-whatsapp" type="tel" placeholder="+81 90 1234 5678" autocomplete="off" />
       </label>
       <div id="person-line" class="line-box hidden"></div>
       <div class="modal-actions">
@@ -148,6 +151,7 @@
 
   <div id="toast" class="toast hidden"></div>
 
+  <script src="reminder-message.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
