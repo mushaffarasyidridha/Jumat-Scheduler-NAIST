@@ -92,6 +92,10 @@ export async function onRequestPatch({ request, env, params }) {
     fields.push("reminders = ?");
     values.push(body.reminders ? 1 : 0);
   }
+  if (typeof body.is_admin === "boolean") {
+    fields.push("is_admin = ?");
+    values.push(body.is_admin ? 1 : 0);
+  }
 
   if (fields.length === 0) return badRequest("nothing to update");
 

@@ -40,14 +40,14 @@ export function requireAccess(request, env) {
 // and unsubscribe token are deliberately not in this list - they never leave
 // the server (the reminder job reads them straight from the database).
 export const PERSON_COLUMNS = `id, name, country, role, status, note, affiliation, contact,
-  email, whatsapp, reminders, line_user_id IS NOT NULL AS line_linked`;
+  email, whatsapp, reminders, is_admin, line_user_id IS NOT NULL AS line_linked`;
 
 // Contact details and reminder settings are only for people who hold the
 // access code. Dropped server-side, not just hidden in the UI.
-const PRIVATE_PERSON_KEYS = ["contact", "email", "whatsapp", "reminders", "line_linked"];
+const PRIVATE_PERSON_KEYS = ["contact", "email", "whatsapp", "reminders", "is_admin", "line_linked"];
 
 export function shapePerson(row, authorized) {
-  const person = { ...row, reminders: !!row.reminders, line_linked: !!row.line_linked };
+  const person = { ...row, reminders: !!row.reminders, is_admin: !!row.is_admin, line_linked: !!row.line_linked };
   if (!authorized) {
     for (const key of PRIVATE_PERSON_KEYS) delete person[key];
   }
