@@ -193,8 +193,13 @@ function printSamples(due) {
 }
 
 async function main() {
-  if (env.TEST_EMAIL) {
-    await sendTestEmail(env.TEST_EMAIL.trim());
+  // Test mode: one email, then stop; touches neither the database nor LINE.
+  // TEST_EMAIL_TO_SENDER sends it to the Gmail account itself, so nobody has to
+  // type an address (which a public repository could show on the run page).
+  const toSender = /^(1|true|yes)$/i.test(env.TEST_EMAIL_TO_SENDER || "");
+  if (env.TEST_EMAIL || toSender) {
+    if (!env.TEST_EMAIL) need("GMAIL_USER");
+    await sendTestEmail(env.TEST_EMAIL ? env.TEST_EMAIL.trim() : env.GMAIL_USER);
     return 0;
   }
 
