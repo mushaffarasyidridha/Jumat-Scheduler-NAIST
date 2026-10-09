@@ -85,6 +85,26 @@ and confirm the `DB` D1 binding is attached (it's normally picked up
 automatically from `wrangler.toml`, but older Pages projects sometimes need
 it set once by hand).
 
+## Subscribe to the schedule (Google Calendar, Apple, Outlook)
+
+The schedule is also published as a calendar feed at `/api/calendar/jumat.ics`. Everyone with a
+Google account (NAIST students and staff) can add it once, from the **Add the Jumat schedule to
+your calendar** box under the calendar on the home page. The khatib and imam of every Friday then
+appear in their own calendar and update by themselves, with no need to open the site.
+
+- It carries only what the public schedule page already shows: the date, 12.35 pm, the venue and
+  who is khatib / imam (no contact details), for last week and the next 16 weeks. The events do not
+  mark a subscriber as busy.
+- **Google refreshes subscribed calendars only every few hours** (nothing here can force it), so a
+  last-minute change can take a while to show there. The home page and the weekly announcement stay
+  the source of truth. If Google ever seems stuck, remove and re-add the calendar.
+- It is a standard feed, so Apple Calendar and Outlook work too (*Apple / Outlook* button), or paste the
+  link under *Other calendars → From URL* in Google Calendar.
+- People without a Google account keep using what exists: the home page, the weekly announcement in the
+  WhatsApp / Facebook groups, and the reminders by email / LINE / hand.
+- This is separate from the per-person *Add to Google Calendar* link in each reminder (see below), which
+  puts one specific duty, with its role, on that person's own calendar.
+
 ## Reminders (automatic email, plus copy / WhatsApp by hand)
 
 **Automatic, by email.** Every morning (about 08:30 Japan time, plus a catch-up

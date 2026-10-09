@@ -1166,5 +1166,22 @@ ${hadith.arabic}`;
     }
   });
 
+  // ---------- Subscribe to the schedule as a calendar ----------
+
+  // The same feed works in Google Calendar, Apple Calendar and Outlook; only the
+  // way of adding it differs. The links are built from this page's own address,
+  // so they are right on any domain this site is served from.
+  function setupSubscribe() {
+    const feed = `${location.origin}/api/calendar/jumat.ics`;
+    const webcal = feed.replace(/^https?:/, "webcal:");
+    $("#subscribe-google").href = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`;
+    $("#subscribe-webcal").href = webcal;
+    $("#subscribe-copy").addEventListener("click", async () => {
+      const ok = await copyText(feed);
+      toast(ok ? "Calendar link copied: in Google Calendar choose “Other calendars → From URL” and paste it" : "Could not copy the link", !ok);
+    });
+  }
+
+  setupSubscribe();
   loadAll().catch((e) => toast(e.message, true));
 })();

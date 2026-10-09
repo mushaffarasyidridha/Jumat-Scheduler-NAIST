@@ -151,6 +151,11 @@ main {
 .cal-day-summary .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-legend { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
+.subscribe-box { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.subscribe-box h3 { margin: 0 0 4px; font-size: 0.95rem; }
+.subscribe-box p { margin: 0 0 8px; }
+.subscribe-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+
 .modal-header { display: flex; align-items: center; justify-content: space-between; }
 .modal-header h3 { margin: 0; }
 .day-modal-box { max-width: 420px; }

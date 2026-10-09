@@ -69,13 +69,18 @@
     return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
   }
 
-  // A Google Calendar "new event" link, already filled in: the person opens it
-  // and presses Save. Times are given in UTC, so it is right whatever time zone
-  // their calendar is set to.
-  function calendarLink({ friday, roles }) {
-    const [year, month, day] = friday.date.split("-").map(Number);
+  // When the prayer starts and ends on a given Friday ("2026-10-16"), as UTC
+  // milliseconds - so it is right whatever time zone a calendar is set to.
+  function prayerWindowUtc(dateIso) {
+    const [year, month, day] = dateIso.split("-").map(Number);
     const startMs = Date.UTC(year, month - 1, day, PRAYER_START.hour - JST_OFFSET_HOURS, PRAYER_START.minute);
-    const endMs = startMs + PRAYER_DURATION_MIN * 60000;
+    return { startMs, endMs: startMs + PRAYER_DURATION_MIN * 60000 };
+  }
+
+  // A Google Calendar "new event" link, already filled in: the person opens it
+  // and presses Save.
+  function calendarLink({ friday, roles }) {
+    const { startMs, endMs } = prayerWindowUtc(friday.date);
     const role = roles.length ? roles.join(" + ") : null;
     const standby = standbyNote(roles);
     const venue = (friday.venue || "").trim();
@@ -149,6 +154,8 @@
     whenPhrase,
     venueOf,
     standbyNote,
+    calendarStamp,
+    prayerWindowUtc,
     calendarLink,
     calendarShortLink,
     rolesFromCodes,

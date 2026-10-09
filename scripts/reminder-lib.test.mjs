@@ -19,6 +19,7 @@ import {
   buildAdminEmail,
   buildAdminChatText,
 } from "./reminder-lib.mjs";
+import { buildCalendar, buildEvent, escapeText, foldLine } from "../functions/api/_ics.mjs";
 
 const person = (over = {}) => ({
   id: 1, name: "Ahmad", email: "a@example.com", reminders: 1, line_user_id: null, reminder_token: "t".repeat(32), ...over,
@@ -389,4 +390,85 @@ test("reminder email links to the calendar", () => {
   const { text } = buildEmail({ friday: friday(), person: person(), roles: ["Imam"], days: 1, siteUrl: "https://x.test" });
   assert.match(text, /Add it to your Google Calendar: https:\/\/x\.test\/api\/calendar\/add\?friday=10&roles=i\n/);
   assert.ok(!/undefined|null/.test(text));
+});
+
+// ---------- public calendar feed (.ics) ----------
+
+const unfold = (ics) => ics.replace(/\r\n[ \t]/g, "");
+const row = (over = {}) => ({
+  id: 7, date: "2026-10-16", venue: "Assembly Room - SENTAN", info: "TBA", updated_at: "2026-10-09 06:01:17",
+  primary_name: "Ahmad", secondary_name: "Bilal", imam_name: "Chris", ...over,
+});
+const feed = (fridays, over = {}) => buildCalendar({ fridays, siteUrl: "https://x.test", nowMs: Date.parse("2026-10-10T00:00:00Z"), ...over });
+
+test("ics: text values escape backslash, semicolon, comma and newlines", () => {
+  assert.equal(escapeText("a,b;c\\d\ne"), "a\\,b\\;c\\\\d\\ne");
+});
+
+test("ics: long lines fold at 75 octets (UTF-8 bytes) without cutting a character, and unfold back", () => {
+  const long = "DESCRIPTION:" + "あいうえお🕌 khatib, ".repeat(20);
+  const folded = foldLine(long);
+  for (const physical of folded.split("\r\n")) {
+    assert.ok(Buffer.byteLength(physical) <= 75, `${Buffer.byteLength(physical)} bytes`);
+    assert.ok(!physical.includes("�"));
+  }
+  assert.equal(folded.replace(/\r\n /g, ""), long);
+  assert.equal(foldLine("SHORT:line"), "SHORT:line");
+});
+
+test("ics: a valid VCALENDAR with CRLF line ends, one VEVENT per Friday, unique UIDs", () => {
+  const ics = feed([row(), row({ id: 8, date: "2026-10-23" })]);
+  assert.ok(ics.startsWith("BEGIN:VCALENDAR\r\nVERSION:2.0\r\n"));
+  assert.ok(ics.endsWith("END:VCALENDAR\r\n"));
+  assert.ok(!/(^|[^\r])\n/.test(ics), "no bare LF");
+  assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 2);
+  assert.equal((ics.match(/END:VEVENT/g) || []).length, 2);
+  assert.match(ics, /X-WR-CALNAME:NAIST Jumat prayer/);
+  assert.match(ics, /X-WR-TIMEZONE:Asia\/Tokyo/);
+  const uids = [...unfold(ics).matchAll(/^UID:(.+)$/gm)].map((m) => m[1]);
+  assert.deepEqual(uids, ["jumat-friday-7@jumat-scheduler-naist", "jumat-friday-8@jumat-scheduler-naist"]);
+  assert.equal(feed([]).includes("BEGIN:VEVENT"), false);
+});
+
+test("ics: the event time is the same 12.35 JST window the calendar link uses (03:35Z, 45 min)", () => {
+  const ics = feed([row()]);
+  assert.match(ics, /\r\nDTSTART:20261016T033500Z\r\n/);
+  assert.match(ics, /\r\nDTEND:20261016T042000Z\r\n/);
+  assert.match(ics, /\r\nTRANSP:TRANSPARENT\r\n/); // informational: does not mark subscribers busy
+});
+
+test("ics: summary, location and description show who is khatib / imam and where", () => {
+  const text = unfold(feed([row()]));
+  assert.match(text, /SUMMARY:Jumat prayer: Khatib Ahmad\r\n/);
+  assert.match(text, /LOCATION:Assembly Room - SENTAN\r\n/);
+  assert.match(text, /DESCRIPTION:Khatib: Ahmad \/ Bilal \(Secondary\)\\nImam: Chris\\nTime: 12\.35 pm \(start\)\\nVenue: Assembly Room - SENTAN\\n\\nSchedule and any changes: https:\/\/x\.test\r\n/);
+  assert.match(text, /URL:https:\/\/x\.test\r\n/);
+  assert.ok(!/Note:/.test(text), "'TBA' info is not shown as a note");
+  assert.match(unfold(feed([row({ info: "Bring your own mat, please" })])), /Note: Bring your own mat\\, please/);
+});
+
+test("ics: open slots, a missing venue and odd characters never produce null/undefined or broken lines", () => {
+  const text = unfold(feed([row({ primary_name: null, secondary_name: null, imam_name: null, venue: null, info: null })]));
+  assert.match(text, /SUMMARY:Jumat prayer \(khatib not assigned yet\)\r\n/);
+  assert.match(text, /Khatib: TBA\\nImam: TBA/);
+  assert.match(text, /Venue: to be announced/);
+  assert.ok(!/^LOCATION:/m.test(text));
+  assert.ok(!/undefined|null/.test(text));
+  const odd = unfold(feed([row({ primary_name: "O'Brien, Jr; \"Q\"", venue: "Room A, Floor 2" })]));
+  assert.match(odd, /SUMMARY:Jumat prayer: Khatib O'Brien\\, Jr\\; "Q"\r\n/);
+  assert.match(odd, /LOCATION:Room A\\, Floor 2\r\n/);
+  assert.match(feed([row({ primary_name: null, secondary_name: "Bilal" })]), /Khatib: Bilal \(Secondary\)/);
+});
+
+test("ics: DTSTAMP follows the row's last change, so an untouched Friday looks unchanged to calendar apps", () => {
+  const ics = feed([row()]);
+  assert.match(ics, /\r\nDTSTAMP:20261009T060117Z\r\n/);
+  assert.match(ics, /\r\nLAST-MODIFIED:20261009T060117Z\r\n/);
+  assert.equal(feed([row()]), feed([row()], { nowMs: Date.parse("2030-01-01T00:00:00Z") }));
+  assert.match(feed([row({ updated_at: null })]), /\r\nDTSTAMP:20261010T000000Z\r\n/); // falls back to "now"
+});
+
+test("ics: buildEvent returns one folded line per property", () => {
+  const lines = buildEvent(row({ info: "x".repeat(300) }), { siteUrl: "https://x.test", nowMs: 0 }).join("\r\n").split("\r\n");
+  assert.ok(lines.every((l) => Buffer.byteLength(l) <= 75));
 });
