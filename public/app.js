@@ -84,7 +84,7 @@
   function clearPrivateDom() {
     $("#planner-list").innerHTML = "";
     $("#person-line").innerHTML = "";
-    for (const field of ["contact", "email", "whatsapp"]) $(`#person-${field}`).value = "";
+    for (const field of ["contact", "email", "whatsapp", "calendar-email"]) $(`#person-${field}`).value = "";
   }
 
   $("#lock-btn").addEventListener("click", async () => {
@@ -663,6 +663,22 @@
     return ok;
   }
 
+  // Google Calendar: connected or not, and how the last update went.
+  function googleStatusHtml() {
+    const g = state.reminderStatus && state.reminderStatus.google;
+    if (!g) return "";
+    if (!g.configured) {
+      return '<p class="small muted planner-status">📆 Google Calendar is not connected yet, so events are only in the calendar feed. How to connect it: see “Google Calendar” in the README.</p>';
+    }
+    const when = g.last_ok_at ? new Date(g.last_ok_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
+    const text = g.last_error
+      ? `the last update failed: ${escapeHtml(g.last_error)}`
+      : when
+      ? `last updated ${escapeHtml(when)}; it follows every change made here`
+      : "connected, nothing sent yet: press “Sync now” to fill the calendar";
+    return `<p class="small planner-status ${g.last_error ? "warn" : ""}">📆 Google Calendar: ${text}. <button class="btn btn-sm btn-ghost" data-gcal-sync type="button">Sync now</button></p>`;
+  }
+
   // "Can't make it" alerts: someone scheduled for a Friday said they can't come.
   // Shown at the top of the planner until the admin dismisses them.
   function alertsHtml() {
@@ -827,6 +843,7 @@
     const legend = `
       ${alertsHtml()}
       ${reminderStatusHtml()}
+      ${googleStatusHtml()}
       ${adminStatusHtml()}
       <p class="small muted planner-legend">
         Every upcoming Friday in one place — pick directly from each list.
@@ -914,6 +931,22 @@
 
     list.querySelector(".planner-more")?.addEventListener("click", () => {
       state.plannerShowAll = !state.plannerShowAll;
+      renderPlanner();
+    });
+
+    list.querySelector("[data-gcal-sync]")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = "Syncing…";
+      try {
+        const r = await api("/api/calendar/sync", { method: "POST", body: "{}" });
+        if (!r.configured) toast("Google Calendar is not connected", true);
+        else if (r.failed) toast(`Google Calendar: ${r.synced} updated, ${r.failed} failed (${r.errors[0]?.message || "see the planner"})`, true);
+        else toast(r.synced ? `Google Calendar: ${r.synced} Friday(s) updated` : "Google Calendar was already up to date");
+      } catch (err) {
+        toast(err.message, true);
+      }
+      state.reminderStatus = await fetchReminderStatus();
       renderPlanner();
     });
 
@@ -1018,6 +1051,7 @@
           <div class="roster-meta">${[affiliationLabel(p.affiliation), p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
           ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
           ${p.whatsapp ? `<div class="roster-meta">💬 ${escapeHtml(p.whatsapp)}</div>` : ""}
+          ${p.calendar_email ? `<div class="roster-meta">📆 calendar invites to ${escapeHtml(p.calendar_email)}</div>` : ""}
           ${reminderReach(p) ? `<div class="roster-meta">${escapeHtml(reminderReach(p).text)}</div>` : ""}
           ${p.is_admin ? '<div class="roster-meta">🛠 Admin this period: gets the to-do reminders</div>' : ""}
         </div>
@@ -1104,6 +1138,7 @@
     $("#person-contact").value = person && "contact" in person ? person.contact || "" : "";
     $("#person-email").value = person && "email" in person ? person.email || "" : "";
     $("#person-whatsapp").value = person && "whatsapp" in person ? person.whatsapp || "" : "";
+    $("#person-calendar-email").value = person && "calendar_email" in person ? person.calendar_email || "" : "";
     $("#person-reminders").checked = person && "reminders" in person ? !!person.reminders : true;
     $("#person-admin").checked = person && "is_admin" in person ? !!person.is_admin : false;
     renderPersonLineBox(person);
@@ -1209,6 +1244,7 @@
     if (!editingPerson || "email" in editingPerson) {
       payload.email = $("#person-email").value.trim();
       payload.whatsapp = $("#person-whatsapp").value.trim();
+      payload.calendar_email = $("#person-calendar-email").value.trim();
       payload.reminders = $("#person-reminders").checked;
       payload.is_admin = $("#person-admin").checked;
     }
@@ -1253,6 +1289,28 @@
     });
   }
 
+  // When the shared Google calendar is connected, offer it first: unlike the
+  // feed above it is updated by the website at once, and carries the invitations.
+  async function showGoogleCalendar() {
+    try {
+      const res = await fetch("/api/calendar/info");
+      const { google } = res.ok ? await res.json() : {};
+      if (!google || !google.calendar_id) return;
+      const id = encodeURIComponent(google.calendar_id);
+      $("#subscribe-gcal-add").href = `https://calendar.google.com/calendar/r?cid=${id}`;
+      $("#subscribe-gcal-view").href = `https://calendar.google.com/calendar/embed?src=${id}&ctz=Asia%2FTokyo`;
+      $("#subscribe-google-calendar-actions").classList.remove("hidden");
+      $("#subscribe-google").classList.add("hidden"); // the live calendar replaces the slower feed button
+      $("#subscribe-intro").textContent =
+        "The khatib and imam of every Friday are on the shared Jumat calendar, each event with the weekly announcement. Add it to Google Calendar once and it follows the schedule.";
+      $("#subscribe-note").textContent =
+        "Changes made on this website reach that calendar within a minute or so. If you are scheduled and your NAIST account is on the roster, you also get an invitation. Apple / Outlook: use the buttons above. No Google account? Use this page, or the announcement posted in the WhatsApp / Facebook groups.";
+    } catch {
+      // Not connected, or offline: the feed buttons stay.
+    }
+  }
+
   setupSubscribe();
+  showGoogleCalendar();
   loadAll().then(openCantMakeItFromUrl).catch((e) => toast(e.message, true));
 })();

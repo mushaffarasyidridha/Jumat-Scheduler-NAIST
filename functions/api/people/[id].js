@@ -10,8 +10,9 @@ import {
   parseEmail,
   parseWhatsapp,
 } from "../_utils.js";
+import { syncAfterEdit } from "../_gcal_runtime.mjs";
 
-export async function onRequestDelete({ request, env, params }) {
+export async function onRequestDelete({ request, env, params, waitUntil }) {
   const denied = requireAccess(request, env);
   if (denied) return denied;
 
@@ -32,11 +33,12 @@ export async function onRequestDelete({ request, env, params }) {
 
   const result = await env.DB.prepare("DELETE FROM people WHERE id = ?").bind(id).run();
   if (result.meta.changes === 0) return notFound("person not found");
+  waitUntil(syncAfterEdit(env)); // they may have held a slot (and been invited)
 
   return json({ id });
 }
 
-export async function onRequestPatch({ request, env, params }) {
+export async function onRequestPatch({ request, env, params, waitUntil }) {
   const denied = requireAccess(request, env);
   if (denied) return denied;
 
@@ -83,6 +85,12 @@ export async function onRequestPatch({ request, env, params }) {
     fields.push("email = ?");
     values.push(email.value);
   }
+  if (body.calendar_email !== undefined) {
+    const calendarEmail = parseEmail(body.calendar_email);
+    if (calendarEmail.error) return badRequest(calendarEmail.error);
+    fields.push("calendar_email = ?");
+    values.push(calendarEmail.value);
+  }
   if (body.whatsapp !== undefined) {
     const whatsapp = parseWhatsapp(body.whatsapp);
     if (whatsapp.error) return badRequest(whatsapp.error);
@@ -116,6 +124,7 @@ export async function onRequestPatch({ request, env, params }) {
   }
 
   if (result.meta.changes === 0) return notFound("person not found");
+  waitUntil(syncAfterEdit(env)); // name, calendar account, status or reminders may change an invitation
 
   const person = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`)
     .bind(id)

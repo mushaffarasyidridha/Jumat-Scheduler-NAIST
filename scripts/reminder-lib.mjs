@@ -2,6 +2,10 @@
 // it says. No network or database access here, so it can be unit-tested.
 
 import { createRequire } from "node:module";
+import { lineupLines } from "../functions/api/_alertmail.mjs";
+
+// The "can't make it" email lives with the Functions code (they can send it too).
+export { alertRecipients, buildAlertEmail } from "../functions/api/_alertmail.mjs";
 
 // The wording and date helpers live in one file shared with the web page (the
 // planner's manual "Copy reminder" / WhatsApp buttons), so hand-sent and
@@ -10,7 +14,8 @@ const shared = createRequire(import.meta.url)("../public/reminder-message.js");
 export const { ROLE_SLOTS, PRAYER_TIME, formatDateShort, formatDateLong } = shared;
 const { whenPhrase, venueOf, standbyNote, chatText, calendarShortLink } = shared;
 
-export const DEFAULT_SITE_URL = "https://jumat-scheduler-naist.pages.dev";
+export { DEFAULT_SITE_URL } from "../functions/api/_site.mjs";
+import { DEFAULT_SITE_URL as FALLBACK_SITE_URL } from "../functions/api/_site.mjs";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000; // Japan has no daylight saving
@@ -192,7 +197,7 @@ function adminTodoBlocks({ kind, checklist }) {
 const ADMIN_HOWTO =
   "In the Admin planner: the Copy reminder / WhatsApp buttons are under each assigned person; for the announcement, open the Friday on the calendar and press Generate announcement.";
 
-export function buildAdminChatText({ friday, person, kind, days, checklist, siteUrl = DEFAULT_SITE_URL }) {
+export function buildAdminChatText({ friday, person, kind, days, checklist, siteUrl = FALLBACK_SITE_URL }) {
   const blocks = adminTodoBlocks({ kind, checklist });
   return [
     "🗂 Jumat admin to-do",
@@ -224,53 +229,6 @@ export function buildAdminEmail({ friday, person, kind, days, checklist, siteUrl
     `Stop these reminders: ${unsubscribeUrl}`,
   ].join("\n");
   return { subject: `Jumat admin to-do: ${formatDateShort(friday.date)}`, text, unsubscribeUrl };
-}
-
-// ---------- "can't make it" alert for the admin ----------
-
-// Who should be told when a scheduled person says they can't make it: active
-// admins with an email address who have not switched their reminders off.
-export function alertRecipients(people) {
-  return people.filter((p) => p.is_admin && p.status === "active" && p.reminders && p.email);
-}
-
-// `alert` carries person_name and roles; `friday` the date, venue and the
-// current line-up names (primary_name / secondary_name / imam_name).
-export function buildAlertEmail({ alert, friday, admin, days, siteUrl }) {
-  const unsubscribeUrl = `${siteUrl}/api/reminders/unsubscribe?t=${admin.reminder_token}`;
-  const lineup = lineupLines(friday);
-  const text = [
-    `Assalamu'alaikum ${admin.name},`,
-    "",
-    `${alert.person_name} has marked themselves unavailable for ${formatDateLong(friday.date)} (${whenPhrase(days)}).`,
-    `They were scheduled as: ${alert.roles}.`,
-    "",
-    ...(lineup.length ? ["Line-up now:", ...lineup.map((l) => `  ${l}`), ""] : []),
-    "A replacement is needed: open the Admin planner, pick someone else for that slot, and send them the reminder.",
-    siteUrl,
-    "",
-    "--",
-    "You get this because you are marked as an admin on the NAIST Jumat roster.",
-    `Stop these reminders: ${unsubscribeUrl}`,
-  ].join("\n");
-  return {
-    subject: `Jumat alert: ${alert.person_name} can't make it on ${formatDateShort(friday.date)}`,
-    text,
-    unsubscribeUrl,
-  };
-}
-
-function lineupLines(friday) {
-  const lines = [];
-  if (friday.primary_name && friday.secondary_name) {
-    lines.push(`Khatib: ${friday.primary_name} / ${friday.secondary_name} (Secondary)`);
-  } else if (friday.primary_name) {
-    lines.push(`Khatib: ${friday.primary_name}`);
-  } else if (friday.secondary_name) {
-    lines.push(`Khatib: ${friday.secondary_name} (Secondary)`);
-  }
-  if (friday.imam_name) lines.push(`Imam: ${friday.imam_name}`);
-  return lines;
 }
 
 export function buildEmail({ friday, person, roles, days, siteUrl }) {

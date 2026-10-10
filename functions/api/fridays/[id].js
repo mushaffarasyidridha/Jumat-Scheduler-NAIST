@@ -1,7 +1,8 @@
 import { json, badRequest, notFound, requireAccess } from "../_utils.js";
 import { resolveStaleAlerts } from "../_alerts.mjs";
+import { syncAfterEdit } from "../_gcal_runtime.mjs";
 
-export async function onRequestPatch({ request, env, params }) {
+export async function onRequestPatch({ request, env, params, waitUntil }) {
   const denied = requireAccess(request, env);
   if (denied) return denied;
 
@@ -66,6 +67,8 @@ export async function onRequestPatch({ request, env, params }) {
     .bind(...values)
     .run();
   await resolveStaleAlerts(env, id);
+  // Google Calendar follows the edit (a no-op until the bridge is set up).
+  waitUntil(syncAfterEdit(env));
 
   const row = await env.DB.prepare(
     `SELECT f.id, f.date, f.venue, f.info, f.is_history, f.updated_by, f.updated_at,

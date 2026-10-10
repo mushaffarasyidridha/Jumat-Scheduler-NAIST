@@ -42,15 +42,17 @@ export async function onRequestPost({ request, env }) {
   if (email.error) return badRequest(email.error);
   const whatsapp = parseWhatsapp(body.whatsapp);
   if (whatsapp.error) return badRequest(whatsapp.error);
+  const calendarEmail = parseEmail(body.calendar_email);
+  if (calendarEmail.error) return badRequest(calendarEmail.error);
   const reminders = body.reminders === false ? 0 : 1;
   const isAdmin = body.is_admin === true ? 1 : 0;
 
   try {
     const result = await env.DB.prepare(
-      `INSERT INTO people (name, country, role, status, note, affiliation, contact, email, whatsapp, reminders, is_admin, reminder_token)
-       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO people (name, country, role, status, note, affiliation, contact, email, whatsapp, calendar_email, reminders, is_admin, reminder_token)
+       VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-      .bind(name, country, role, note, affiliation, contact, email.value, whatsapp.value, reminders, isAdmin, newToken())
+      .bind(name, country, role, note, affiliation, contact, email.value, whatsapp.value, calendarEmail.value, reminders, isAdmin, newToken())
       .run();
     const person = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`)
       .bind(result.meta.last_row_id)

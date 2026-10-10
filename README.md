@@ -106,6 +106,71 @@ appear in their own calendar and update by themselves, with no need to open the 
   WhatsApp / Facebook groups, and the reminders by email / LINE / hand.
 - This is separate from the per-person *Add to Google Calendar* link in each reminder (see below), which
   puts one specific duty, with its role, on that person's own calendar.
+- Once the shared Google Calendar (next section) is connected, the home page offers that calendar first,
+  because Google updates it at once; this feed then stays for Apple Calendar and Outlook.
+
+## Google Calendar (a live shared calendar, with invitations)
+
+Besides the read-only feed above, the site can keep a real **Google Calendar** up to date: one event per
+Friday, **12.35 to 13.05**, titled with the khatib and imam, whose description is the weekly announcement
+plus the *Can't make it?* link. It is public (anyone can open or add it), and:
+
+- **It follows the website.** Assign a khatib, change the venue, rename someone: the event is updated within
+  a minute (and the planner says when it last was, with a *Sync now* button). The reminder job re-checks twice
+  a day, so a missed update is repaired.
+- **It invites people.** In the roster, *Edit* a person and fill in **NAIST Google account**. Whoever is
+  scheduled (primary, secondary or imam) with an account saved, and with their reminders on, is invited to
+  that Friday; take the account away, move them, or replace them and the invitation is updated or cancelled.
+  Changes that only reword the event (a different khatib's name in the title) are made quietly; changes to the
+  guests, the time or the venue notify the guests.
+- **The guest list is hidden** (guests cannot see each other, and Google's help says guest lists are not shown on
+  a public calendar for such events: check it once in a private browser window, see step 9).
+- **Reminders for invited people are their own calendar notifications** (Google sets them per person; the
+  site cannot). The automatic email / LINE reminders and the *Add to Google Calendar* links work as before.
+
+Google only lets a signed-in account invite people, and a plain Gmail account has no simple "API key" for
+that. So the site talks to a tiny **Apps Script** (`google-apps-script/Code.gs`) that runs inside the community
+Google account and does the calendar work for it. It needs no Google Cloud project, no OAuth client and no
+refresh tokens that expire. Until you set it up, nothing about Google changes on the site.
+
+### Set it up (about 15 minutes, once; sign in as the community Google account)
+
+1. **Create the calendar.** In Google Calendar, *Other calendars* → **+** → *Create new calendar*. Name it
+   "NAIST Jumat", time zone *Japan Standard Time*. Open its *Settings and sharing*: under *Access permissions
+   for events* tick **Make available to public** and choose **See all event details**. Under *Integrate
+   calendar*, copy the **Calendar ID** (it ends in `@group.calendar.google.com`).
+2. **Create the script.** At <https://script.google.com> choose *New project*, name it "Jumat bridge", delete the
+   sample code and paste in the whole of `google-apps-script/Code.gs`. Save.
+3. **Add the Calendar service.** In the left bar next to *Services* press **+**, choose **Google Calendar API**
+   and *Add* (leave the identifier `Calendar` and version `v3`).
+4. **Script properties.** *Project Settings* (gear) → *Script properties* → add two:
+   `SECRET` (a long random text, 40+ characters; you will paste the same text into GitHub) and `CALENDAR_ID`
+   (from step 1).
+5. **Deploy it as a web app.** *Deploy* → *New deployment* → type **Web app** → *Execute as*: **Me** → *Who has
+   access*: **Anyone** → *Deploy*. Google asks you to authorise it (*Review permissions* → your account →
+   *Advanced* → *Go to Jumat bridge (unsafe)* → *Allow*: the script is yours, it only needs your calendar and
+   to send email). Copy the **Web app URL** (it ends in `/exec`). "Anyone" is needed so the site can call it;
+   what protects it is the `SECRET`, which every request must carry.
+6. **GitHub secrets** (*Settings → Secrets and variables → Actions*; never paste them into a chat):
+   `GCAL_BRIDGE_URL` = the Web app URL, `GCAL_BRIDGE_SECRET` = the `SECRET` text.
+7. **Pass them to the website:** *Actions → One-time Cloudflare setup → Run workflow* (it copies the two secrets),
+   then *Actions → Deploy to Cloudflare Pages → Run workflow*.
+8. **Check it and fill the calendar:** *Actions → Send Jumat reminders → Run workflow*, tick **google_check**.
+   The log should say `Google Calendar connection OK` and `N Friday(s) updated`. (From then on the planner
+   shows the status and *Sync now*.) If it says *unauthorized*, the two `SECRET` texts differ; if it says the
+   bridge "did not answer with JSON", the web app is not deployed for *Anyone*.
+9. **Check the privacy once.** Open the calendar's public link (the home page button *Open it in your browser*)
+   in a private browser window: you should see the events with the announcement text, and **no guest list**.
+
+Links inside the events (the *Can't make it?* link) always point to `https://jumat-scheduler-naist.pages.dev`,
+whichever address someone edited from. If the site ever gets its own domain, set `SITE_URL` to it as a GitHub
+*variable* (Settings → Secrets and variables → Actions → Variables) and as an environment variable of the
+Cloudflare Pages project.
+
+Changing `Code.gs` later: paste the new code, then *Deploy → Manage deployments → Edit → New version* (the
+Web app URL stays the same). Limits worth knowing: a plain Gmail account may send about 100 emails a day through
+a script (the alert emails use this), and only what changed is sent to Google, so normal use stays far below
+Google's quotas.
 
 ## "Can't make it" (and the alert to the admin)
 
@@ -117,8 +182,9 @@ never needs one). From then on:
   October (Primary khatib)") and a ⚠ badge on that Friday. **Find a replacement** jumps to the Friday;
   **Got it** removes the alert.
 - **By email**, every admin (*Admin this period*, with an email address and reminders on) gets a short message
-  with the person, the date, the role and the line-up now. It is sent by the reminder job, so it arrives
-  with the next run (about 08:23 or 14:23 JST); if the email fails it is retried at the next run.
+  with the person, the date, the role and the line-up now. With the Google Calendar connection (below) it is
+  sent at once; without it, the reminder job sends it with its next run (about 08:23 or 14:23 JST). If an email
+  fails it is retried at the next run.
 - It is only raised for someone who really is scheduled that Friday, for a Friday that has not passed. If they
   say they are available again, or you put someone else in their slot, the alert disappears by itself.
 
