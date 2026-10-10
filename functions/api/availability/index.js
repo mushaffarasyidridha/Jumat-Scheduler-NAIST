@@ -1,5 +1,6 @@
 import { json, badRequest, checkAccess } from "../_utils.js";
 import { recordUnavailable, resolveAlerts } from "../_alerts.mjs";
+import { emailAlertNow } from "../_gcal_runtime.mjs";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -42,7 +43,7 @@ export async function onRequestGet({ request, env }) {
 // no real per-person login in this app (the shared code isn't one either),
 // so this can't verify the caller is only marking themselves - accepted
 // here the same way the shared code already is, for a small trusted group.
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   const body = await request.json().catch(() => null);
   const personId = Number(body?.person_id);
   const fridayId = Number(body?.friday_id);
@@ -78,6 +79,9 @@ export async function onRequestPost({ request, env }) {
   let alert = null;
   if (status === "unavailable") alert = await recordUnavailable(env, personId, fridayId);
   else await resolveAlerts(env, personId, fridayId);
+  // With the Google bridge set up the admins are emailed at once; without it the
+  // reminder job sends the email at its next run.
+  if (alert?.created) waitUntil(emailAlertNow(env, alert.id));
 
   return json({ ...row, scheduled: !!alert, alerted: !!alert?.created });
 }

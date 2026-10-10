@@ -9,6 +9,8 @@ name: Send Jumat reminders
 #
 # Run it by hand from the Actions tab to check the setup:
 #   - dry_run (default): lists what WOULD be sent; nothing is sent or recorded.
+#   - google_check: pings the Google Calendar bridge and brings the calendar up to
+#     date (the way to fill it the first time, and to see why it is failing).
 #   - test_email_to_sender: sends one test email to the community Gmail itself
 #     and stops (nothing to type, so no address ends up in a public run page).
 #   - test_email: sends one test email to the address typed in and stops.
@@ -26,6 +28,10 @@ on:
         description: "Dry run: only list what would be sent (nothing is sent or recorded)"
         type: boolean
         default: true
+      google_check:
+        description: "Check the Google Calendar connection and bring the calendar fully up to date (needs the bridge secrets)"
+        type: boolean
+        default: false
       test_email_to_sender:
         description: "Test the Gmail secrets: send ONE test email to the community Gmail itself and stop (nothing to type)"
         type: boolean
@@ -63,7 +69,7 @@ jobs:
         run: npm ci --omit=dev
 
       - name: Unit tests
-        run: node --test scripts/reminder-lib.test.mjs
+        run: node --test scripts/*.test.mjs
 
       - name: Send reminders
         env:
@@ -76,4 +82,10 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
           TEST_EMAIL: ${{ github.event_name == 'workflow_dispatch' && inputs.test_email || '' }}
           TEST_EMAIL_TO_SENDER: ${{ github.event_name == 'workflow_dispatch' && inputs.test_email_to_sender }}
+          # Optional: only if the site gets its own domain (default: the pages.dev address).
+          SITE_URL: ${{ vars.SITE_URL }}
+          # The Google Calendar bridge (empty until set up: then the job skips Google).
+          GCAL_BRIDGE_URL: ${{ secrets.GCAL_BRIDGE_URL }}
+          GCAL_BRIDGE_SECRET: ${{ secrets.GCAL_BRIDGE_SECRET }}
+          GCAL_CHECK: ${{ github.event_name == 'workflow_dispatch' && inputs.google_check }}
         run: node scripts/send-reminders.mjs

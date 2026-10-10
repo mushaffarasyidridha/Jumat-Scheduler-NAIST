@@ -15,6 +15,8 @@
 // print email addresses, LINE ids or unsubscribe tokens - see redact().
 
 import { readFileSync } from "node:fs";
+import { ALERT_ROW_SELECT } from "../functions/api/_alertmail.mjs";
+import { createBridge, syncUpcoming } from "../functions/api/_gcal.mjs";
 import {
   DEFAULT_SITE_URL,
   todayInTokyo,
@@ -40,6 +42,10 @@ const SITE_URL = (env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, "");
 const CF_API = env.CF_API_BASE || "https://api.cloudflare.com/client/v4";
 const LINE_API = env.LINE_API_BASE || "https://api.line.me";
 const WINDOW_DAYS = 7;
+// Set up with the Google Calendar bridge (see the README); until then the job
+// does nothing about Google.
+const BRIDGE = env.GCAL_BRIDGE_URL && env.GCAL_BRIDGE_SECRET ? createBridge({ url: env.GCAL_BRIDGE_URL, secret: env.GCAL_BRIDGE_SECRET }) : null;
+const GCAL_CHECK = /^(1|true|yes)$/i.test(env.GCAL_CHECK || "");
 
 function redact(text) {
   return String(text)
@@ -184,18 +190,7 @@ const FRIDAYS_SQL = `
 // Someone scheduled said they can't make it: tell the admin(s) by email. The
 // website shows the same alert straight away; this is the email half. Marked
 // sent only once at least one admin was emailed, so a failure is retried.
-const ALERTS_SQL = `
-  SELECT a.id AS alert_id, a.roles, p.name AS person_name,
-         f.id, f.date, f.venue,
-         COALESCE(pp.name, f.primary_khatib_name) AS primary_name,
-         COALESCE(sp.name, f.secondary_khatib_name) AS secondary_name,
-         COALESCE(ip.name, f.imam_name) AS imam_name
-  FROM availability_alerts a
-  JOIN fridays f ON f.id = a.friday_id
-  JOIN people p ON p.id = a.person_id
-  LEFT JOIN people pp ON pp.id = f.primary_khatib_id
-  LEFT JOIN people sp ON sp.id = f.secondary_khatib_id
-  LEFT JOIN people ip ON ip.id = f.imam_id
+const ALERTS_SQL = `${ALERT_ROW_SELECT}
   WHERE a.emailed_at IS NULL AND a.resolved_at IS NULL AND a.acknowledged_at IS NULL AND f.date >= ?
   ORDER BY f.date, a.id`;
 
@@ -264,6 +259,31 @@ function printSamples(due) {
   }
 }
 
+// Keep the shared Google Calendar in step with the schedule. The website already
+// does this at every edit; this run is the safety net (a failed or missed
+// update is retried here, and the first run fills the calendar). Counts only in
+// the log: this repository is public.
+async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
+  if (!BRIDGE) return { synced: 0, failed: 0 };
+  const db = { all: (sql, params = []) => d1(sql, params), run: (sql, params = []) => d1(sql, params) };
+  const result = await syncUpcoming({ bridge: BRIDGE, db, siteUrl: SITE_URL, today, dryRun, forcePing });
+  if (dryRun) {
+    console.log(`Google Calendar: ${result.wouldSync} of ${result.total} upcoming Friday(s) would be updated.`);
+    return { synced: 0, failed: 0 };
+  }
+  if (result.calendar) console.log(`Google Calendar connection OK (calendar "${result.calendar.name || "?"}").`);
+  if (result.synced || result.failed || result.deferred) {
+    console.log(
+      `Google Calendar: ${result.synced} Friday(s) updated, ${result.unchanged} already up to date` +
+        `${result.deferred ? `, ${result.deferred} left for the next run` : ""}${result.failed ? `, ${result.failed} FAILED` : ""}.`
+    );
+  } else {
+    console.log(`Google Calendar: all ${result.total} upcoming Friday(s) already up to date.`);
+  }
+  for (const e of result.errors) console.error(`FAILED: Google Calendar${e.date ? ` ${e.date}` : ""}: ${redact(e.message)}`);
+  return { synced: result.synced, failed: result.failed };
+}
+
 async function main() {
   // Test mode: one email, then stop; touches neither the database nor LINE.
   // TEST_EMAIL_TO_SENDER sends it to the Gmail account itself, so nobody has to
@@ -277,6 +297,15 @@ async function main() {
 
   need("CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID");
   const today = todayInTokyo();
+
+  // "Check the Google Calendar connection": ping the bridge, then bring the
+  // calendar fully up to date (this is also how it gets filled the first time).
+  if (GCAL_CHECK) {
+    if (!BRIDGE) throw new Error("Missing required setting(s): GCAL_BRIDGE_URL, GCAL_BRIDGE_SECRET");
+    // A check is a real run: the dry-run switch (on by default) does not apply.
+    const { failed } = await reconcileGoogle({ today, forcePing: true, dryRun: false });
+    return failed ? 1 : 0;
+  }
   console.log(`${DRY_RUN ? "DRY RUN - nothing is sent or recorded. " : ""}Today in Japan: ${today}`);
 
   const fridays = await d1(FRIDAYS_SQL, [today, addDays(today, WINDOW_DAYS)]);
@@ -348,6 +377,9 @@ async function main() {
   const alertStats = await sendAlertEmails({ today, people });
   sent += alertStats.sent;
   failed += alertStats.failed;
+
+  const google = await reconcileGoogle({ today });
+  failed += google.failed;
 
   if (DRY_RUN) {
     printSamples(due);

@@ -62,3 +62,20 @@ jobs:
           else
             echo "LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN not set - skipping (LINE reminders stay off)."
           fi
+
+      # Optional: only needed for the Google Calendar connection. The website
+      # talks to the Google bridge (an Apps Script in the community Google
+      # account) whenever the schedule is edited, so it needs these two as well;
+      # the reminder job reads its own copy from GitHub secrets.
+      - name: Copy Google Calendar bridge secrets to the website (if provided)
+        env:
+          GCAL_BRIDGE_URL: ${{ secrets.GCAL_BRIDGE_URL }}
+          GCAL_BRIDGE_SECRET: ${{ secrets.GCAL_BRIDGE_SECRET }}
+        run: |
+          if [ -n "$GCAL_BRIDGE_URL" ] && [ -n "$GCAL_BRIDGE_SECRET" ]; then
+            printf '%s' "$GCAL_BRIDGE_URL" | npx wrangler pages secret put GCAL_BRIDGE_URL --project-name=jumat-scheduler-naist
+            printf '%s' "$GCAL_BRIDGE_SECRET" | npx wrangler pages secret put GCAL_BRIDGE_SECRET --project-name=jumat-scheduler-naist
+            echo "Google bridge secrets copied. Run 'Deploy to Cloudflare Pages' once so the site picks them up."
+          else
+            echo "GCAL_BRIDGE_URL / GCAL_BRIDGE_SECRET not set - skipping (Google Calendar stays off)."
+          fi
