@@ -104,12 +104,15 @@ main {
 .calendar-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 #calendar-month-label { font-weight: 600; min-width: 120px; text-align: center; }
 
-/* minmax(0, 1fr), not plain 1fr: a plain 1fr column can't shrink below its
+/* minmax(0, ...), not plain 1fr: a plain 1fr column can't shrink below its
    content, so one long assigned name widened the whole calendar past a phone's
-   screen. With 0 the name is cut with an ellipsis instead. */
+   screen. Friday is the only column with names in it, so it is the wide one and
+   a name that still does not fit wraps onto the next line instead of being cut. */
+:root { --cal-cols: repeat(5, minmax(0, 1fr)) minmax(0, 2.4fr) minmax(0, 1fr); }
+@media (max-width: 640px) { :root { --cal-cols: repeat(5, minmax(0, 0.55fr)) minmax(0, 3.8fr) minmax(0, 0.55fr); } }
 .calendar-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: var(--cal-cols);
   text-align: center;
   font-size: 0.72rem;
   text-transform: uppercase;
@@ -120,7 +123,7 @@ main {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: var(--cal-cols);
   gap: 4px;
 }
 
@@ -148,7 +151,13 @@ main {
 }
 .cal-day.friday.clickable:hover { border-color: var(--primary); }
 .cal-day-summary { font-size: 0.7rem; line-height: 1.25; }
-.cal-day-summary .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-day-summary .name { display: block; border-radius: 10px; padding: 2px 7px; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .calendar-weekdays { font-size: 0.58rem; letter-spacing: 0; }
+  .cal-day { padding: 4px 2px; }
+  .cal-day.friday { padding: 4px 4px; }
+  .cal-day-summary { font-size: 0.68rem; }
+}
 .cal-legend { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 .subscribe-box { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
