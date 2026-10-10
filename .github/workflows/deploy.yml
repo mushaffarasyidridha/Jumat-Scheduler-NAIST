@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The guide page (/guide) lists the pages, tables, jobs and settings straight from
+      # the code, so what is published is always current even if someone forgot to run
+      # `npm run docs`; the version stamp shows at the bottom of the guide.
+      - name: Refresh the guide from the code
+        run: |
+          node scripts/build-guide.mjs
+          printf '{"commit":"%s","date":"%s"}\n' "${GITHUB_SHA::7}" "$(date -u +%Y-%m-%d)" > public/flows/version.json
+
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
         with:

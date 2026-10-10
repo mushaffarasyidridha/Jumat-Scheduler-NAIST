@@ -1,0 +1,155 @@
+{
+  "title": "How the NAIST Jumat Scheduler works",
+  "intro": "Flowcharts of the whole system: what a member sees, what the admin does, what runs by itself, and what to do when the admin changes. This page is part of the website and is updated whenever the system changes.",
+  "legend": [
+    { "color": "#3b78b8", "text": "Members and visitors" },
+    { "color": "#1f7a5c", "text": "Admin actions" },
+    { "color": "#6b7280", "text": "Automatic (the website and the robot)" },
+    { "color": "#c77b1c", "text": "Outside services (email, LINE, Google, WhatsApp)" },
+    { "color": "#b3261e", "text": "A problem, an alert or something to be careful with" }
+  ],
+  "sections": [
+    {
+      "id": "overview",
+      "tab": "Big picture",
+      "title": "The big picture",
+      "blurb": "Everything in one view, and what a normal week looks like.",
+      "diagrams": [
+        {
+          "file": "overview.mmd",
+          "title": "The system: people, website, robot and messages",
+          "caption": "Members, scheduled people and the admin all use the same web page. The robot sends the reminders and keeps things in step; the admin posts the announcement in the WhatsApp and Facebook groups by hand."
+        },
+        {
+          "file": "week.mmd",
+          "title": "A normal week",
+          "caption": "From the first availability mark to the prayer on Friday. Times are Japan time."
+        }
+      ],
+      "show": ["features"]
+    },
+    {
+      "id": "members",
+      "tab": "Members",
+      "title": "For members",
+      "blurb": "What anyone can do without a password, and what happens to someone who is scheduled.",
+      "diagrams": [
+        {
+          "file": "member.mmd",
+          "title": "What you can do on the website",
+          "caption": "No password is needed to look at the schedule, to share the announcement, to add the calendar or to say when you can come."
+        },
+        {
+          "file": "member-scheduled.mmd",
+          "title": "If you are scheduled as khatib or imam",
+          "caption": "How you are told, and what to do if you cannot come."
+        }
+      ]
+    },
+    {
+      "id": "admin",
+      "tab": "Admin",
+      "title": "For the admin",
+      "blurb": "The weekly routine, how to set up the people, and what to do when someone cannot come.",
+      "diagrams": [
+        {
+          "file": "admin-week.mmd",
+          "title": "The weekly routine",
+          "caption": "Most of it is picking people. The robot sends the reminders; you only send by hand to people the robot cannot reach, and post the announcement in the groups."
+        },
+        {
+          "file": "admin-roster.mmd",
+          "title": "The roster: people and how to reach them",
+          "caption": "The more ways a person can be reached, the less you do by hand."
+        },
+        {
+          "file": "admin-alerts.mmd",
+          "title": "When someone cannot make it",
+          "caption": "The alert reaches you on the website and by email, so a replacement can be found early."
+        }
+      ]
+    },
+    {
+      "id": "behind",
+      "tab": "Behind the scenes",
+      "title": "Behind the scenes",
+      "blurb": "What runs by itself, and the exact list of pages, tables, jobs and settings in the code (this list is written by the code itself, so it is always current).",
+      "diagrams": [
+        {
+          "file": "automation.mmd",
+          "title": "What runs when",
+          "caption": "Three triggers: an edit on the website, the twice-daily job, and a change of the code."
+        }
+      ],
+      "show": ["inventory"]
+    },
+    {
+      "id": "newadmin",
+      "tab": "New admin",
+      "title": "When the admin changes",
+      "blurb": "Three levels, from the everyday handover to moving the whole system.",
+      "diagrams": [
+        {
+          "file": "handover-role.mmd",
+          "title": "1. Hand over the admin job (about 5 minutes)",
+          "caption": "The everyday case: another person takes over the weekly work."
+        },
+        {
+          "file": "handover-secrets.mmd",
+          "title": "2. If the old admin leaves: change the keys they knew",
+          "caption": "Each key is separate. Change only the ones that person had. Never send a key or password in a chat; give it in a private message or a password manager."
+        },
+        {
+          "file": "handover-move.mmd",
+          "title": "3. Moving everything to the new owner's own accounts (rare)",
+          "caption": "Not rehearsed yet: treat it as a checklist and ask a developer for steps 4 and 6."
+        }
+      ]
+    },
+    {
+      "id": "setup",
+      "tab": "Setup",
+      "title": "Setup and what is switched on",
+      "blurb": "The optional parts, which ones are done, and the steps for the Google Calendar connection.",
+      "diagrams": [
+        {
+          "file": "setup-google.mmd",
+          "title": "Connecting Google Calendar (about 15 minutes, once)",
+          "caption": "Needs the community Google account and a computer. Full wording is in the README, section Google Calendar."
+        }
+      ],
+      "show": ["setup"]
+    }
+  ],
+  "features": [
+    { "audience": "Members", "name": "See the schedule", "what": "A calendar of the Fridays with khatib, imam and venue.", "status": "live" },
+    { "audience": "Members", "name": "Friday details and announcement", "what": "Tap a Friday to read it and copy the weekly announcement.", "status": "live" },
+    { "audience": "Members", "name": "Say when you can or cannot come", "what": "Choose your name, then I'm available or I'm unavailable. No password.", "status": "live" },
+    { "audience": "Members", "name": "Can't make it link", "what": "In every reminder and calendar event: one button that tells the admin you cannot come.", "status": "live" },
+    { "audience": "Members", "name": "Calendar feed", "what": "A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text.", "status": "live" },
+    { "audience": "Members", "name": "Public Google Calendar", "what": "A shared Google Calendar the website keeps up to date within a minute.", "status": "needs-setup" },
+    { "audience": "Scheduled people", "name": "Reminder emails", "what": "7 days before and the day before, to people whose email is on the roster.", "status": "live" },
+    { "audience": "Scheduled people", "name": "Reminder LINE messages", "what": "The same reminders on LINE, for people who linked the bot.", "status": "live" },
+    { "audience": "Scheduled people", "name": "Add to Google Calendar link", "what": "In every reminder: a ready-made calendar event with their role.", "status": "live" },
+    { "audience": "Scheduled people", "name": "Google Calendar invitation", "what": "Invited automatically if their NAIST Google account is on the roster.", "status": "needs-setup" },
+    { "audience": "Admin", "name": "Access code", "what": "Unlocks editing. Members never need it.", "status": "live" },
+    { "audience": "Admin", "name": "Roster", "what": "Add, edit, mark left NAIST or delete people; their contact details are visible only with the code.", "status": "live" },
+    { "audience": "Admin", "name": "Planner", "what": "Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown.", "status": "live" },
+    { "audience": "Admin", "name": "Copy reminder and WhatsApp buttons", "what": "For people the robot cannot reach: copy the text or open WhatsApp with it typed.", "status": "live" },
+    { "audience": "Admin", "name": "Announcement for the groups", "what": "Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups.", "status": "live" },
+    { "audience": "Admin", "name": "Admin to-do messages", "what": "A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement.", "status": "live" },
+    { "audience": "Admin", "name": "Can't-make-it alerts", "what": "A red box and badge in the planner, and an email, when a scheduled person cannot come.", "status": "live" },
+    { "audience": "Admin", "name": "Google Calendar sync", "what": "Status line and a Sync now button in the planner; instant alert emails.", "status": "needs-setup" },
+    { "audience": "Automatic", "name": "Daily job", "what": "08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync.", "status": "live" },
+    { "audience": "Automatic", "name": "Deploy", "what": "Every change of the code is published automatically, with its database changes.", "status": "live" }
+  ],
+  "setup": [
+    { "name": "Website, database and automatic deploy", "status": "done", "detail": "Live on Cloudflare Pages." },
+    { "name": "Community access code", "status": "done", "detail": "Set. Change it with the handover chart if an admin leaves." },
+    { "name": "Reminder emails (community Gmail)", "status": "done", "detail": "Test email received. Add each person's email in the roster to start their reminders." },
+    { "name": "LINE reminders", "status": "done", "detail": "Bot connected. Each person links with a code from the roster." },
+    { "name": "Google Calendar connection", "status": "in-progress", "detail": "Not connected yet: follow the chart below. Until then the calendar feed is used." },
+    { "name": "An admin marked in the roster", "status": "todo", "detail": "Edit your own entry and tick Admin this period (needs an email or LINE link)." },
+    { "name": "GitHub default branch set to main", "status": "todo", "detail": "Recommended: Settings, Branches. The scheduled job runs the code on main either way." }
+  ]
+}

@@ -1,0 +1,37 @@
+flowchart TD
+  subgraph people["👥 People"]
+    M["Muslim member<br/>any phone or computer"]
+    S["Scheduled khatib / imam"]
+    A["Admin<br/>knows the access code"]
+  end
+
+  DEP["🤖 Deploy<br/>whenever the code changes<br/>GitHub Actions"]
+  SITE["🌐 The website - free, always on<br/>the web page, the API behind it and the database<br/>Cloudflare Pages, Functions and D1<br/>roster · schedule · availability · alerts"]
+  JOB["🤖 Daily job<br/>08:23 and 14:23 Japan time<br/>GitHub Actions"]
+
+  subgraph out["📬 Where messages and calendars go"]
+    ICS["Calendar feed .ics<br/>Apple / Outlook"]
+    GC["Google Calendar<br/>public calendar + invitations<br/>needs one-time setup"]
+    MSG["Gmail and LINE bot<br/>reminder emails and messages"]
+    WA["WhatsApp / Facebook groups<br/>the admin posts the announcement by hand"]
+  end
+
+  M --> SITE
+  S --> SITE
+  A --> SITE
+  DEP -->|"publishes it"| SITE
+  SITE -->|"the job reads the schedule"| JOB
+  SITE --> ICS
+  SITE -->|"on every edit"| GC
+  SITE -.->|"admin copies the announcement"| WA
+  JOB --> MSG
+  JOB -->|"safety re-sync"| GC
+
+  classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
+  classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
+  class M,S member
+  class A admin
+  class SITE,DEP,JOB robot
+  class MSG,GC,ICS,WA out

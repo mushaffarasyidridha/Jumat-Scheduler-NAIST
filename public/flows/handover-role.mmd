@@ -1,0 +1,16 @@
+flowchart TD
+  A["A new admin is agreed"] --> B["Give them the community access code<br/>in a private message, not in a group chat"]
+  B --> C["In the roster: make sure the new admin has<br/>an email and or a LINE link"]
+  C --> D["Edit the new admin's entry<br/>tick Admin this period"]
+  D --> E["Edit the old admin's entry<br/>untick Admin this period"]
+  E --> F{"Does the planner show a red line<br/>about the admin?"}
+  F -->|"yes"| C
+  F -->|"no"| G["The to-do messages and the can't-make-it alerts<br/>now go to the new admin"]
+  G --> H{"Is the old admin leaving the team?"}
+  H -->|"yes"| I["Do the next chart:<br/>change the keys they knew"]
+  H -->|"no"| J["Done"]
+
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
+  class A,B,C,D,E,G,H,J admin
+  class F,I warn

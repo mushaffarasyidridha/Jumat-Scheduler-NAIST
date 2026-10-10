@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler pages dev",
     "test": "node --test scripts/*.test.mjs",
+    "docs": "node scripts/build-guide.mjs",
     "reminders:dry-run": "node scripts/send-reminders.mjs --dry-run",
     "migrate:local": "wrangler d1 migrations apply jumat-scheduler-naist-db --local",
     "migrate:remote": "wrangler d1 migrations apply jumat-scheduler-naist-db --remote",

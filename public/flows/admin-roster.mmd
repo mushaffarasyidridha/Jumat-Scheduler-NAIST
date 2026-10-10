@@ -1,0 +1,14 @@
+flowchart TD
+  A["Roster: + Add person<br/>or Edit on an existing person"] --> B["Name, role (khatib, imam or both),<br/>affiliation, country, note"]
+  B --> C["How can this person be reached? Fill in any of these:<br/>Email: automatic reminder emails, keep the reminders box ticked<br/>LINE: press Get LINE link code, the person sends the code to the bot<br/>WhatsApp number like +81 90 1234 5678: a one-tap button in the planner<br/>NAIST Google account: invited to their Friday in Google Calendar<br/>Nothing yet: you copy the reminder and send it by hand"]
+  C --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
+  D --> G{"Later, if something changes"}
+  G -->|"left NAIST"| E["Mark left NAIST<br/>the person stays in the history but is no longer offered"]
+  G -->|"added by mistake"| F["Delete<br/>only for a mistake or a duplicate"]
+
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
+  classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
+  class A,B,D,E,G admin
+  class C out
+  class F warn

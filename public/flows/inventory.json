@@ -1,0 +1,453 @@
+{
+  "routes": [
+    {
+      "route": "/api/access-check",
+      "file": "functions/api/access-check.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public, more with the code"
+        }
+      ],
+      "note": "Checks whether an access code is right, so the page knows to unlock the editing buttons."
+    },
+    {
+      "route": "/api/alerts",
+      "file": "functions/api/alerts/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "access code"
+        }
+      ],
+      "note": "The list of can't-make-it alerts waiting for the admin."
+    },
+    {
+      "route": "/api/alerts/:id",
+      "file": "functions/api/alerts/[id].js",
+      "methods": [
+        {
+          "method": "PATCH",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin marks one alert as seen (Got it)."
+    },
+    {
+      "route": "/api/availability",
+      "file": "functions/api/availability/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public, more with the code"
+        },
+        {
+          "method": "POST",
+          "access": "public"
+        },
+        {
+          "method": "DELETE",
+          "access": "public"
+        }
+      ],
+      "note": "Who can or cannot come on which Friday. Anyone can mark their own."
+    },
+    {
+      "route": "/api/calendar/add",
+      "file": "functions/api/calendar/add.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        }
+      ],
+      "note": "The Add to Google Calendar link in reminders: sends the person to Google with a ready-made event."
+    },
+    {
+      "route": "/api/calendar/info",
+      "file": "functions/api/calendar/info.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        }
+      ],
+      "note": "Tells the home page whether the shared Google Calendar is connected, to show its buttons."
+    },
+    {
+      "route": "/api/calendar/jumat.ics",
+      "file": "functions/api/calendar/jumat.ics.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        }
+      ],
+      "note": "The calendar feed for Apple, Outlook or Google (From URL)."
+    },
+    {
+      "route": "/api/calendar/sync",
+      "file": "functions/api/calendar/sync.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The planner's Sync now button: makes Google Calendar match the schedule."
+    },
+    {
+      "route": "/api/fridays",
+      "file": "functions/api/fridays/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        }
+      ],
+      "note": "The schedule: the list of Fridays. It also creates the coming ones."
+    },
+    {
+      "route": "/api/fridays/:id",
+      "file": "functions/api/fridays/[id].js",
+      "methods": [
+        {
+          "method": "PATCH",
+          "access": "access code"
+        }
+      ],
+      "note": "Assign khatib and imam, set the venue or a note for one Friday."
+    },
+    {
+      "route": "/api/line/webhook",
+      "file": "functions/api/line/webhook.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "LINE signature"
+        }
+      ],
+      "note": "Where LINE delivers messages to the bot. This is how a person links their LINE with the code."
+    },
+    {
+      "route": "/api/people",
+      "file": "functions/api/people/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public, more with the code"
+        },
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The roster: read the list (contact details only with the code) and add a person."
+    },
+    {
+      "route": "/api/people/:id",
+      "file": "functions/api/people/[id].js",
+      "methods": [
+        {
+          "method": "DELETE",
+          "access": "access code"
+        },
+        {
+          "method": "PATCH",
+          "access": "access code"
+        }
+      ],
+      "note": "Edit or delete one person."
+    },
+    {
+      "route": "/api/people/:id/line",
+      "file": "functions/api/people/[id]/line.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "access code"
+        },
+        {
+          "method": "DELETE",
+          "access": "access code"
+        }
+      ],
+      "note": "Create or remove the code a person uses to link their LINE."
+    },
+    {
+      "route": "/api/reminders/status",
+      "file": "functions/api/reminders/status.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "access code"
+        }
+      ],
+      "note": "What the planner shows about the reminder job, the admin and Google Calendar."
+    },
+    {
+      "route": "/api/reminders/unsubscribe",
+      "file": "functions/api/reminders/unsubscribe.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "private link"
+        },
+        {
+          "method": "POST",
+          "access": "private link"
+        }
+      ],
+      "note": "The stop-these-reminders link at the bottom of every email."
+    }
+  ],
+  "tables": [
+    {
+      "name": "people",
+      "migration": "0001_init.sql"
+    },
+    {
+      "name": "fridays",
+      "migration": "0001_init.sql"
+    },
+    {
+      "name": "availability",
+      "migration": "0001_init.sql"
+    },
+    {
+      "name": "reminder_log",
+      "migration": "0008_reminders.sql"
+    },
+    {
+      "name": "reminder_runs",
+      "migration": "0008_reminders.sql"
+    },
+    {
+      "name": "availability_alerts",
+      "migration": "0011_alerts.sql"
+    },
+    {
+      "name": "gcal_sync",
+      "migration": "0012_gcal.sql"
+    },
+    {
+      "name": "gcal_state",
+      "migration": "0012_gcal.sql"
+    }
+  ],
+  "migrations": [
+    {
+      "file": "0001_init.sql",
+      "note": "Jumat Scheduler NAIST - initial schema"
+    },
+    {
+      "file": "0002_seed.sql",
+      "note": "Jumat Scheduler NAIST - seed data"
+    },
+    {
+      "file": "0003_affiliation_contact.sql",
+      "note": "Broaden the roster beyond NAIST khatib/imam students (outside community"
+    },
+    {
+      "file": "0004_affiliation_categories.sql",
+      "note": "Split the \"naist\" affiliation into its actual categories: students and"
+    },
+    {
+      "file": "0005_imam.sql",
+      "note": "The original spreadsheet only ever tracked Primary/Secondary khatib per"
+    },
+    {
+      "file": "0006_drop_sensei_role.sql",
+      "note": "\"sensei\" was added to the role field (prayer-duty capability), but role"
+    },
+    {
+      "file": "0007_backfill_default_venue.sql",
+      "note": "Upcoming Fridays created before the default-venue change were stored with"
+    },
+    {
+      "file": "0008_reminders.sql",
+      "note": "Automatic reminders: where to reach each person, plus a log so nobody gets"
+    },
+    {
+      "file": "0009_whatsapp.sql",
+      "note": "WhatsApp number for the planner's one-tap \"send reminder\" link."
+    },
+    {
+      "file": "0010_admin.sql",
+      "note": "Who is the admin this period."
+    },
+    {
+      "file": "0011_alerts.sql",
+      "note": "\"Can't make it\" alerts."
+    },
+    {
+      "file": "0012_gcal.sql",
+      "note": "Google Calendar: one event per Friday on a shared (public) calendar, kept up to"
+    }
+  ],
+  "workflows": [
+    {
+      "file": "deploy.yml",
+      "name": "Deploy to Cloudflare Pages",
+      "when": [
+        "every change on main",
+        "by hand"
+      ]
+    },
+    {
+      "file": "reminders.yml",
+      "name": "Send Jumat reminders",
+      "when": [
+        "on a timer: 23:23 UTC = 08:23 JST",
+        "on a timer: 05:23 UTC = 14:23 JST",
+        "by hand (options: dry_run, google_check, test_email_to_sender, test_email)"
+      ]
+    },
+    {
+      "file": "setup.yml",
+      "name": "One-time Cloudflare setup",
+      "when": [
+        "by hand"
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "name": "CLOUDFLARE_ACCOUNT_ID",
+      "where": "GitHub secret",
+      "usedIn": [
+        "deploy.yml",
+        "reminders.yml",
+        "setup.yml"
+      ],
+      "note": "Which Cloudflare account the website lives in."
+    },
+    {
+      "name": "CLOUDFLARE_API_TOKEN",
+      "where": "GitHub secret",
+      "usedIn": [
+        "deploy.yml",
+        "reminders.yml",
+        "setup.yml"
+      ],
+      "note": "Lets GitHub deploy the website and read the database."
+    },
+    {
+      "name": "GCAL_BRIDGE_SECRET",
+      "where": "GitHub secret",
+      "usedIn": [
+        "reminders.yml",
+        "setup.yml"
+      ],
+      "note": "The shared secret that the website and the Apps Script both must know."
+    },
+    {
+      "name": "GCAL_BRIDGE_URL",
+      "where": "GitHub secret",
+      "usedIn": [
+        "reminders.yml",
+        "setup.yml"
+      ],
+      "note": "Address of the Google Apps Script that edits the shared Google Calendar."
+    },
+    {
+      "name": "GMAIL_APP_PASSWORD",
+      "where": "GitHub secret",
+      "usedIn": [
+        "reminders.yml"
+      ],
+      "note": "The Gmail app password (16 characters) used to send those emails."
+    },
+    {
+      "name": "GMAIL_USER",
+      "where": "GitHub secret",
+      "usedIn": [
+        "reminders.yml"
+      ],
+      "note": "The community Gmail address that sends the reminder emails."
+    },
+    {
+      "name": "LINE_CHANNEL_ACCESS_TOKEN",
+      "where": "GitHub secret",
+      "usedIn": [
+        "reminders.yml",
+        "setup.yml"
+      ],
+      "note": "LINE bot: lets the website and the job send LINE messages."
+    },
+    {
+      "name": "LINE_CHANNEL_SECRET",
+      "where": "GitHub secret",
+      "usedIn": [
+        "setup.yml"
+      ],
+      "note": "LINE bot: lets the website check that a message really comes from LINE."
+    },
+    {
+      "name": "SCHEDULER_ACCESS_CODE",
+      "where": "GitHub secret",
+      "usedIn": [
+        "setup.yml"
+      ],
+      "note": "The community access code (GitHub keeps it; the setup workflow copies it to the website as ACCESS_CODE)."
+    },
+    {
+      "name": "SITE_URL",
+      "where": "GitHub variable",
+      "usedIn": [
+        "reminders.yml"
+      ],
+      "note": "Optional: the website address used inside calendar events and emails, if the site gets its own domain."
+    },
+    {
+      "name": "ACCESS_CODE",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/_utils.js"
+      ],
+      "note": "The community access code, as the website sees it. Anyone who knows it can edit the schedule and roster."
+    },
+    {
+      "name": "GCAL_BRIDGE_SECRET",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/_gcal_runtime.mjs"
+      ],
+      "note": "The shared secret that the website and the Apps Script both must know."
+    },
+    {
+      "name": "GCAL_BRIDGE_URL",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/_gcal_runtime.mjs"
+      ],
+      "note": "Address of the Google Apps Script that edits the shared Google Calendar."
+    },
+    {
+      "name": "LINE_CHANNEL_ACCESS_TOKEN",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/line/webhook.js",
+        "functions/api/reminders/status.js"
+      ],
+      "note": "LINE bot: lets the website and the job send LINE messages."
+    },
+    {
+      "name": "LINE_CHANNEL_SECRET",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/line/webhook.js",
+        "functions/api/reminders/status.js"
+      ],
+      "note": "LINE bot: lets the website check that a message really comes from LINE."
+    },
+    {
+      "name": "SITE_URL",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/_site.mjs"
+      ],
+      "note": "Optional: the website address used inside calendar events and emails, if the site gets its own domain."
+    }
+  ]
+}
