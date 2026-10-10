@@ -5,7 +5,7 @@ flowchart TD
   D --> E["4. Keep a copy of the old data<br/>a developer exports the database with wrangler d1 export"]
   E --> F["5. Actions: One-time Cloudflare setup<br/>then Deploy to Cloudflare Pages<br/>this creates the new database and website"]
   F --> G["6. Put the old data into the new database<br/>a developer imports the copy"]
-  G --> H["7. Redo the optional parts for the new owner<br/>Gmail secrets, LINE bot, Google Calendar setup"]
+  G --> H["7. Redo only what belonged to a person<br/>the community Gmail, its Google Calendar and its script stay as they are:<br/>just copy GMAIL_USER, GMAIL_APP_PASSWORD, GCAL_BRIDGE_URL and GCAL_BRIDGE_SECRET<br/>into the new GitHub secrets (the system owner can help). Redo the LINE bot only if it was in a personal account"]
   H --> I["8. If the website address changed<br/>set SITE_URL and tell every member the new link"]
   I --> J["9. Check<br/>open the site, a dry run, a test email, google_check"]
 

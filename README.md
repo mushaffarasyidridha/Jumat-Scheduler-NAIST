@@ -148,6 +148,12 @@ refresh tokens that expire. Until you set it up, nothing about Google changes on
 
 ### Set it up (about 15 minutes, once; sign in as the community Google account)
 
+Always use the **community Gmail** (the one that sends the reminder emails), never a person's own account:
+the calendar, the script and the emails all belong to it, and the script runs as whichever account
+published it. The community Gmail stays when the admin changes, so nothing here has to be redone at a
+handover. If needed, change its recovery email (Google Account, Security, Recovery email); for anything
+else (its password, the app password, the script `SECRET`) contact the system owner.
+
 1. **Create the calendar.** In Google Calendar, *Other calendars* → **+** → *Create new calendar*. Name it
    "NAIST Jumat", time zone *Japan Standard Time*. Open its *Settings and sharing*: under *Access permissions
    for events* tick **Make available to public** and choose **See all event details**. Under *Integrate

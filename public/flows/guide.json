@@ -115,7 +115,7 @@
         {
           "file": "setup-google.mmd",
           "title": "Connecting Google Calendar (about 15 minutes, once)",
-          "caption": "Needs the community Google account and a computer. Full wording is in the README, section Google Calendar."
+          "caption": "Needs the community Gmail account (it stays when admins change) and a computer. Full wording is in the README, section Google Calendar."
         }
       ],
       "show": ["setup"]

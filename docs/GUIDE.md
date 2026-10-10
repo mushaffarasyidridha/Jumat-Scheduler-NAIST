@@ -403,23 +403,21 @@ Each key is separate. Change only the ones that person had. Never send a key or 
 flowchart LR
   B{"Someone who had access<br/>is leaving the admin team.<br/>What did they have?"}
   B --> D1["🔑 The access code<br/>Change the GitHub secret SCHEDULER_ACCESS_CODE<br/>then run Actions: One-time Cloudflare setup<br/>tell the remaining admins the new code"]
-  B --> D2["✉️ The community Gmail password<br/>In the Google account: delete the old app password and create a new one<br/>then update the GitHub secret GMAIL_APP_PASSWORD"]
+  B --> D2["✉️ The community Gmail<br/>sends the emails, owns the calendar and the script<br/>it stays: nothing to move or redo<br/>if needed, change its recovery email<br/>Google Account, Security, Recovery email<br/>anything else (password, app password, script secret):<br/>contact the system owner"]
   B --> D3["🐙 The GitHub repository<br/>Repository Settings, then Collaborators:<br/>remove them, or move the ownership"]
   B --> D4["☁️ The Cloudflare account<br/>Remove them under Members and create a new API token<br/>then update the GitHub secret CLOUDFLARE_API_TOKEN"]
   B --> D5["💬 The LINE Official Account<br/>In LINE Official Account Manager remove their role<br/>issue a new channel access token if needed<br/>update the GitHub secret LINE_CHANNEL_ACCESS_TOKEN<br/>then run One-time Cloudflare setup and Deploy"]
-  B --> D6["📅 The Google account that owns the calendar and the script<br/>Change that Google account's password<br/>change the Script property SECRET and the GitHub secret GCAL_BRIDGE_SECRET<br/>then run One-time Cloudflare setup and Deploy"]
 
   D1 --> E["Check everything:<br/>Actions: Send Jumat reminders,<br/>a dry run, a test email<br/>and google_check"]
   D2 --> E
   D3 --> E
   D4 --> E
   D5 --> E
-  D6 --> E
 
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
   class B warn
-  class D1,D2,D3,D4,D5,D6,E admin
+  class D1,D2,D3,D4,D5,E admin
 ```
 
 ### 3. Moving everything to the new owner's own accounts (rare)
@@ -434,7 +432,7 @@ flowchart TD
   D --> E["4. Keep a copy of the old data<br/>a developer exports the database with wrangler d1 export"]
   E --> F["5. Actions: One-time Cloudflare setup<br/>then Deploy to Cloudflare Pages<br/>this creates the new database and website"]
   F --> G["6. Put the old data into the new database<br/>a developer imports the copy"]
-  G --> H["7. Redo the optional parts for the new owner<br/>Gmail secrets, LINE bot, Google Calendar setup"]
+  G --> H["7. Redo only what belonged to a person<br/>the community Gmail, its Google Calendar and its script stay as they are:<br/>just copy GMAIL_USER, GMAIL_APP_PASSWORD, GCAL_BRIDGE_URL and GCAL_BRIDGE_SECRET<br/>into the new GitHub secrets (the system owner can help). Redo the LINE bot only if it was in a personal account"]
   H --> I["8. If the website address changed<br/>set SITE_URL and tell every member the new link"]
   I --> J["9. Check<br/>open the site, a dry run, a test email, google_check"]
 
@@ -450,11 +448,11 @@ The optional parts, which ones are done, and the steps for the Google Calendar c
 
 ### Connecting Google Calendar (about 15 minutes, once)
 
-Needs the community Google account and a computer. Full wording is in the README, section Google Calendar.
+Needs the community Gmail account (it stays when admins change) and a computer. Full wording is in the README, section Google Calendar.
 
 ```mermaid
 flowchart TD
-  A["Sign in as the community Google account<br/>use a computer"] --> B["1. Make the calendar<br/>Other calendars, plus, Create new calendar, name NAIST Jumat<br/>time zone Japan, make it public with all event details<br/>copy the Calendar ID"]
+  A["Sign in as the community Gmail account<br/>the one that sends the reminder emails, never a personal account<br/>it stays when admins change, so the calendar and script keep working<br/>use a computer"] --> B["1. Make the calendar<br/>Other calendars, plus, Create new calendar, name NAIST Jumat<br/>time zone Japan, make it public with all event details<br/>copy the Calendar ID"]
   B --> C["2. Make the script<br/>script.google.com, New project, paste google-apps-script/Code.gs"]
   C --> D["3. Add the Calendar service<br/>Services plus, Google Calendar API, Add"]
   D --> E["4. Two settings<br/>Project Settings, Script properties:<br/>SECRET and CALENDAR_ID"]

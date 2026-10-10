@@ -1,5 +1,5 @@
 flowchart TD
-  A["Sign in as the community Google account<br/>use a computer"] --> B["1. Make the calendar<br/>Other calendars, plus, Create new calendar, name NAIST Jumat<br/>time zone Japan, make it public with all event details<br/>copy the Calendar ID"]
+  A["Sign in as the community Gmail account<br/>the one that sends the reminder emails, never a personal account<br/>it stays when admins change, so the calendar and script keep working<br/>use a computer"] --> B["1. Make the calendar<br/>Other calendars, plus, Create new calendar, name NAIST Jumat<br/>time zone Japan, make it public with all event details<br/>copy the Calendar ID"]
   B --> C["2. Make the script<br/>script.google.com, New project, paste google-apps-script/Code.gs"]
   C --> D["3. Add the Calendar service<br/>Services plus, Google Calendar API, Add"]
   D --> E["4. Two settings<br/>Project Settings, Script properties:<br/>SECRET and CALENDAR_ID"]
