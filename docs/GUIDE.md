@@ -32,7 +32,7 @@ flowchart TD
 
   subgraph out["📬 Where messages and calendars go"]
     ICS["Calendar feed .ics<br/>Apple / Outlook"]
-    GC["Google Calendar<br/>public calendar + invitations<br/>needs one-time setup"]
+    GC["Google Calendar<br/>public calendar + invitations"]
     MSG["Gmail and LINE bot<br/>reminder emails and messages"]
     WA["WhatsApp / Facebook groups<br/>the admin posts the announcement by hand"]
   end
@@ -94,11 +94,11 @@ flowchart TD
 | Members | Say when you can or cannot come | Choose your name, then I'm available or I'm unavailable. No password. | ✅ live |
 | Members | Can't make it link | In every reminder and calendar event: one button that tells the admin you cannot come. | ✅ live |
 | Members | Calendar feed | A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text. | ✅ live |
-| Members | Public Google Calendar | A shared Google Calendar the website keeps up to date within a minute. | 🔧 needs setup |
+| Members | Public Google Calendar | A shared Google Calendar the website keeps up to date within a minute. | ✅ live |
 | Scheduled people | Reminder emails | 7 days before and the day before, to people whose email is on the roster. | ✅ live |
 | Scheduled people | Reminder LINE messages | The same reminders on LINE, for people who linked the bot. | ✅ live |
 | Scheduled people | Add to Google Calendar link | In every reminder: a ready-made calendar event with their role. | ✅ live |
-| Scheduled people | Google Calendar invitation | Invited automatically if their NAIST Google account is on the roster. | 🔧 needs setup |
+| Scheduled people | Google Calendar invitation | Invited automatically if their NAIST Google account is on the roster. | ✅ live |
 | Admin | Access code | Unlocks editing. Members never need it. | ✅ live |
 | Admin | Roster | Add, edit, mark left NAIST or delete people; their contact details are visible only with the code. | ✅ live |
 | Admin | Planner | Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. | ✅ live |
@@ -106,7 +106,7 @@ flowchart TD
 | Admin | Announcement for the groups | Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups. | ✅ live |
 | Admin | Admin to-do messages | A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement. | ✅ live |
 | Admin | Can't-make-it alerts | A red box and badge in the planner, and an email, when a scheduled person cannot come. | ✅ live |
-| Admin | Google Calendar sync | Status line and a Sync now button in the planner; instant alert emails. | 🔧 needs setup |
+| Admin | Google Calendar sync | Status line and a Sync now button in the planner; instant alert emails. | ✅ live |
 | Automatic | Daily job | 08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync. | ✅ live |
 | Automatic | Deploy | Every change of the code is published automatically, with its database changes. | ✅ live |
 
@@ -481,7 +481,7 @@ flowchart TD
 | Community access code | ✅ done | Set. Change it with the handover chart if an admin leaves. |
 | Reminder emails (community Gmail) | ✅ done | Test email received. Add each person's email in the roster to start their reminders. |
 | LINE reminders | ✅ done | Bot connected. Each person links with a code from the roster. |
-| Google Calendar connection | ⏳ in progress | Not connected yet: follow the chart below. Until then the calendar feed is used. |
+| Google Calendar connection | ✅ done | Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window. |
 | An admin marked in the roster | ☐ to do | Edit your own entry and tick Admin this period (needs an email or LINE link). |
 | GitHub default branch set to main | ☐ to do | Recommended: Settings, Branches. The scheduled job runs the code on main either way. |
 
