@@ -102,6 +102,7 @@ flowchart TD
 | Admin | Access code | Unlocks editing. Members never need it. | ✅ live |
 | Admin | Roster | Add, edit, mark left NAIST or delete people; their contact details are visible only with the code. | ✅ live |
 | Admin | Planner | Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. | ✅ live |
+| Admin | Guest speaker | Type a name such as Prof. Arai under any slot for someone who is not in the roster. They show in the calendar, announcement and Google event; no reminders can be sent to them, so the admin to-do lists them to message by hand. | ✅ live |
 | Admin | Copy reminder and WhatsApp buttons | For people the robot cannot reach: copy the text or open WhatsApp with it typed. | ✅ live |
 | Admin | Announcement for the groups | Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups. | ✅ live |
 | Admin | Admin to-do messages | A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement. | ✅ live |
@@ -176,7 +177,7 @@ flowchart TD
   C -->|"yes"| C1["Press Find a replacement<br/>see the alerts chart"]
   C -->|"no"| D
   C1 --> D["Look at the coming Fridays<br/>a warning mark means an empty slot or two turns too close"]
-  D --> E["Pick the primary khatib, secondary khatib and imam<br/>people who are available come first in each list"]
+  D --> E["Pick the primary khatib, secondary khatib and imam<br/>people who are available come first in each list<br/>or type a guest who is not in the roster, e.g. Prof. Arai, and press Set"]
   E --> F["It is saved at once<br/>Google Calendar follows, once connected"]
   F --> G["The robot sends the reminders by itself<br/>7 days before and the day before"]
   G --> H{"Does the person have<br/>an email or LINE?"}

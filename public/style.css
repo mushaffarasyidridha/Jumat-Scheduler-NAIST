@@ -239,6 +239,17 @@ main {
 .planner-alert-badge { font-size: 0.78rem; color: var(--danger); font-weight: 600; }
 .planner-row-flash { box-shadow: 0 0 0 2px var(--primary) inset; }
 .cant-done { font-weight: 600; color: var(--available); margin: 8px 0; }
+.planner-guest { display: flex; gap: 6px; margin-top: 6px; }
+.planner-guest input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8rem;
+}
 .planner-send { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 a.btn { display: inline-block; text-decoration: none; }
 .planner-status { margin: 0; }

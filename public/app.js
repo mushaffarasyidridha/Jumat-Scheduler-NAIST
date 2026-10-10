@@ -252,12 +252,13 @@
   // The currently-selected person always stays listed regardless, even if
   // inactive or their role changed since - so the UI never silently drops
   // the existing assignment from view.
-  function peopleOptions(selectedId, allowedRoles) {
+  function peopleOptions(selectedId, allowedRoles, guestName = "") {
     const candidates = state.people.filter(
       (p) => p.id === selectedId || (p.status === "active" && (!allowedRoles || allowedRoles.includes(p.role)))
     );
     return (
       '<option value="">— open —</option>' +
+      (guestName ? `<option value="__guest" selected>${escapeHtml(`Guest: ${guestName}`)}</option>` : "") +
       candidates
         .map((p) => `<option value="${p.id}" ${p.id === selectedId ? "selected" : ""}>${escapeHtml(p.name)}</option>`)
         .join("")
@@ -499,15 +500,15 @@
       <div class="slots">
         <div class="slot">
           <label>Primary khatib</label>
-          <select data-role="primary_khatib_id">${peopleOptions(friday.primary_khatib_id, ["khatib", "both"])}</select>
+          <select data-role="primary_khatib_id">${peopleOptions(friday.primary_khatib_id, ["khatib", "both"], friday.primary_khatib_id == null ? friday.primary_name : "")}</select>
         </div>
         <div class="slot">
           <label>Secondary khatib</label>
-          <select data-role="secondary_khatib_id">${peopleOptions(friday.secondary_khatib_id, ["khatib", "both"])}</select>
+          <select data-role="secondary_khatib_id">${peopleOptions(friday.secondary_khatib_id, ["khatib", "both"], friday.secondary_khatib_id == null ? friday.secondary_name : "")}</select>
         </div>
         <div class="slot">
           <label>Imam</label>
-          <select data-role="imam_id">${peopleOptions(friday.imam_id, ["imam", "both"])}</select>
+          <select data-role="imam_id">${peopleOptions(friday.imam_id, ["imam", "both"], friday.imam_id == null ? friday.imam_name : "")}</select>
         </div>
       </div>
       <div class="meta-row">
@@ -534,7 +535,10 @@
     `;
 
     body.querySelectorAll("select[data-role], input[data-role]").forEach((field) => {
-      field.addEventListener("change", () => saveFridayField(friday, field.dataset.role, field.value));
+      field.addEventListener("change", () => {
+        if (field.value === "__guest") return; // that is the guest already saved
+        saveFridayField(friday, field.dataset.role, field.value);
+      });
     });
     body.querySelector('[data-role="mark-available"]').addEventListener("click", () => setAvailability(friday.id, "available"));
     body.querySelector('[data-role="mark-unavailable"]').addEventListener("click", () => setAvailability(friday.id, "unavailable"));
@@ -612,9 +616,9 @@
   const PLANNER_DEFAULT_ROWS = 8;
   const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
   const PLANNER_SLOTS = [
-    { field: "primary_khatib_id", label: "Primary khatib", turns: "khatib", roles: ["khatib", "both"] },
-    { field: "secondary_khatib_id", label: "Secondary khatib", turns: "khatib", roles: ["khatib", "both"] },
-    { field: "imam_id", label: "Imam", turns: "imam", roles: ["imam", "both"] },
+    { field: "primary_khatib_id", label: "Primary khatib", turns: "khatib", roles: ["khatib", "both"], name: "primary_name", guest: "primary_khatib_name" },
+    { field: "secondary_khatib_id", label: "Secondary khatib", turns: "khatib", roles: ["khatib", "both"], name: "secondary_name", guest: "secondary_khatib_name" },
+    { field: "imam_id", label: "Imam", turns: "imam", roles: ["imam", "both"], name: "imam_name", guest: "imam_name" },
   ];
 
   const lineEnabled = () => !!(state.reminderStatus && state.reminderStatus.line_configured);
@@ -787,6 +791,11 @@
     };
   }
 
+  // A slot can hold a guest typed in by name (e.g. "Prof. Arai") instead of a roster person:
+  // then the id is empty and only the free-text name is set.
+  const GUEST_VALUE = "__guest"; // same text as in peopleOptions
+  const guestNameFor = (friday, slot) => (friday[slot.field] == null && friday[slot.name] ? friday[slot.name] : "");
+
   function plannerOptions(friday, slot, turnsByKind, availability) {
     const selectedId = friday[slot.field];
     const otherKhatibId =
@@ -818,7 +827,12 @@
       const label = `${mark}${p.name} · ${prev}${next}${close ? " ⚠" : ""}${dup}`;
       return `<option value="${p.id}" ${p.id === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`;
     });
-    return '<option value="">— open —</option>' + options.join("");
+    const guest = guestNameFor(friday, slot);
+    return (
+      '<option value="">— open —</option>' +
+      (guest ? `<option value="${GUEST_VALUE}" selected>${escapeHtml(`Guest: ${guest}`)}</option>` : "") +
+      options.join("")
+    );
   }
 
   function renderPlanner() {
@@ -835,6 +849,13 @@
     // changes the gaps shown in every other row), so put focus back afterwards.
     const active = document.activeElement;
     const focusKey = list.contains(active) && active.dataset.slot ? `${active.closest(".planner-row").dataset.id}:${active.dataset.slot}` : null;
+
+    // A redraw (after any save) must not wipe a guest name that is half typed.
+    const typedGuests = new Map(
+      [...list.querySelectorAll("input[data-guest]")]
+        .filter((i) => i.value !== i.defaultValue)
+        .map((i) => [`${i.closest(".planner-row").dataset.id}:${i.dataset.guest}`, i.value])
+    );
 
     const today = todayISO();
     const upcoming = state.fridays.filter((f) => !f.is_history && f.date >= today).sort((a, b) => a.date.localeCompare(b.date));
@@ -902,6 +923,11 @@
               <select data-slot="${slot.field}">${plannerOptions(f, slot, turnsByKind, availability)}</select>
               ${reach ? `<small class="planner-reach ${reach.warn ? "warn" : ""}">${escapeHtml(reach.text)}</small>` : ""}
             </label>
+            <div class="planner-guest">
+              <input type="text" maxlength="80" data-guest="${slot.guest}" value="${escapeHtml(guestNameFor(f, slot))}" placeholder="or a guest, e.g. Prof. Arai" aria-label="Guest name for ${escapeHtml(slot.label)}" autocomplete="off" />
+              <button class="btn btn-sm btn-ghost" data-guest-set="${slot.guest}" type="button">Set</button>
+            </div>
+            ${guestNameFor(f, slot) ? '<small class="planner-reach">Guest: no reminders can be sent, message them yourself.</small>' : ""}
             ${send}
           </div>`;
       }).join("");
@@ -928,6 +954,11 @@
           }</button>`
         : "";
     list.innerHTML = legend + rows.join("") + toggle;
+    for (const [key, value] of typedGuests) {
+      const [id, field] = key.split(":");
+      const input = list.querySelector(`.planner-row[data-id="${id}"] input[data-guest="${field}"]`);
+      if (input) input.value = value;
+    }
 
     list.querySelector(".planner-more")?.addEventListener("click", () => {
       state.plannerShowAll = !state.plannerShowAll;
@@ -983,7 +1014,26 @@
       const friday = state.fridays.find((f) => f.id === Number(row.dataset.id));
       row.querySelector("[data-planner-open]").addEventListener("click", () => openDayModal(friday.id));
       row.querySelectorAll("select[data-slot]").forEach((select) => {
-        select.addEventListener("change", () => saveFridayField(friday, select.dataset.slot, select.value));
+        select.addEventListener("change", () => {
+          if (select.value === GUEST_VALUE) return; // that is the guest already saved
+          saveFridayField(friday, select.dataset.slot, select.value);
+        });
+      });
+      row.querySelectorAll("input[data-guest]").forEach((input) => {
+        const slot = PLANNER_SLOTS.find((x) => x.guest === input.dataset.guest);
+        const save = () => {
+          const name = input.value.trim().replace(/\s+/g, " ");
+          if (!name && !guestNameFor(friday, slot)) return toast("Type the guest's name first", true);
+          input.value = input.defaultValue = name; // saved text is no longer "half typed"
+          saveFridayField(friday, input.dataset.guest, name);
+        };
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            save();
+          }
+        });
+        input.closest(".planner-guest").querySelector("[data-guest-set]").addEventListener("click", save);
       });
       row.querySelectorAll("[data-copy-slot]").forEach((btn) => {
         btn.addEventListener("click", async () => {

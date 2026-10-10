@@ -2,6 +2,9 @@ import { json, badRequest, notFound, requireAccess } from "../_utils.js";
 import { resolveStaleAlerts } from "../_alerts.mjs";
 import { syncAfterEdit } from "../_gcal_runtime.mjs";
 
+// A guest typed in by name: tidy spaces, at most 80 characters, empty means none.
+const guestName = (value) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 80) || null;
+
 export async function onRequestPatch({ request, env, params, waitUntil }) {
   const denied = requireAccess(request, env);
   if (denied) return denied;
@@ -23,26 +26,26 @@ export async function onRequestPatch({ request, env, params, waitUntil }) {
   // Setting one clears the other so the UI's COALESCE(person name, free text) stays unambiguous.
   if ("primary_khatib_id" in body) {
     fields.push("primary_khatib_id = ?", "primary_khatib_name = ?");
-    values.push(body.primary_khatib_id || null, body.primary_khatib_id ? null : body.primary_khatib_name || null);
+    values.push(body.primary_khatib_id || null, body.primary_khatib_id ? null : guestName(body.primary_khatib_name));
   } else if ("primary_khatib_name" in body) {
     fields.push("primary_khatib_id = ?", "primary_khatib_name = ?");
-    values.push(null, body.primary_khatib_name ? String(body.primary_khatib_name).trim() : null);
+    values.push(null, guestName(body.primary_khatib_name));
   }
 
   if ("secondary_khatib_id" in body) {
     fields.push("secondary_khatib_id = ?", "secondary_khatib_name = ?");
-    values.push(body.secondary_khatib_id || null, body.secondary_khatib_id ? null : body.secondary_khatib_name || null);
+    values.push(body.secondary_khatib_id || null, body.secondary_khatib_id ? null : guestName(body.secondary_khatib_name));
   } else if ("secondary_khatib_name" in body) {
     fields.push("secondary_khatib_id = ?", "secondary_khatib_name = ?");
-    values.push(null, body.secondary_khatib_name ? String(body.secondary_khatib_name).trim() : null);
+    values.push(null, guestName(body.secondary_khatib_name));
   }
 
   if ("imam_id" in body) {
     fields.push("imam_id = ?", "imam_name = ?");
-    values.push(body.imam_id || null, body.imam_id ? null : body.imam_name || null);
+    values.push(body.imam_id || null, body.imam_id ? null : guestName(body.imam_name));
   } else if ("imam_name" in body) {
     fields.push("imam_id = ?", "imam_name = ?");
-    values.push(null, body.imam_name ? String(body.imam_name).trim() : null);
+    values.push(null, guestName(body.imam_name));
   }
 
   if (typeof body.venue === "string" || body.venue === null) {
