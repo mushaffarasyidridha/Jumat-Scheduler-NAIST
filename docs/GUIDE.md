@@ -403,7 +403,7 @@ Each key is separate. Change only the ones that person had. Never send a key or 
 flowchart LR
   B{"Someone who had access<br/>is leaving the admin team.<br/>What did they have?"}
   B --> D1["🔑 The access code<br/>Change the GitHub secret SCHEDULER_ACCESS_CODE<br/>then run Actions: One-time Cloudflare setup<br/>tell the remaining admins the new code"]
-  B --> D2["✉️ The community Gmail<br/>sends the emails, owns the calendar and the script<br/>it stays: nothing to move or redo<br/>if needed, change its recovery email<br/>Google Account, Security, Recovery email<br/>anything else (password, app password, script secret):<br/>contact the system owner"]
+  B --> D2["✉️ The community Gmail<br/>sends the emails, owns the calendar and the script<br/>it stays: nothing to move or redo<br/>if needed, change its recovery email<br/>Google Account, Security, Recovery email<br/>anything else (password, app password, script secret):<br/>contact the system owner<br/>(WhatsApp: see Help at the bottom of this page)"]
   B --> D3["🐙 The GitHub repository<br/>Repository Settings, then Collaborators:<br/>remove them, or move the ownership"]
   B --> D4["☁️ The Cloudflare account<br/>Remove them under Members and create a new API token<br/>then update the GitHub secret CLOUDFLARE_API_TOKEN"]
   B --> D5["💬 The LINE Official Account<br/>In LINE Official Account Manager remove their role<br/>issue a new channel access token if needed<br/>update the GitHub secret LINE_CHANNEL_ACCESS_TOKEN<br/>then run One-time Cloudflare setup and Deploy"]
@@ -484,3 +484,7 @@ flowchart TD
 | Google Calendar connection | ⏳ in progress | Not connected yet: follow the chart below. Until then the calendar feed is used. |
 | An admin marked in the roster | ☐ to do | Edit your own entry and tick Admin this period (needs an email or LINE link). |
 | GitHub default branch set to main | ☐ to do | Recommended: Settings, Branches. The scheduled job runs the code on main either way. |
+
+## Help
+
+Something not working, or a question? Contact the system owner on WhatsApp: [+62 82217078820](https://wa.me/6282217078820).

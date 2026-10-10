@@ -1,6 +1,7 @@
 {
   "title": "How the NAIST Jumat Scheduler works",
   "intro": "Flowcharts of the whole system: what a member sees, what the admin does, what runs by itself, and what to do when the admin changes. This page is part of the website and is updated whenever the system changes.",
+  "owner": { "role": "the system owner", "whatsapp": "+62 82217078820", "link": "https://wa.me/6282217078820" },
   "legend": [
     { "color": "#3b78b8", "text": "Members and visitors" },
     { "color": "#1f7a5c", "text": "Admin actions" },

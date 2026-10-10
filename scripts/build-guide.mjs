@@ -259,6 +259,9 @@ export function guideMarkdown(m, inv) {
       out.push(inventoryMarkdown(inv));
     }
   }
+  if (m.owner && m.owner.whatsapp) {
+    out.push("## Help\n\nSomething not working, or a question? Contact " + m.owner.role + " on WhatsApp: [" + m.owner.whatsapp + "](" + m.owner.link + ").");
+  }
   return out.join("\n\n") + "\n";
 }
 
