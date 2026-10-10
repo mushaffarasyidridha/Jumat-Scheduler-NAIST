@@ -262,6 +262,20 @@
       .join("");
   }
 
+  // Help line at the bottom: the one place the owner's contact is written (guide.json).
+  function showOwner() {
+    const o = manifest.owner;
+    const box = $("#guide-owner");
+    if (!o || !o.whatsapp || !box) return;
+    box.append("Help, or something not working? Contact " + o.role + " on WhatsApp: ");
+    const a = document.createElement("a");
+    a.href = o.link;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = o.whatsapp;
+    box.append(a);
+  }
+
   async function showVersion() {
     try {
       const res = await fetch("flows/version.json", { cache: "no-cache" });
@@ -293,6 +307,7 @@
     $("#guide-title").textContent = `📖 ${manifest.title}`;
     buildLegend();
     buildTabs();
+    showOwner();
     showVersion();
     await showTab(location.hash.slice(1));
   }

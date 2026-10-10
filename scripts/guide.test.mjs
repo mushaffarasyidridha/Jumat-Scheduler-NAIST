@@ -61,6 +61,8 @@ test("guide.json is complete", () => {
   const m = manifest();
   assert.ok(m.title && m.intro, "title and intro");
   assert.equal(m.legend.length, 5, "five colours");
+  assert.match(m.owner.whatsapp, /^\+\d{1,3} \d{6,12}$/, "owner.whatsapp: +country number");
+  assert.equal(m.owner.link, `https://wa.me/${m.owner.whatsapp.replace(/\D/g, "")}`, "owner.link must be wa.me/<same digits>");
   assert.deepEqual(m.sections.map((s) => s.id), ["overview", "members", "admin", "behind", "newadmin", "setup"]);
   for (const s of m.sections) {
     assert.ok(s.tab && s.title && s.blurb, `${s.id}: tab, title and blurb`);
