@@ -136,6 +136,7 @@
     { "audience": "Admin", "name": "Access code", "what": "Unlocks editing. Members never need it.", "status": "live" },
     { "audience": "Admin", "name": "Roster", "what": "Add, edit, mark left NAIST or delete people; their contact details are visible only with the code.", "status": "live" },
     { "audience": "Admin", "name": "Planner", "what": "Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown.", "status": "live" },
+    { "audience": "Admin", "name": "Guest speaker", "what": "Type a name such as Prof. Arai under any slot for someone who is not in the roster. They show in the calendar, announcement and Google event; no reminders can be sent to them, so the admin to-do lists them to message by hand.", "status": "live" },
     { "audience": "Admin", "name": "Copy reminder and WhatsApp buttons", "what": "For people the robot cannot reach: copy the text or open WhatsApp with it typed.", "status": "live" },
     { "audience": "Admin", "name": "Announcement for the groups", "what": "Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups.", "status": "live" },
     { "audience": "Admin", "name": "Admin to-do messages", "what": "A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement.", "status": "live" },
