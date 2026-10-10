@@ -128,11 +128,11 @@
     { "audience": "Members", "name": "Say when you can or cannot come", "what": "Choose your name, then I'm available or I'm unavailable. No password.", "status": "live" },
     { "audience": "Members", "name": "Can't make it link", "what": "In every reminder and calendar event: one button that tells the admin you cannot come.", "status": "live" },
     { "audience": "Members", "name": "Calendar feed", "what": "A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text.", "status": "live" },
-    { "audience": "Members", "name": "Public Google Calendar", "what": "A shared Google Calendar the website keeps up to date within a minute.", "status": "needs-setup" },
+    { "audience": "Members", "name": "Public Google Calendar", "what": "A shared Google Calendar the website keeps up to date within a minute.", "status": "live" },
     { "audience": "Scheduled people", "name": "Reminder emails", "what": "7 days before and the day before, to people whose email is on the roster.", "status": "live" },
     { "audience": "Scheduled people", "name": "Reminder LINE messages", "what": "The same reminders on LINE, for people who linked the bot.", "status": "live" },
     { "audience": "Scheduled people", "name": "Add to Google Calendar link", "what": "In every reminder: a ready-made calendar event with their role.", "status": "live" },
-    { "audience": "Scheduled people", "name": "Google Calendar invitation", "what": "Invited automatically if their NAIST Google account is on the roster.", "status": "needs-setup" },
+    { "audience": "Scheduled people", "name": "Google Calendar invitation", "what": "Invited automatically if their NAIST Google account is on the roster.", "status": "live" },
     { "audience": "Admin", "name": "Access code", "what": "Unlocks editing. Members never need it.", "status": "live" },
     { "audience": "Admin", "name": "Roster", "what": "Add, edit, mark left NAIST or delete people; their contact details are visible only with the code.", "status": "live" },
     { "audience": "Admin", "name": "Planner", "what": "Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown.", "status": "live" },
@@ -140,7 +140,7 @@
     { "audience": "Admin", "name": "Announcement for the groups", "what": "Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups.", "status": "live" },
     { "audience": "Admin", "name": "Admin to-do messages", "what": "A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement.", "status": "live" },
     { "audience": "Admin", "name": "Can't-make-it alerts", "what": "A red box and badge in the planner, and an email, when a scheduled person cannot come.", "status": "live" },
-    { "audience": "Admin", "name": "Google Calendar sync", "what": "Status line and a Sync now button in the planner; instant alert emails.", "status": "needs-setup" },
+    { "audience": "Admin", "name": "Google Calendar sync", "what": "Status line and a Sync now button in the planner; instant alert emails.", "status": "live" },
     { "audience": "Automatic", "name": "Daily job", "what": "08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync.", "status": "live" },
     { "audience": "Automatic", "name": "Deploy", "what": "Every change of the code is published automatically, with its database changes.", "status": "live" }
   ],
@@ -149,7 +149,7 @@
     { "name": "Community access code", "status": "done", "detail": "Set. Change it with the handover chart if an admin leaves." },
     { "name": "Reminder emails (community Gmail)", "status": "done", "detail": "Test email received. Add each person's email in the roster to start their reminders." },
     { "name": "LINE reminders", "status": "done", "detail": "Bot connected. Each person links with a code from the roster." },
-    { "name": "Google Calendar connection", "status": "in-progress", "detail": "Not connected yet: follow the chart below. Until then the calendar feed is used." },
+    { "name": "Google Calendar connection", "status": "done", "detail": "Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window." },
     { "name": "An admin marked in the roster", "status": "todo", "detail": "Edit your own entry and tick Admin this period (needs an email or LINE link)." },
     { "name": "GitHub default branch set to main", "status": "todo", "detail": "Recommended: Settings, Branches. The scheduled job runs the code on main either way." }
   ]
