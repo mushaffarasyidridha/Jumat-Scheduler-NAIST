@@ -1,0 +1,20 @@
+flowchart TD
+  A["Any day<br/>members mark when they can or cannot come"] --> B["Early in the week<br/>the admin picks khatib, secondary khatib and imam"]
+  B --> C["Right away<br/>Google Calendar is updated, if connected"]
+  B --> D["7 days before the Friday<br/>first reminder: email / LINE<br/>the admin gets a to-do if anything needs doing"]
+  D --> E["Thursday - the day before<br/>second reminder to each person<br/>the admin gets the to-do: who to message by hand, empty slots<br/>the admin posts the announcement in the WhatsApp and Facebook groups"]
+  E --> F{"Someone cannot come?"}
+  F -->|"yes"| G["They open the link: I can't make it<br/>the admin is alerted and finds a replacement"]
+  F -->|"no"| H["Friday 11:00<br/>after this, reminders for that same day are no longer sent"]
+  G --> H
+  H --> I["Friday 12:35 to 13:05<br/>Jumat prayer"]
+  I --> J["The Friday moves into the history<br/>the next Fridays keep appearing automatically (16 weeks ahead)"]
+
+  classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
+  classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
+  class A member
+  class B,E admin
+  class C,D,H,J robot
+  class G warn

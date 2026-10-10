@@ -1,0 +1,24 @@
+flowchart TD
+  A["Open the website<br/>press Enter access code"] --> B["The Admin planner appears"]
+  B --> C{"A red box:<br/>someone can't make it?"}
+  C -->|"yes"| C1["Press Find a replacement<br/>see the alerts chart"]
+  C -->|"no"| D
+  C1 --> D["Look at the coming Fridays<br/>a warning mark means an empty slot or two turns too close"]
+  D --> E["Pick the primary khatib, secondary khatib and imam<br/>people who are available come first in each list"]
+  E --> F["It is saved at once<br/>Google Calendar follows, once connected"]
+  F --> G["The robot sends the reminders by itself<br/>7 days before and the day before"]
+  G --> H{"Does the person have<br/>an email or LINE?"}
+  H -->|"yes"| I["Nothing more to do"]
+  H -->|"no"| J["Press Copy reminder or WhatsApp<br/>and send it yourself"]
+  G --> K["You also get your own to-do message<br/>if you are marked as admin:<br/>who to message by hand, empty slots"]
+  K --> L["The day before:<br/>open the Friday, press Generate announcement<br/>and post it in the WhatsApp and Facebook groups"]
+  I --> M["Friday 12:35 - Jumat prayer"]
+  J --> M
+  L --> M
+
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
+  classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
+  class A,B,D,E,J,L admin
+  class F,G,I,K,M robot
+  class C1 warn

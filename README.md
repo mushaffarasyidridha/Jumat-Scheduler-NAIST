@@ -11,6 +11,19 @@ Built on the schedule kept in `Friday_prayer_khatib_schedule_NAIST.xlsx`
 forward is to keep generating and filling in the upcoming Fridays that the
 spreadsheet never covered.
 
+## The guide: flowcharts of the whole system
+
+**https://jumat-scheduler-naist.pages.dev/guide** (also the "📖 How this system works"
+link at the bottom of the site). Flowcharts for members, for the admin, for what runs by
+itself, for handing over to a new admin and for connecting Google Calendar, plus the exact
+list of pages, tables, jobs and settings read from the code. The same guide as Markdown, with
+the flowcharts drawn by GitHub, is `docs/GUIDE.md`.
+
+It is kept current on purpose: the flowcharts are in `public/flows/*.mmd`, the wording in
+`public/flows/guide.json`, and `npm test` fails if the generated parts (`npm run docs`) or the
+descriptions of a new page or setting are missing. Whenever you change how the system behaves,
+change the matching flowchart in the same commit (see `CLAUDE.md`).
+
 ## How it works
 
 - **Frontend**: static HTML/CSS/vanilla JS in `public/` — no build step, no framework.

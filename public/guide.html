@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How it works - NAIST Jumat Scheduler</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="guide-page">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <h1 id="guide-title">📖 How it works</h1>
+        <p class="muted small" id="guide-intro">Loading the guide…</p>
+      </div>
+      <a class="btn btn-sm" href="/">← Back to the schedule</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <nav id="guide-tabs" class="guide-tabs" role="tablist" aria-label="Guide sections"></nav>
+      <div id="guide-legend" class="guide-legend small"></div>
+      <div id="guide-view" role="tabpanel" aria-live="polite"></div>
+      <noscript><p class="error">This guide draws its flowcharts with JavaScript. The same guide as plain text is in docs/GUIDE.md on GitHub.</p></noscript>
+    </section>
+  </main>
+
+  <footer class="muted small">
+    <p id="guide-version"></p>
+    <p>The same guide as plain text, with the flowcharts drawn by GitHub:
+      <a href="https://github.com/mushaffarasyidridha/Jumat-Scheduler-NAIST/blob/main/docs/GUIDE.md" target="_blank" rel="noopener noreferrer">docs/GUIDE.md</a></p>
+  </footer>
+
+  <script src="vendor/mermaid-11.17.2.min.js"></script>
+  <script src="guide.js"></script>
+</body>
+</html>

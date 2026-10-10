@@ -1,0 +1,18 @@
+flowchart TD
+  A["The admin picks you for a Friday"] --> B["You are told in the way the admin can reach you:<br/>Email, if your email is on the roster<br/>LINE, if you linked LINE<br/>a WhatsApp or Facebook message from the admin, if neither<br/>a Google Calendar invitation, if your NAIST Google account is on the roster"]
+  B --> C["Reminders: 7 days before and the day before<br/>the secondary khatib is told to be ready to step in"]
+  C --> D{"Can you still come?"}
+  D -->|"yes"| E["Jumat prayer starts at 12:35<br/>the calendar event runs 12:35 to 13:05"]
+  D -->|"no"| F["Open the Can't make it link<br/>in the reminder or in the calendar event"]
+  F --> G["Choose your name, then<br/>I can't make it"]
+  G --> H["The admin is told at once<br/>in the planner and by email"]
+  H --> I["The admin picks someone else<br/>and that person gets their reminders"]
+
+  classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
+  classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
+  class A,H,I admin
+  class C,D,E member
+  class B out
+  class F,G warn

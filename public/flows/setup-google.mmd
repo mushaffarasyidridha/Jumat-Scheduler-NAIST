@@ -1,0 +1,20 @@
+flowchart TD
+  A["Sign in as the community Google account<br/>use a computer"] --> B["1. Make the calendar<br/>Other calendars, plus, Create new calendar, name NAIST Jumat<br/>time zone Japan, make it public with all event details<br/>copy the Calendar ID"]
+  B --> C["2. Make the script<br/>script.google.com, New project, paste google-apps-script/Code.gs"]
+  C --> D["3. Add the Calendar service<br/>Services plus, Google Calendar API, Add"]
+  D --> E["4. Two settings<br/>Project Settings, Script properties:<br/>SECRET and CALENDAR_ID"]
+  E --> F["5. Publish it<br/>Deploy, New deployment, Web app<br/>Execute as Me, access Anyone<br/>copy the Web app URL"]
+  F --> G["6. Two GitHub secrets<br/>GCAL_BRIDGE_URL and GCAL_BRIDGE_SECRET"]
+  G --> H["7. Actions: One-time Cloudflare setup, then Deploy to Cloudflare Pages"]
+  H --> I["8. Actions: Send Jumat reminders<br/>tick google_check, then Run workflow"]
+  I --> J{"The log says<br/>Google Calendar connection OK?"}
+  J -->|"yes"| K["9. Private window check<br/>open the public calendar without signing in<br/>events visible, no guest list"]
+  J -->|"no"| L["Read the message<br/>unauthorized: the two SECRET texts differ<br/>not JSON: the web app is not deployed for Anyone"]
+  L --> G
+
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
+  classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
+  class A,G,H,I,K admin
+  class B,C,D,E,F out
+  class J,L warn

@@ -367,3 +367,51 @@ footer {
   font-size: 0.85rem;
   z-index: 60;
 }
+
+/* ---------- The guide page (guide.html) ---------- */
+.guide-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.guide-tab {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.guide-tab:hover { border-color: var(--primary); }
+.guide-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.guide-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 14px; color: var(--muted); }
+.guide-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+.guide-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin: 14px 0; background: var(--surface); }
+.guide-card h3 { margin: 0 0 4px; font-size: 1rem; }
+.guide-card p { margin: 0 0 6px; }
+.guide-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.guide-chart { overflow: auto; border-radius: 8px; background: var(--bg); padding: 10px; text-align: center; }
+.guide-chart svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.guide-card .guide-hint { margin: 4px 0; }
+.guide-page main, .guide-page .topbar-inner { max-width: 1100px; }
+.guide-text summary { cursor: pointer; margin-top: 8px; color: var(--muted); }
+.guide-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  font-size: 0.78rem;
+  background: var(--bg);
+  padding: 8px;
+  border-radius: 8px;
+  overflow: auto;
+}
+.guide-error { color: var(--danger); text-align: left; }
+.guide-card.guide-full { position: fixed; inset: 0; z-index: 80; margin: 0; border-radius: 0; overflow: auto; }
+.guide-card.guide-full .guide-chart { min-height: 60vh; overflow: visible; }
+body.guide-noscroll { overflow: hidden; }
+.guide-h3 { font-size: 1rem; margin: 20px 0 8px; }
+.guide-table-wrap { overflow-x: auto; }
+.guide-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.guide-table th, .guide-table td { border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+.guide-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+.guide-badge { white-space: nowrap; font-size: 0.78rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); }
+.guide-badge-live, .guide-badge-done { color: var(--available); border-color: var(--available); }
+.guide-badge-needs-setup, .guide-badge-in-progress { color: #a8610d; border-color: #c77b1c; }
+.guide-badge-todo { color: var(--muted); }
