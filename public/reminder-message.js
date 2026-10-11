@@ -30,10 +30,12 @@
   ];
 
   // Which Friday column holds which role, how a reminder names it, and the
-  // one-letter code the calendar link uses for it.
+  // one-letter code the calendar link uses for it. `notify: false` = the person
+  // in that slot gets no automatic reminder and no calendar invitation: the
+  // secondary khatib is usually next week's khatib, who is told then.
   const ROLE_SLOTS = [
     { field: "primary_khatib_id", label: "Primary khatib", code: "p" },
-    { field: "secondary_khatib_id", label: "Secondary khatib (standby)", code: "s" },
+    { field: "secondary_khatib_id", label: "Secondary khatib (standby)", code: "s", notify: false },
     { field: "imam_id", label: "Imam", code: "i" },
   ];
 

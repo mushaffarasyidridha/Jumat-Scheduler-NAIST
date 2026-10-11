@@ -77,6 +77,7 @@ export function dueReminders({ today, fridays, people, sentKeys }) {
 
     const rolesByPerson = new Map();
     for (const slot of ROLE_SLOTS) {
+      if (slot.notify === false) continue; // the secondary khatib is not sent reminders
       const personId = friday[slot.field];
       if (personId == null) continue; // open slot, or a free-text guest with no contact details
       if (!rolesByPerson.has(personId)) rolesByPerson.set(personId, []);
@@ -118,17 +119,18 @@ function reachedAutomatically(person) {
 
 // For one Friday: who the admin has to message by hand (no email / LINE, or
 // their reminders are off, or a guest typed in as free text), and which
-// essential slots are still empty. The secondary khatib is standby, so an empty
-// secondary slot is not flagged.
+// essential slots are still empty. The secondary khatib is standby and is not
+// notified, so an empty secondary slot is not flagged and they are not listed.
 export function adminChecklist(friday, peopleById) {
   const byHand = [];
   const seen = new Map();
   const open = [];
   for (const slot of ROLE_SLOTS) {
+    if (slot.notify === false) continue;
     const id = friday[slot.field];
     const name = friday[NAME_FIELD[slot.field]];
     if (!name) {
-      if (slot.field !== "secondary_khatib_id") open.push(slot.label);
+      open.push(slot.label);
       continue;
     }
     if (id != null && reachedAutomatically(peopleById.get(id))) continue;

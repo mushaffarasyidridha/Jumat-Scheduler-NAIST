@@ -19,21 +19,22 @@ const byId = (...people) => new Map(people.map((p) => [p.id, p]));
 // ---------- what an event should be ----------
 
 test("guests: scheduled, active people with a calendar account and reminders on; lowercased, unique, sorted", () => {
-  const f = friday({ secondary_khatib_id: 2, imam_id: 3 });
+  const f = friday({ imam_id: 2, primary_khatib_id: 1, secondary_khatib_id: 3 });
   const people = byId(
     person({ calendar_email: "Zed@naist.ac.jp" }),
     person({ id: 2, calendar_email: "a@naist.ac.jp" }),
-    person({ id: 3, calendar_email: "zed@NAIST.ac.jp" }) // same address as person 1
+    person({ id: 3, calendar_email: "zed@NAIST.ac.jp" }) // same address as person 1 (and only the secondary khatib: not invited)
   );
   assert.deepEqual(guestsFor(f, people), ["a@naist.ac.jp", "zed@naist.ac.jp"]);
+  assert.deepEqual(guestsFor(friday({ primary_khatib_id: null, secondary_khatib_id: 3 }), people), [], "a secondary khatib alone is not invited");
 });
 
 test("guests: the Email is the invitation address; a separate Google Calendar address wins when saved", () => {
-  const f = friday({ primary_khatib_id: 1, secondary_khatib_id: 2, imam_id: 3 });
+  const f = friday({ primary_khatib_id: 1, imam_id: 2, secondary_khatib_id: 3 });
   const people = byId(
     person({ calendar_email: null, email: "Ahmad@Is.NAIST.jp" }),
     person({ id: 2, calendar_email: "bilal@g.ext.naist.jp", email: "bilal@naist.ac.jp" }),
-    person({ id: 3, calendar_email: null, email: null }) // nothing to invite
+    person({ id: 3, calendar_email: "sec@naist.ac.jp" }) // the secondary khatib: never invited
   );
   assert.deepEqual(guestsFor(f, people), ["ahmad@is.naist.jp", "bilal@g.ext.naist.jp"]);
   assert.deepEqual(guestsFor(f, people, ["ahmad@is.naist.jp"]), ["ahmad@is.naist.jp"], "test mode matches the email too");
@@ -42,7 +43,7 @@ test("guests: the Email is the invitation address; a separate Google Calendar ad
 });
 
 test("guests: nobody who is inactive, opted out, has no account, or is not scheduled; guests typed as free text have no account", () => {
-  const f = friday({ secondary_khatib_id: 2, imam_id: 3, primary_khatib_id: 1 });
+  const f = friday({ secondary_khatib_id: 2, imam_id: 3, primary_khatib_id: 1 }); // 2 is the secondary: also never invited
   assert.deepEqual(guestsFor(f, byId(person({ status: "inactive" }), person({ id: 2, reminders: 0 }), person({ id: 3, calendar_email: null }))), []);
   assert.deepEqual(guestsFor(friday({ primary_khatib_id: null, primary_name: "Guest Speaker" }), byId(person())), []);
   assert.deepEqual(guestsFor(friday({ primary_khatib_id: 9 }), byId(person())), [], "a person who is not on this Friday");
@@ -365,7 +366,7 @@ test("test mode: the saved text keeps only real addresses, lower-cased, once eac
 });
 
 test("test mode: only the listed addresses are invited, the others are left out", () => {
-  const f = friday({ primary_khatib_id: 1, secondary_khatib_id: 2 });
+  const f = friday({ primary_khatib_id: 1, imam_id: 2 });
   const people = byId(person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp" }));
   assert.deepEqual(guestsFor(f, people, []), ["me@naist.ac.jp", "other@naist.ac.jp"], "off: everyone");
   assert.deepEqual(guestsFor(f, people, ["me@naist.ac.jp"]), ["me@naist.ac.jp"]);
@@ -374,7 +375,7 @@ test("test mode: only the listed addresses are invited, the others are left out"
 
 test("test mode: the saved setting limits the invitations in a sync, and turning it off invites everyone again", async () => {
   const people = [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp" })];
-  const fridays = [friday({ id: 11, date: "2026-10-16", primary_khatib_id: 1, secondary_khatib_id: 2 })];
+  const fridays = [friday({ id: 11, date: "2026-10-16", primary_khatib_id: 1, imam_id: 2 })];
 
   const db = fakeDb({ fridays, people, inviteOnly: "me@naist.ac.jp" });
   const bridge = fakeBridge();
@@ -391,7 +392,7 @@ test("test mode: the saved setting limits the invitations in a sync, and turning
 });
 
 test("sync reports why nobody is invited, as counts only", async () => {
-  const fridays = [friday({ id: 11, date: "2026-10-16", primary_khatib_id: 1, secondary_khatib_id: 2 })];
+  const fridays = [friday({ id: 11, date: "2026-10-16", primary_khatib_id: 1, imam_id: 2 })];
   const people = [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp", reminders: 0 }), person({ id: 3, calendar_email: "x@naist.ac.jp", status: "inactive" })];
 
   const off = await run({ bridge: fakeBridge(), db: fakeDb({ fridays, people }), dryRun: true });

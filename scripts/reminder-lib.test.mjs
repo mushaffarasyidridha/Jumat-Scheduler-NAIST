@@ -128,10 +128,22 @@ test("each assigned person is reminded; open slots and guests without a roster i
   const people = [person({ id: 1, name: "Ahmad" }), person({ id: 2, name: "Bilal", email: "b@example.com" })];
   const due = run({
     people,
-    fridays: [friday({ secondary_khatib_id: 2, imam_id: null, imam_name: "Guest Imam" })],
+    fridays: [friday({ imam_id: 2, imam_name: "Bilal" })],
   });
   assert.deepEqual(due.map((d) => d.person.name), ["Ahmad", "Bilal"]);
-  assert.deepEqual(due[1].roles, ["Secondary khatib (standby)"]);
+  assert.deepEqual(due[1].roles, ["Imam"]);
+  const guest = run({ people, fridays: [friday({ imam_id: null, imam_name: "Guest Imam" })] });
+  assert.deepEqual(guest.map((d) => d.person.name), ["Ahmad"], "a guest typed in by name has no contact details");
+});
+
+test("the secondary khatib is not sent a reminder (they are usually next week's khatib)", () => {
+  const people = [person({ id: 1, name: "Ahmad" }), person({ id: 2, name: "Bilal", email: "b@example.com" })];
+  const due = run({ people, fridays: [friday({ secondary_khatib_id: 2, secondary_name: "Bilal" })] });
+  assert.deepEqual(due.map((d) => d.person.name), ["Ahmad"]);
+  // someone who is secondary AND imam is reminded for the imam role only
+  const both = run({ people, fridays: [friday({ secondary_khatib_id: 2, imam_id: 2, secondary_name: "Bilal", imam_name: "Bilal" })] });
+  const bilal = both.filter((d) => d.person.name === "Bilal");
+  assert.ok(bilal.length > 0 && bilal.every((d) => d.roles.length === 1 && d.roles[0] === "Imam"));
 });
 
 test("nearest Friday comes first", () => {
@@ -258,6 +270,13 @@ test("admin: a guest typed in as free text is on the by-hand list, grouped by na
   const checklist = adminChecklist(f, new Map());
   assert.deepEqual(checklist.byHand, [{ name: "Guest Speaker", roles: ["Primary khatib", "Imam"] }]);
   assert.deepEqual(checklist.open, []);
+});
+
+test("admin: the secondary khatib is not on the by-hand list (they are not notified)", () => {
+  const f = friday({ secondary_khatib_id: null, secondary_name: "Bilal", imam_id: null, imam_name: null });
+  const checklist = adminChecklist(f, new Map([[1, person()]]));
+  assert.deepEqual(checklist.byHand.map((x) => x.name), [], "Bilal is only the secondary; Ahmad is reached automatically");
+  assert.deepEqual(checklist.open, ["Imam"]);
 });
 
 test("admin: an empty secondary slot is not flagged, an empty primary or imam is", () => {

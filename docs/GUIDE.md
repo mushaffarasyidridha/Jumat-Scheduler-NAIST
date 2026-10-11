@@ -101,7 +101,7 @@ flowchart TD
 | Scheduled people | Google Calendar invitation | Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off. | ✅ live |
 | Admin | Access code | Unlocks editing. Members never need it. | ✅ live |
 | Admin | Roster | Add, edit, mark left NAIST or delete people; their contact details are visible only with the code. | ✅ live |
-| Admin | Planner | Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. | ✅ live |
+| Admin | Planner | Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. The secondary (standby, usually next week's khatib) gets no automatic reminder or invitation. | ✅ live |
 | Admin | Guest speaker | Type a name such as Prof. Arai under any slot for someone who is not in the roster. They show in the calendar, announcement and Google event; no reminders can be sent to them, so the admin to-do lists them to message by hand. | ✅ live |
 | Admin | Copy reminder and WhatsApp buttons | For people the robot cannot reach: copy the text or open WhatsApp with it typed. | ✅ live |
 | Admin | Announcement for the groups | Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups. | ✅ live |
@@ -145,7 +145,7 @@ How you are told, and what to do if you cannot come.
 ```mermaid
 flowchart TD
   A["The admin picks you for a Friday"] --> B["You are told in the way the admin can reach you:<br/>Email, if your email is on the roster<br/>LINE, if you linked LINE<br/>a WhatsApp or Facebook message from the admin, if neither<br/>a Google Calendar invitation, to the same email"]
-  B --> C["Reminders: 7 days before and the day before<br/>the secondary khatib is told to be ready to step in"]
+  B --> C["Reminders: 7 days before and the day before<br/>for the primary khatib and the imam; the secondary khatib (standby, usually next week's khatib) gets none"]
   C --> D{"Can you still come?"}
   D -->|"yes"| E["Jumat prayer starts at 12:35<br/>the calendar event runs 12:35 to 13:05"]
   D -->|"no"| F["Open the Can't make it link<br/>in the reminder or in the calendar event"]

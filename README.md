@@ -132,7 +132,7 @@ plus the *Can't make it?* link. It is public (anyone can open or add it), and:
   a minute (and the planner says when it last was, with a *Sync now* button). The reminder job re-checks twice
   a day, so a missed update is repaired.
 - **It invites people.** In the roster, *Edit* a person: the invitation goes to their **Email** (the same one that gets the reminders). Fill in **Different address for Google Calendar invitations** only if their Google account is another address. Whoever is
-  scheduled (primary, secondary or imam) with an email saved, and with their reminders on, is invited to
+  scheduled as primary khatib or imam (not the secondary) with an email saved, and with their reminders on, is invited to
   that Friday; take the email away, move them, or replace them and the invitation is updated or cancelled.
   Changes that only reword the event (a different khatib's name in the title) are made quietly; changes to the
   guests, the time or the venue notify the guests.
@@ -217,10 +217,11 @@ never needs one). From then on:
 
 **Automatic, by email.** Every morning (about 08:30 Japan time, plus a catch-up
 run at about 14:30), a GitHub Actions job (`.github/workflows/reminders.yml`)
-emails everyone scheduled as primary khatib, secondary khatib (told they are
-standby) or imam: **7 days before** their Friday and again **the day before**.
+emails everyone scheduled as primary khatib or imam: **7 days before** their Friday and again **the day before**.
 It uses the community Gmail account (app password) and only reaches people who
-have an email address in their roster entry.
+have an email address in their roster entry. The **secondary khatib** (standby, usually next week's
+khatib) gets **no** automatic reminder and no Google Calendar invitation: they are told when they are the
+primary. They still appear in everyone's line-up, and the admin can use *Copy reminder* by hand.
 
 GitHub starts scheduled jobs when it has capacity, so "about" can mean minutes
 or, at busy moments, hours late. Reminders are therefore for the *day before*
