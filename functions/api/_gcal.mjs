@@ -25,6 +25,7 @@ export const SQL = {
     LEFT JOIN people ip ON ip.id = f.imam_id
     WHERE f.is_history = 0 AND f.date >= ?
     ORDER BY f.date ASC`,
+  places: "SELECT name, details, maps_url FROM places",
   people: "SELECT id, name, status, reminders, email, calendar_email FROM people WHERE calendar_email IS NOT NULL OR email IS NOT NULL",
   snapshots: "SELECT friday_id, hash, snapshot FROM gcal_sync",
   saveSnapshot: `INSERT INTO gcal_sync (friday_id, hash, snapshot, synced_at) VALUES (?, ?, ?, datetime('now'))
@@ -116,12 +117,12 @@ export function parseInviteOnly(text) {
   return [...new Set(String(text || "").split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => EMAIL_SHAPE.test(x)))].sort();
 }
 
-export function desiredEvent({ friday, peopleById, siteUrl, inviteOnly = [] }) {
+export function desiredEvent({ friday, peopleById, siteUrl, inviteOnly = [], places = [] }) {
   const { startMs, endMs } = prayerWindowUtc(friday.date);
   return {
     friday_id: friday.id,
     title: eventTitle(friday),
-    description: eventDescription(friday, siteUrl),
+    description: eventDescription(friday, siteUrl, places),
     location: (friday.venue || "").trim(),
     start: jstIso(startMs),
     end: jstIso(endMs),
@@ -173,13 +174,14 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
     (await db.all(SQL.snapshots, [])).map((row) => [row.friday_id, { hash: row.hash, snapshot: parseSnapshot(row.snapshot) }])
   );
   const peopleById = new Map(people.map((p) => [p.id, p]));
+  const places = await db.all(SQL.places, []);
   const [state] = await db.all(SQL.state, []);
   const inviteOnly = parseInviteOnly(state && state.invite_only);
 
   const work = [];
   let unchanged = 0;
   for (const friday of fridays) {
-    const desired = desiredEvent({ friday, peopleById, siteUrl, inviteOnly });
+    const desired = desiredEvent({ friday, peopleById, siteUrl, inviteOnly, places });
     const hash = await sha256Hex(JSON.stringify(desired));
     const plan = planSync(hash, desired, snapshots.get(friday.id));
     if (plan.action === "none") unchanged++;

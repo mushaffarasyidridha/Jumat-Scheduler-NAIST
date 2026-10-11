@@ -222,6 +222,15 @@ code on that device) can still change it; to fix a wrong pick for a member, unlo
 the name, then press Lock. It is a guard in the page, not a login: the site has no accounts, so someone who
 clears their browser data or uses another device can pick again.
 
+## Places (the venue dropdown)
+
+In the Admin planner, the **📍 Places** card lists the places you use (the Sentan assembly room, the dorm lounges ...).
+*+ Add place* takes a name, optional details (floor, how to find it), an optional Google Maps link (https only) and
+whether a 7-minute talk (kultum) is usually given there. *Edit* and *Delete* work on any of them. A Friday's
+**Details and announcement** window then has a venue **dropdown** (or *Other place...* for a one-off). The announcement
+and the calendar event use the place's map link and details. Renaming a place renames it on the coming Fridays (past ones
+are untouched); deleting only removes it from the dropdown, Fridays keep the name as text.
+
 ## "My name isn't listed" (people not on the roster yet)
 
 Below **You are** there is a small link, *My name isn't listed*, for members who cannot find their name. It opens

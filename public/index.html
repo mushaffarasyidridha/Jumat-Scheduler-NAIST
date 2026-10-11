@@ -182,6 +182,28 @@
     </div>
   </div>
 
+  <div id="place-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="place-modal-title">Add a place</h3>
+      <label>Name <input id="place-name" type="text" maxlength="60" placeholder="e.g. Lounge Dorm 1" /></label>
+      <label>Details <span class="muted small">(optional: floor, how to find it; shown in the announcement)</span>
+        <input id="place-details" type="text" maxlength="300" placeholder="e.g. 1st floor, next to the mailboxes" />
+      </label>
+      <label>Map link <span class="muted small">(optional: a Google Maps link starting with https://)</span>
+        <input id="place-maps" type="url" maxlength="300" placeholder="https://maps.app.goo.gl/..." />
+      </label>
+      <label class="check-row">
+        <input id="place-kultum" type="checkbox" />
+        <span>A 7-minute talk (kultum) is usually given here</span>
+      </label>
+      <div class="modal-actions">
+        <button id="place-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="place-save-btn" class="btn btn-primary" type="button">Add</button>
+      </div>
+      <p id="place-error" class="error small hidden"></p>
+    </div>
+  </div>
+
   <div id="join-modal" class="modal hidden">
     <div class="modal-box">
       <h3>My name isn't listed</h3>

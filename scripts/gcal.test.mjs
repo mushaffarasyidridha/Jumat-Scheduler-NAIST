@@ -116,7 +116,7 @@ test("bridge client: errors are clear, flag a wrong secret, and never contain th
 
 // ---------- the whole sync ----------
 
-function fakeDb({ fridays = [], people = [], snapshots = [], inviteOnly = null } = {}) {
+function fakeDb({ fridays = [], people = [], snapshots = [], inviteOnly = null, places = [] } = {}) {
   const runs = [];
   return {
     runs,
@@ -125,6 +125,7 @@ function fakeDb({ fridays = [], people = [], snapshots = [], inviteOnly = null }
       if (sql === SQL.fridays) return fridays.filter((f) => f.date >= params[0]);
       if (sql === SQL.people) return people;
       if (sql === SQL.snapshots) return snapshots;
+      if (sql === SQL.places) return places;
       if (sql === SQL.state) return [{ invite_only: inviteOnly }];
       throw new Error(`unexpected SQL: ${sql}`);
     },
