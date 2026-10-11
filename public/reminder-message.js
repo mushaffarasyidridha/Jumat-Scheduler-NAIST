@@ -49,6 +49,14 @@
     return `Friday, ${formatDateShort(iso)}`;
   }
 
+  const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  // "Monday, 8 February 2027" for any day (a Friday is just one of them).
+  function formatDateWithWeekday(iso) {
+    const [year, month, day] = iso.split("-").map(Number);
+    return `${WEEKDAY_LONG[new Date(Date.UTC(year, month - 1, day)).getUTCDay()]}, ${formatDateShort(iso)}`;
+  }
+
   function whenPhrase(days) {
     if (days <= 0) return "today";
     if (days === 1) return "tomorrow";
@@ -140,6 +148,21 @@
     ].join("\n");
   }
 
+  // ---------- Ramadan: the kultum speaker's reminder ----------
+
+  // `g` is a Ramadan day (date, start_time, place, kultum_minutes); `days` how far away.
+  function kultumChatText({ gathering: g, person, days, minutes }) {
+    return [
+      "🌙 Kultum reminder",
+      `Assalamu'alaikum ${person.name}, you are the kultum speaker:`,
+      `📅 ${formatDateWithWeekday(g.date)} (${whenPhrase(days)})`,
+      `🕗 Isha and Tarawih start at ${g.start_time}; the kultum is a short talk of about ${minutes} minutes`,
+      `📍 ${(g.place || "").trim() || "to be announced"}`,
+      "",
+      "Can't make it? Please tell the coordinator as soon as possible.",
+    ].join("\n");
+  }
+
   // wa.me opens a WhatsApp chat with the message already typed in; it needs the
   // number in full international format, digits only. null if it can't be one.
   function whatsappLink(number, text) {
@@ -153,6 +176,7 @@
     ROLE_SLOTS,
     formatDateShort,
     formatDateLong,
+    formatDateWithWeekday,
     whenPhrase,
     venueOf,
     standbyNote,
@@ -162,6 +186,7 @@
     calendarShortLink,
     rolesFromCodes,
     chatText,
+    kultumChatText,
     whatsappLink,
   };
 });

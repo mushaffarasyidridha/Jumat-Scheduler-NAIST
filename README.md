@@ -237,6 +237,12 @@ In the Admin planner, the **🌙 Ramadan** card:
 4. **Edit** a day: place, time, kultum or not (and its minutes), the kultum **speaker** (a roster person or a guest typed in by
    name), reminders on or off, a note, delete. Days with a kultum but no speaker are flagged.
 
+**Reminders and calendar.** The kultum speaker (a roster person with an email or LINE; a typed-in guest is never contacted) gets
+a reminder 3, 2 and 1 day before and on the day, using the days set on the Ramadan card; untick *Remind* on a day or weekday
+to send none. The day itself is skipped from two hours before the start. Each evening is also a Google Calendar event
+("Isha + Tarawih - Kultum: name") with the speaker invited under the same rules and test mode as Fridays, and appears in the
+public calendar feed. Changing the speaker moves the invitation; deleting a day removes the event. No Apps Script change is needed.
+
 Members see the days in the calendar as a moon chip with the time (a microphone when there is a kultum); tapping one shows
 the place, time and speaker and offers the announcement text for the WhatsApp / Facebook groups.
 

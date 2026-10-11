@@ -317,7 +317,7 @@
     {
       "audience": "Admin",
       "name": "Ramadan days",
-      "what": "First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. Reminders and calendar events for these days come next.",
+      "what": "First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. The kultum speaker is reminded by email or LINE 3, 2 and 1 day before and on the day (a guest is not), and each evening appears in Google Calendar and the public calendar feed with the speaker invited.",
       "status": "live"
     },
     {

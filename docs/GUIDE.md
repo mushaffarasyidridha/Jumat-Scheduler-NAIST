@@ -115,7 +115,7 @@ flowchart TD
 | Automatic | Deploy | Every change of the code is published automatically, with its database changes. | ✅ live |
 | Admin | Join requests | A box in the planner lists people who could not find their name, with Add to roster (form pre-filled) and Dismiss; the admins are also emailed. | ✅ live |
 | Admin | Places | A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event. | ✅ live |
-| Admin | Ramadan days | First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. Reminders and calendar events for these days come next. | ✅ live |
+| Admin | Ramadan days | First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. The kultum speaker is reminded by email or LINE 3, 2 and 1 day before and on the day (a guest is not), and each evening appears in Google Calendar and the public calendar feed with the speaker invited. | ✅ live |
 | Members | Ramadan days in the calendar | Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement. | ✅ live |
 
 ## For members
@@ -293,11 +293,14 @@ flowchart TD
   F -->|"yes"| G["Pick the speaker from the roster, or type a guest<br/>days with a kultum and no speaker are flagged"]
   F -->|"no"| H["Nothing more for that day"]
   G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups"]
+  G --> J["The robot reminds the kultum speaker<br/>3, 2 and 1 day before and on the day, by email or LINE<br/>untick Remind to send none, a guest is messaged by hand"]
+  G --> K["Google Calendar: the evening appears with the speaker invited<br/>change or delete the day and the event follows"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
   class A,B,C,E,F,G,H,I admin
+  class J,K robot
   class D member
 ```
 
@@ -321,10 +324,10 @@ flowchart TD
   end
 
   subgraph t2["⏰ Twice a day - 08:23 and 14:23 Japan time"]
-    R1["Who is scheduled in the next 7 days?"] --> R2["Reminders 7 days before and 1 day before<br/>by email and LINE, each sent only once<br/>a reminder for today is dropped after 11:00"]
+    R1["Who is scheduled in the next 7 days?"] --> R2["Reminders 7 days before and 1 day before<br/>by email and LINE, each sent only once<br/>a reminder for today is dropped after 11:00<br/>Ramadan: the kultum speaker 3, 2, 1 day before and the day"]
     R2 --> R3["The admin to-do messages"]
     R3 --> R4["Alert emails that were not sent yet"]
-    R4 --> R5["Google Calendar safety re-sync"]
+    R4 --> R5["Google Calendar safety re-sync<br/>Fridays and Ramadan evenings"]
     R5 --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
   end
 

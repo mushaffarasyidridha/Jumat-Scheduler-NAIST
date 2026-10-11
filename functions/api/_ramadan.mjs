@@ -1,5 +1,9 @@
 // Ramadan: parsing and checking what the admin enters, and making the days from the
 // weekly pattern. Pure functions, shared by the Functions and the tests.
+// Ramadan days share the Google event ids and the reminder log with the Fridays, offset
+// by this so an id can never collide with a Friday's.
+export const GATHERING_ID_OFFSET = 1_000_000;
+
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 

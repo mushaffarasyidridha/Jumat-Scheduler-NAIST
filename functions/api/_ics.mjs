@@ -8,7 +8,9 @@ import shared from "../../public/reminder-message.js";
 import announcement from "../../public/announcement.js";
 
 const { calendarStamp, prayerWindowUtc } = shared;
-const { buildAnnouncementText, hadithForDate, khatibLine } = announcement;
+const { buildAnnouncementText, buildGatheringText, hadithForDate, khatibLine } = announcement;
+
+const JST_MS = 9 * 60 * 60 * 1000;
 
 const encoder = new TextEncoder();
 
@@ -66,6 +68,45 @@ export function eventDescription(friday, siteUrl, places = []) {
   return parts.join("\n\n");
 }
 
+// ---------- Ramadan days (Isha + Tarawih) ----------
+
+export function gatheringTitle(g) {
+  return `Isha + Tarawih${g.kultum ? ` - Kultum: ${g.speaker || "TBA"}` : ""}`;
+}
+
+// The text of the event: the announcement, plus how to say you cannot come.
+export function gatheringDescription(g, { siteUrl, places = [], settings = {} }) {
+  return `${buildGatheringText(g, { places, settings })}\n\nCan't make it? Please tell the coordinator as soon as possible: ${siteUrl}`;
+}
+
+// Start and end as UTC milliseconds ("2027-02-08" + "19:30" in Japan time + the event length).
+export function gatheringWindowUtc(g, eventMinutes = 90) {
+  const [y, mo, d] = g.date.split("-").map(Number);
+  const [h, mi] = String(g.start_time || "19:30").split(":").map(Number);
+  const startMs = Date.UTC(y, mo - 1, d, h, mi) - JST_MS;
+  return { startMs, endMs: startMs + eventMinutes * 60000 };
+}
+
+export function buildGatheringEvent(g, { siteUrl, nowMs, places = [], settings = {} }) {
+  const { startMs, endMs } = gatheringWindowUtc(g, settings.event_minutes || 90);
+  const stamp = calendarStamp(modifiedMs(g, nowMs));
+  const place = (g.place || "").trim();
+  return [
+    "BEGIN:VEVENT",
+    `UID:jumat-gathering-${g.id}@jumat-scheduler-naist`,
+    `DTSTAMP:${stamp}`,
+    `LAST-MODIFIED:${stamp}`,
+    `DTSTART:${calendarStamp(startMs)}`,
+    `DTEND:${calendarStamp(endMs)}`,
+    `SUMMARY:${escapeText(gatheringTitle(g))}`,
+    ...(place ? [`LOCATION:${escapeText(place)}`] : []),
+    `DESCRIPTION:${escapeText(gatheringDescription(g, { siteUrl, places, settings }))}`,
+    `URL:${siteUrl}`,
+    "TRANSP:TRANSPARENT",
+    "END:VEVENT",
+  ].map(foldLine);
+}
+
 // SQLite's datetime('now') is "2026-10-09 06:01:17" in UTC.
 function modifiedMs(friday, fallbackMs) {
   const ms = Date.parse(String(friday.updated_at || "").replace(" ", "T") + "Z");
@@ -94,7 +135,7 @@ export function buildEvent(friday, { siteUrl, nowMs, places = [] }) {
   ].map(foldLine);
 }
 
-export function buildCalendar({ fridays, siteUrl, nowMs = Date.now(), places = [] }) {
+export function buildCalendar({ fridays, siteUrl, nowMs = Date.now(), places = [], gatherings = [], settings = {} }) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -108,6 +149,7 @@ export function buildCalendar({ fridays, siteUrl, nowMs = Date.now(), places = [
     "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
     "X-PUBLISHED-TTL:PT6H",
     ...fridays.flatMap((friday) => buildEvent(friday, { siteUrl, nowMs, places })),
+    ...gatherings.flatMap((g) => buildGatheringEvent(g, { siteUrl, nowMs, places, settings })),
     "END:VCALENDAR",
   ];
   return lines.join("\r\n") + "\r\n";

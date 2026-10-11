@@ -3,6 +3,7 @@
 
 import { createRequire } from "node:module";
 import { lineupLines } from "../functions/api/_alertmail.mjs";
+import { GATHERING_ID_OFFSET } from "../functions/api/_ramadan.mjs";
 
 // The "can't make it" email lives with the Functions code (they can send it too).
 export { alertRecipients, buildAlertEmail } from "../functions/api/_alertmail.mjs";
@@ -12,7 +13,7 @@ export { alertRecipients, buildAlertEmail } from "../functions/api/_alertmail.mj
 // automatic reminders can never drift apart.
 const shared = createRequire(import.meta.url)("../public/reminder-message.js");
 export const { ROLE_SLOTS, PRAYER_TIME, formatDateShort, formatDateLong } = shared;
-const { whenPhrase, venueOf, standbyNote, chatText, calendarShortLink } = shared;
+const { whenPhrase, venueOf, standbyNote, chatText, calendarShortLink, kultumChatText, formatDateWithWeekday } = shared;
 
 export { DEFAULT_SITE_URL } from "../functions/api/_site.mjs";
 import { DEFAULT_SITE_URL as FALLBACK_SITE_URL } from "../functions/api/_site.mjs";
@@ -274,4 +275,89 @@ export function buildEmail({ friday, person, roles, days, siteUrl }) {
 // the same text straight from the shared file).
 export function buildLineText(args) {
   return chatText(args);
+}
+
+// ---------- Ramadan: the kultum speaker ----------
+//
+// A Ramadan day with a kultum and a named speaker reminds that speaker on the days
+// the admin chose (default 3, 2, 1 days before and the day itself). Their reminders
+// share the reminder log with the Fridays, under ids offset by GATHERING_ID_OFFSET
+// (so a Friday and a Ramadan day can never collide) and kinds "g3", "g2", "g1", "g0".
+
+export { GATHERING_ID_OFFSET };
+
+// The setting is saved as "3,2,1,0".
+export function parseReminderDaysSetting(value) {
+  const numbers = String(value ?? "").split(",").map((x) => x.trim()).filter((x) => x !== "").map(Number);
+  return [...new Set(numbers.filter((n) => Number.isInteger(n) && n >= 0 && n <= 7))].sort((a, b) => b - a);
+}
+
+// A reminder for a Ramadan evening that is TODAY only helps while there is still time
+// before the start: skip it from two hours before. (Fridays use the 11:00 cut-off.)
+export function tooLateForKultum(days, nowMinutes, startTime) {
+  if (days !== 0) return false;
+  const [h, m] = String(startTime || "19:30").split(":").map(Number);
+  return nowMinutes >= h * 60 + m - 120;
+}
+
+// One reminder per speaker per channel per run: the nearest chosen day that has been
+// reached (so a run missed on day 2 still sends the day-1 reminder), never more than one.
+export function kultumOffsetFor(days, reminderDays) {
+  const reached = reminderDays.filter((o) => o >= days);
+  return days >= 0 && reached.length ? Math.min(...reached) : null;
+}
+
+// gatherings: rows with id, date, place, start_time, kultum, kultum_minutes, speaker_id,
+// speaker, reminders. settings: { kultum_minutes, reminder_days: [3,2,1,0] }.
+export function dueKultumReminders({ today, gatherings, settings, people, sentKeys }) {
+  const peopleById = new Map(people.map((p) => [p.id, p]));
+  const due = [];
+  for (const g of gatherings) {
+    if (!g.kultum || !g.reminders || g.speaker_id == null) continue; // no kultum, reminders off, or a guest / nobody yet
+    const days = daysUntil(today, g.date);
+    const offset = kultumOffsetFor(days, settings.reminder_days);
+    if (offset === null) continue;
+    const person = peopleById.get(g.speaker_id);
+    if (!person || !person.reminders) continue;
+    const channels = [];
+    if (person.email) channels.push("email");
+    if (person.line_user_id) channels.push("line");
+    for (const channel of channels) {
+      const kind = `g${offset}`;
+      const key = sentKey(GATHERING_ID_OFFSET + g.id, person.id, kind, channel);
+      if (sentKeys.has(key)) continue;
+      due.push({ key, type: "kultum", gathering: g, person, kind, channel, days, minutes: g.kultum_minutes || settings.kultum_minutes, logId: GATHERING_ID_OFFSET + g.id });
+    }
+  }
+  due.sort((a, b) => a.days - b.days || a.person.name.localeCompare(b.person.name));
+  return due;
+}
+
+export function buildKultumEmail({ gathering: g, person, days, minutes, siteUrl }) {
+  const unsubscribeUrl = `${siteUrl}/api/reminders/unsubscribe?t=${person.reminder_token}`;
+  const text = [
+    `Assalamu'alaikum ${person.name},`,
+    "",
+    "A reminder that you are the kultum speaker at NAIST:",
+    "",
+    `  Date:  ${formatDateWithWeekday(g.date)} (${whenPhrase(days)})`,
+    `  Isha and Tarawih start: ${g.start_time}`,
+    `  Kultum: a short talk of about ${minutes} minutes`,
+    `  Place: ${(g.place || "").trim() || "to be announced"}`,
+    "",
+    "Can't make it? Please tell the coordinator as soon as possible (you can reply to this email) so a replacement can be found.",
+    "",
+    `Full schedule: ${siteUrl}`,
+    "",
+    "JazakAllahu khairan.",
+    "",
+    "--",
+    "You get this because you are on the NAIST Jumat roster with this email address.",
+    `Stop these reminders: ${unsubscribeUrl}`,
+  ].join("\n");
+  return { subject: `Kultum reminder: ${formatDateShort(g.date)} (${whenPhrase(days)})`, text, unsubscribeUrl };
+}
+
+export function buildKultumLineText(args) {
+  return kultumChatText(args);
 }
