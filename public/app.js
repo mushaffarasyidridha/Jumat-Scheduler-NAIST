@@ -704,7 +704,7 @@
       : `<details class="small planner-notes planner-test"><summary>Test the Google invitations on yourself first</summary>
            <p class="muted">While test mode is on, only the address you type below is invited. Everyone else is left out until you turn it off.</p>
            <div class="planner-guest">
-             <input type="email" data-gcal-test-input placeholder="your NAIST Google address" autocomplete="off" aria-label="Address to invite in test mode" />
+             <input type="email" data-gcal-test-input placeholder="your NAIST Google account, e.g. name@g.ext.naist.jp" autocomplete="off" aria-label="Address to invite in test mode" />
              <button class="btn btn-sm" data-gcal-test-on type="button">Turn on</button>
            </div>
          </details>`;
