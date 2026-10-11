@@ -153,6 +153,6 @@
     { "name": "LINE reminders", "status": "done", "detail": "Bot connected. Each person links with a code from the roster." },
     { "name": "Google Calendar connection", "status": "done", "detail": "Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window." },
     { "name": "An admin marked in the roster", "status": "todo", "detail": "Edit your own entry and tick Admin this period (needs an email or LINE link)." },
-    { "name": "GitHub default branch set to main", "status": "todo", "detail": "Recommended: Settings, Branches. The scheduled job runs the code on main either way." }
+    { "name": "GitHub default branch set to main", "status": "done", "detail": "main is the default branch, so new pull requests and the schedule use it." }
   ]
 }
