@@ -147,7 +147,7 @@ Google account and does the calendar work for it. It needs no Google Cloud proje
 refresh tokens that expire. Until you set it up, nothing about Google changes on the site.
 
 **Try the invitations on yourself first (test mode).** In the Admin planner, under the Google Calendar line,
-open *Test the Google invitations on yourself first*, type your own NAIST **Google account** (the one you use for Google Calendar, for example `name@g.ext.naist.jp`; not the `naist.ac.jp` / `is.naist.jp` email) and press *Turn on*. It must be exactly the address saved in *NAIST Google account* on your roster entry.
+open *Test the Google invitations on yourself first*, type your own address and press *Turn on*. It must be exactly the address saved in *NAIST Google account* on your roster entry. Any address can be invited: a Google account (for example `name@g.ext.naist.jp`) gets the event straight in its Google Calendar, any other address (for example a `naist.ac.jp` email) gets the invitation by email.
 While test mode is on, only that address is invited to Friday events; everyone else is left out. Press
 *Turn off* when you are happy; then everyone scheduled with a NAIST Google account is invited. (If someone was
 already invited, turning test mode on sends them a cancellation, and turning it off invites them again.)
