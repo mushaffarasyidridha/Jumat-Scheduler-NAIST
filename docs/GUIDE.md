@@ -115,6 +115,8 @@ flowchart TD
 | Automatic | Deploy | Every change of the code is published automatically, with its database changes. | ✅ live |
 | Admin | Join requests | A box in the planner lists people who could not find their name, with Add to roster (form pre-filled) and Dismiss; the admins are also emailed. | ✅ live |
 | Admin | Places | A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event. | ✅ live |
+| Admin | Ramadan days | First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. Reminders and calendar events for these days come next. | ✅ live |
+| Members | Ramadan days in the calendar | Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement. | ✅ live |
 
 ## For members
 
@@ -277,6 +279,28 @@ flowchart TD
   class E,F warn
 ```
 
+### Ramadan: Isha + Tarawih and the kultum
+
+Set the dates and the weekly pattern once; the days are made for you and each can be adjusted.
+
+```mermaid
+flowchart TD
+  A["Before Ramadan: Admin planner, the Ramadan card<br/>set the first and last day, the usual Isha / Tarawih time, the kultum minutes"] --> B["Weekly pattern<br/>tick the weekdays that have a gathering<br/>pick the place and the time for each, tick kultum where it usually happens"]
+  B --> C["Press Save and create the days<br/>one day is made for every chosen weekday; days that exist are never changed"]
+  C --> D["Members see the days in the calendar<br/>a moon chip with the time, a microphone when there is a kultum"]
+  C --> E["Fine-tune a day: Edit<br/>place, time, kultum or not, kultum minutes, the note"]
+  E --> F{"Is there a kultum that day?"}
+  F -->|"yes"| G["Pick the speaker from the roster, or type a guest<br/>days with a kultum and no speaker are flagged"]
+  F -->|"no"| H["Nothing more for that day"]
+  G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups"]
+
+  classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
+  class A,B,C,E,F,G,H,I admin
+  class D member
+```
+
 ## Behind the scenes
 
 What runs by itself, and the exact list of pages, tables, jobs and settings in the code (this list is written by the code itself, so it is always current).
@@ -337,6 +361,8 @@ flowchart TD
 | `/api/calendar/test-mode` | The planner's invitation test mode: invite only the addresses typed there until it is turned off. | POST: access code |
 | `/api/fridays` | The schedule: the list of Fridays. It also creates the coming ones. | GET: public |
 | `/api/fridays/:id` | Assign khatib and imam, set the venue or a note for one Friday. | PATCH: access code |
+| `/api/gatherings` | The admin adds one extra Ramadan day by hand. | POST: access code |
+| `/api/gatherings/:id` | The admin changes one Ramadan day (place, time, kultum, speaker, reminders) or deletes it. | PATCH: access code; DELETE: access code |
 | `/api/join-requests` | Someone who cannot find their name sends their details (anyone can); the admin lists the waiting requests here. | POST: public; GET: access code |
 | `/api/join-requests/:id` | The admin closes a request: added to the roster, or dismissed. | PATCH: access code |
 | `/api/line/webhook` | Where LINE delivers messages to the bot. This is how a person links their LINE with the code. | POST: LINE signature |
@@ -345,6 +371,8 @@ flowchart TD
 | `/api/people/:id/line` | Create or remove the code a person uses to link their LINE. | POST: access code; DELETE: access code |
 | `/api/places` | The places (dorm lounges, the Sentan assembly room ...) for the venue dropdown; the admin adds one. | GET: public; POST: access code |
 | `/api/places/:id` | The admin edits or deletes one place (a rename follows onto the coming Fridays). | PATCH: access code; DELETE: access code |
+| `/api/ramadan` | Ramadan: the dates, the weekly pattern and the days (anyone can read; the admin saves the settings). | GET: public; PUT: access code |
+| `/api/ramadan/generate` | The admin makes the Ramadan days from the dates and the weekly pattern. | POST: access code |
 | `/api/reminders/status` | What the planner shows about the reminder job, the admin and Google Calendar. | GET: access code |
 | `/api/reminders/unsubscribe` | The stop-these-reminders link at the bottom of every email. | GET: private link; POST: private link |
 
@@ -362,6 +390,9 @@ flowchart TD
 | `gcal_state` | `0012_gcal.sql` |
 | `join_requests` | `0014_join_requests.sql` |
 | `places` | `0015_places.sql` |
+| `ramadan_settings` | `0016_ramadan.sql` |
+| `ramadan_pattern` | `0016_ramadan.sql` |
+| `gatherings` | `0016_ramadan.sql` |
 
 #### Database changes, in order
 
@@ -382,6 +413,7 @@ flowchart TD
 | `0013_gcal_test_mode.sql` | Invitation test mode: while this holds addresses (comma separated), only those |
 | `0014_join_requests.sql` | "My name isn't listed": someone who is not on the roster types their name and |
 | `0015_places.sql` | Places (dorm lounges, the Sentan assembly room, ...) the admin can add, edit and |
+| `0016_ramadan.sql` | Ramadan: the dates, a weekly pattern, and one "gathering" (Isha + Tarawih, with a |
 
 #### Robot jobs (GitHub Actions)
 

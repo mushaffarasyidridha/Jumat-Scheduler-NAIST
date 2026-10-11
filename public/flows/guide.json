@@ -93,6 +93,11 @@
           "file": "admin-alerts.mmd",
           "title": "When someone cannot make it",
           "caption": "The alert reaches you on the website and by email, so a replacement can be found early."
+        },
+        {
+          "file": "admin-ramadan.mmd",
+          "title": "Ramadan: Isha + Tarawih and the kultum",
+          "caption": "Set the dates and the weekly pattern once; the days are made for you and each can be adjusted."
         }
       ]
     },
@@ -307,6 +312,18 @@
       "audience": "Admin",
       "name": "Places",
       "what": "A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Ramadan days",
+      "what": "First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. Reminders and calendar events for these days come next.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Ramadan days in the calendar",
+      "what": "Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement.",
       "status": "live"
     }
   ],

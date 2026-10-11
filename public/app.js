@@ -15,6 +15,8 @@
     alerts: [], // admin only: "can't make it" alerts waiting for the admin
     joinRequests: [], // admin only: "my name isn't listed" requests waiting to be added
     places: [], // the places the admin manages; the venue dropdown
+    ramadan: { settings: { start_date: null, end_date: null, default_start: "19:30", kultum_minutes: 7, event_minutes: 90, reminder_days: [3, 2, 1, 0] }, pattern: [], gatherings: [] },
+    openCards: { places: false, ramadan: false }, // planner cards the admin has open (kept across redraws)
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -188,7 +190,7 @@
 
   async function loadAll() {
     const availUrl = availabilityUrl();
-    const [people, fridays, availability, reminderStatus, alerts, joinRequests, places] = await Promise.all([
+    const [people, fridays, availability, reminderStatus, alerts, joinRequests, places, ramadan] = await Promise.all([
       api("/api/people"),
       api("/api/fridays"),
       availUrl ? api(availUrl) : Promise.resolve([]),
@@ -196,6 +198,7 @@
       fetchAlerts(),
       fetchJoinRequests(),
       api("/api/places").catch(() => []),
+      api("/api/ramadan").catch(() => null),
     ]);
     state.people = people;
     state.fridays = fridays;
@@ -204,6 +207,7 @@
     state.alerts = alerts;
     state.joinRequests = joinRequests;
     state.places = places;
+    if (ramadan) state.ramadan = ramadan;
     updateUnlockUI();
     renderWhoami();
     renderCalendar();
@@ -354,9 +358,16 @@
       cells.push({ date: d, otherMonth: true });
     }
 
+    // Ramadan days (Isha + Tarawih) by date. While the month has any, the weekday columns are equal.
+    const gByDate = new Map(state.ramadan.gatherings.map((g) => [g.date, g]));
+    const anyGathering = cells.some((c) => gByDate.has(isoDate(c.date)));
+    $("#calendar-grid").classList.toggle("has-gatherings", anyGathering);
+    document.querySelector(".calendar-weekdays").classList.toggle("has-gatherings", anyGathering);
+
     $("#calendar-grid").innerHTML = cells
       .map((cell) => {
         const iso = isoDate(cell.date);
+        const g = gByDate.get(iso);
         const isFriday = cell.date.getUTCDay() === 5;
         const friday = isFriday ? byDate[iso] : null;
         const classes = ["cal-day"];
@@ -377,19 +388,34 @@
           summary = `<span class="cal-day-summary"><span class="chip ${statusClass} name">${escapeHtml(label)}</span></span>`;
         }
 
-        const tag = friday ? "button" : "div";
-        const dataAttr = friday ? `data-friday-id="${friday.id}"` : "";
-        const typeAttr = friday ? 'type="button"' : "";
+        const chip = g
+          ? `<span class="gathering-chip" data-gathering-id="${g.id}" title="Isha + Tarawih ${escapeHtml(g.start_time)}${g.kultum ? ", with kultum" : ""}">🌙 ${escapeHtml(g.start_time)}${g.kultum ? " 🎤" : ""}</span>`
+          : "";
+        if (g && !friday) classes.push("clickable", "gathering-day");
+        const tag = friday || g ? "button" : "div";
+        const dataAttr = friday ? `data-friday-id="${friday.id}"` : g ? `data-gathering-id="${g.id}"` : "";
+        const typeAttr = friday || g ? 'type="button"' : "";
         const isNext = friday && friday.date === nextJumat ? ' title="Next Jumat"' : "";
         return `<${tag} class="${classes.join(" ")}" ${dataAttr} ${typeAttr}${isNext}>
           <span class="cal-day-num">${cell.date.getUTCDate()}</span>
           ${summary}
+          ${chip}
         </${tag}>`;
       })
       .join("");
 
     $("#calendar-grid").querySelectorAll("button.cal-day").forEach((btn) => {
-      btn.addEventListener("click", () => openDayModal(Number(btn.dataset.fridayId)));
+      btn.addEventListener("click", () => {
+        if (btn.dataset.fridayId) openDayModal(Number(btn.dataset.fridayId));
+        else if (btn.dataset.gatheringId) openGatheringModal(Number(btn.dataset.gatheringId));
+      });
+    });
+    // The Tarawih chip on a Friday opens the Tarawih day, not the Friday prayer.
+    $("#calendar-grid").querySelectorAll("button.cal-day[data-friday-id] [data-gathering-id]").forEach((chip) => {
+      chip.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openGatheringModal(Number(chip.dataset.gatheringId));
+      });
     });
   }
 
@@ -824,7 +850,7 @@
         </li>`;
       })
       .join("");
-    return `<details class="small planner-notes planner-places"><summary>📍 Places (${state.places.length}): the venue dropdown</summary>
+    return `<details class="small planner-notes planner-places" data-card="places" ${state.openCards.places ? "open" : ""}><summary>📍 Places (${state.places.length}): the venue dropdown</summary>
       <ul>${items || '<li class="muted">No places yet.</li>'}</ul>
       <button class="btn btn-sm" data-place-add type="button">+ Add place</button>
     </details>`;
@@ -1015,6 +1041,7 @@
       ${joinRequestsHtml()}
       ${alertsHtml()}
       ${placesHtml()}
+      ${ramadanHtml()}
       ${reminderStatusHtml()}
       ${googleStatusHtml()}
       ${adminStatusHtml()}
@@ -1154,6 +1181,8 @@
       if (confirm("Turn test mode off? Everyone scheduled who has an email saved (and reminders on) will then be invited to their Friday.")) setTestMode("");
     });
 
+    list.querySelectorAll("details[data-card]").forEach((d) => d.addEventListener("toggle", () => (state.openCards[d.dataset.card] = d.open)));
+    wireRamadanCard(list);
     list.querySelector("[data-place-add]")?.addEventListener("click", () => openPlaceModal(null));
     list.querySelectorAll("[data-place-edit]").forEach((btn) => {
       btn.addEventListener("click", () => openPlaceModal(state.places.find((p) => p.id === Number(btn.dataset.placeEdit))));
@@ -1281,6 +1310,7 @@
   }
 
   function openAnnouncementModal(friday) {
+    $("#announcement-reroll-btn").classList.remove("hidden");
     announcementFriday = friday;
     announcementHadith = announcement.randomHadith();
     renderAnnouncementText();
@@ -1570,6 +1600,287 @@
       $("#person-error").classList.remove("hidden");
     }
   });
+
+  // ---------- Ramadan: Isha + Tarawih days ----------
+
+  const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const MONDAY_FIRST = [1, 2, 3, 4, 5, 6, 0];
+
+  function gatheringPlaceSelectHtml(current, role) {
+    const known = state.places.some((p) => p.name.toLowerCase() === (current || "").toLowerCase());
+    return `<select data-g="${role}">
+      <option value="">— to be announced —</option>
+      ${state.places.map((p) => `<option value="${escapeHtml(p.name)}" ${p.name.toLowerCase() === (current || "").toLowerCase() ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}
+      ${current && !known ? `<option value="${escapeHtml(current)}" selected>${escapeHtml(current)} (not in the list)</option>` : ""}
+    </select>`;
+  }
+
+  function gatheringSummaryLines(g) {
+    const place = state.places.find((p) => p.name.toLowerCase() === (g.place || "").toLowerCase());
+    const lines = [
+      `<p class="small"><strong>Time:</strong> ${escapeHtml(g.start_time)} (Isha, then Tarawih)</p>`,
+      `<p class="small"><strong>Place:</strong> ${g.place ? escapeHtml(g.place) : "to be announced"}${place && place.maps_url ? ` · <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}</p>`,
+    ];
+    if (place && place.details) lines.push(`<p class="small muted">${escapeHtml(place.details)}</p>`);
+    lines.push(
+      g.kultum
+        ? `<p class="small"><strong>Kultum (${g.kultum_minutes} minutes):</strong> ${g.speaker ? escapeHtml(g.speaker) : "speaker to be announced"}</p>`
+        : '<p class="small"><strong>Kultum:</strong> none that day</p>'
+    );
+    if (g.info) lines.push(`<p class="small muted">${escapeHtml(g.info)}</p>`);
+    return lines.join("");
+  }
+
+  function openGatheringModal(id) {
+    const g = state.ramadan.gatherings.find((x) => x.id === id);
+    if (!g) return;
+    $("#gathering-title").textContent = `Isha + Tarawih · ${formatDateLong(g.date)}`;
+    renderGatheringBody(g);
+    $("#gathering-modal").classList.remove("hidden");
+  }
+
+  function renderGatheringBody(g) {
+    const body = $("#gathering-body");
+    const admin = hasAccessCode();
+    const announce = '<button class="btn btn-sm" data-g-announce type="button">📢 Generate announcement</button>';
+    if (!admin) {
+      body.innerHTML = `${gatheringSummaryLines(g)}<div class="announce-row">${announce}</div>`;
+    } else {
+      const people = state.people.filter((p) => p.status === "active");
+      const speakerOptions =
+        '<option value="">— none —</option>' +
+        (g.speaker_id == null && g.speaker ? `<option value="__guest" selected>Guest: ${escapeHtml(g.speaker)}</option>` : "") +
+        people.map((p) => `<option value="${p.id}" ${p.id === g.speaker_id ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
+      body.innerHTML = `<div class="gathering-form">
+        <label>Place ${gatheringPlaceSelectHtml(g.place, "place")}</label>
+        <label>Start time (Isha / Tarawih) <input type="time" data-g="start_time" value="${escapeHtml(g.start_time)}" /></label>
+        <label class="check-row"><input type="checkbox" data-g="kultum" ${g.kultum ? "checked" : ""} /><span>There is a kultum (7-minute talk) this day</span></label>
+        <div data-g-kultum-box class="${g.kultum ? "" : "hidden"}">
+          <label>Kultum speaker <select data-g="speaker_id">${speakerOptions}</select></label>
+          <label>or a guest, e.g. Prof. Arai <input type="text" maxlength="80" data-g="speaker_name" value="${g.speaker_id == null && g.speaker ? escapeHtml(g.speaker) : ""}" placeholder="type a name" /></label>
+          <label>Kultum minutes <input type="number" min="1" max="60" data-g="kultum_minutes" value="${g.kultum_minutes}" /></label>
+        </div>
+        <label class="check-row"><input type="checkbox" data-g="reminders" ${g.reminders ? "checked" : ""} /><span>Send the speaker reminders for this day</span></label>
+        <label>Note <input type="text" maxlength="300" data-g="info" value="${escapeHtml(g.info)}" placeholder="optional" /></label>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" data-g-delete type="button">Delete this day</button>
+          ${announce}
+          <button class="btn btn-primary" data-g-save type="button">Save</button>
+        </div>
+        <p class="error small hidden" data-g-error></p>
+      </div>`;
+      body.querySelector('[data-g="kultum"]').addEventListener("change", (e) => body.querySelector("[data-g-kultum-box]").classList.toggle("hidden", !e.target.checked));
+      // A speaker is a roster person or a typed guest, never both: choosing one clears the other.
+      const speakerSelect = body.querySelector('[data-g="speaker_id"]');
+      const guestInput = body.querySelector('[data-g="speaker_name"]');
+      guestInput.addEventListener("input", () => {
+        if (guestInput.value.trim()) speakerSelect.value = speakerSelect.querySelector('option[value="__guest"]') ? "__guest" : "";
+      });
+      speakerSelect.addEventListener("change", () => {
+        if (speakerSelect.value && speakerSelect.value !== "__guest") guestInput.value = "";
+      });
+      body.querySelector("[data-g-save]").addEventListener("click", () => saveGathering(g, body));
+      body.querySelector("[data-g-delete]").addEventListener("click", async () => {
+        if (!confirm(`Delete ${formatDateLong(g.date)} from Ramadan?`)) return;
+        try {
+          await api(`/api/gatherings/${g.id}`, { method: "DELETE" });
+          state.ramadan.gatherings = state.ramadan.gatherings.filter((x) => x.id !== g.id);
+          $("#gathering-modal").classList.add("hidden");
+          renderCalendar();
+          renderPlanner();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      });
+    }
+    body.querySelector("[data-g-announce]").addEventListener("click", () => openGatheringAnnouncement(g));
+  }
+
+  async function saveGathering(g, body) {
+    const val = (name) => body.querySelector(`[data-g="${name}"]`);
+    const payload = {
+      place: val("place").value,
+      start_time: val("start_time").value,
+      kultum: val("kultum").checked,
+      reminders: val("reminders").checked,
+      info: val("info").value,
+    };
+    if (payload.kultum) {
+      const minutes = val("kultum_minutes").value;
+      payload.kultum_minutes = minutes === "" ? null : Number(minutes);
+      const guest = val("speaker_name").value.trim();
+      const chosen = val("speaker_id").value;
+      if (guest && (!chosen || chosen === "__guest")) {
+        payload.speaker_id = null;
+        payload.speaker_name = guest;
+      } else if (chosen && chosen !== "__guest") {
+        payload.speaker_id = Number(chosen);
+      } else if (!chosen) {
+        payload.speaker_id = null;
+        payload.speaker_name = "";
+      }
+    }
+    try {
+      const updated = await api(`/api/gatherings/${g.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      Object.assign(g, updated);
+      renderCalendar();
+      renderPlanner();
+      renderGatheringBody(g);
+      toast("Saved");
+    } catch (e) {
+      const box = body.querySelector("[data-g-error]");
+      box.textContent = e.message;
+      box.classList.remove("hidden");
+    }
+  }
+  $("#gathering-close-btn").addEventListener("click", () => $("#gathering-modal").classList.add("hidden"));
+
+  // The Tarawih text has no hadith, so the "new hadith" button hides until a Friday is opened again.
+  function openGatheringAnnouncement(g) {
+    $("#announcement-text").value = announcement.buildGatheringText(g, { places: state.places, settings: state.ramadan.settings });
+    $("#announcement-reroll-btn").classList.add("hidden");
+    $("#announcement-modal").classList.remove("hidden");
+  }
+
+  // The planner's Ramadan card: the dates, the weekly pattern, and the days.
+  function ramadanHtml() {
+    const r = state.ramadan;
+    const s = r.settings;
+    const placeOptions = (current) =>
+      `<option value="">— place —</option>${state.places
+        .map((p) => `<option value="${escapeHtml(p.name)}" ${p.name === current ? "selected" : ""}>${escapeHtml(p.name)}</option>`)
+        .join("")}${current && !state.places.some((p) => p.name === current) ? `<option value="${escapeHtml(current)}" selected>${escapeHtml(current)}</option>` : ""}`;
+    const rowFor = (wd) => {
+      const p = r.pattern.find((x) => x.weekday === wd) || { active: false, place: "", start_time: "", kultum: false, reminders: true };
+      return `<tr data-weekday="${wd}">
+        <td><label><input type="checkbox" class="rm-active" ${p.active ? "checked" : ""} /> ${WEEKDAY_NAMES[wd]}</label></td>
+        <td><select class="rm-place">${placeOptions(p.place || "")}</select></td>
+        <td><input type="time" class="rm-time" value="${escapeHtml(p.start_time || "")}" /></td>
+        <td><label><input type="checkbox" class="rm-kultum" ${p.kultum ? "checked" : ""} /> kultum</label></td>
+        <td><label><input type="checkbox" class="rm-reminders" ${p.reminders ? "checked" : ""} /> remind</label></td>
+      </tr>`;
+    };
+    const remindBoxes = [4, 3, 2, 1, 0]
+      .map((d) => `<label><input type="checkbox" class="rm-remind" value="${d}" ${s.reminder_days.includes(d) ? "checked" : ""} /> ${d === 0 ? "the day itself" : `${d} day${d > 1 ? "s" : ""} before`}</label>`)
+      .join(" ");
+    const today = todayISO();
+    const upcoming = r.gatherings.filter((g) => g.date >= today);
+    const days = upcoming
+      .map(
+        (g) => `<li class="ramadan-day">
+          <span><strong>${escapeHtml(formatDateLong(g.date))}</strong> · ${escapeHtml(g.start_time)} · ${g.place ? escapeHtml(g.place) : "<em>no place</em>"}
+            <span class="muted small">${g.kultum ? `· kultum: ${g.speaker ? escapeHtml(g.speaker) : "⚠ no speaker yet"}` : "· no kultum"}</span></span>
+          <button class="btn btn-sm btn-ghost" data-rm-edit="${g.id}" type="button">Edit</button>
+        </li>`
+      )
+      .join("");
+    const range = s.start_date && s.end_date ? `${formatDateLong(s.start_date)} to ${formatDateLong(s.end_date)}` : "not set";
+    return `<details class="small planner-notes planner-ramadan" data-card="ramadan" ${state.openCards.ramadan ? "open" : ""}><summary>🌙 Ramadan (${escapeHtml(range)})</summary>
+      <div class="ramadan-fields">
+        <label>First day <input type="date" id="rm-start" value="${escapeHtml(s.start_date || "")}" /></label>
+        <label>Last day <input type="date" id="rm-end" value="${escapeHtml(s.end_date || "")}" /></label>
+        <label>Usual Isha / Tarawih start <input type="time" id="rm-default" value="${escapeHtml(s.default_start)}" /></label>
+        <label>Kultum minutes <input type="number" id="rm-kultum-min" min="1" max="60" value="${s.kultum_minutes}" /></label>
+        <label>Calendar event length (minutes) <input type="number" id="rm-event-min" min="15" max="360" value="${s.event_minutes}" /></label>
+      </div>
+      <p class="muted">Which weekdays have a gathering, where, and when (leave the time empty for the usual start):</p>
+      <table class="ramadan-grid"><thead><tr><th>Weekday</th><th>Place</th><th>Start</th><th></th><th></th></tr></thead><tbody>${MONDAY_FIRST.map(rowFor).join("")}</tbody></table>
+      <p class="muted">Remind the kultum speaker: ${remindBoxes}</p>
+      <div class="ramadan-actions">
+        <button class="btn btn-sm" data-rm-save type="button">Save settings</button>
+        <button class="btn btn-sm btn-primary" data-rm-generate type="button">Save and create the days</button>
+        <button class="btn btn-sm btn-ghost" data-rm-prune type="button">Remove days outside the dates</button>
+      </div>
+      <p class="muted">Creating the days never changes a day that already exists. Add a single extra day:
+        <input type="date" id="rm-add-date" /> <button class="btn btn-sm btn-ghost" data-rm-add type="button">Add this day</button></p>
+      <ul class="ramadan-days">${days || '<li class="muted">No Ramadan days yet.</li>'}</ul>
+    </details>`;
+  }
+
+  function readRamadanForm(root) {
+    return {
+      start_date: root.querySelector("#rm-start").value || null,
+      end_date: root.querySelector("#rm-end").value || null,
+      default_start: root.querySelector("#rm-default").value,
+      kultum_minutes: Number(root.querySelector("#rm-kultum-min").value),
+      event_minutes: Number(root.querySelector("#rm-event-min").value),
+      reminder_days: [...root.querySelectorAll(".rm-remind:checked")].map((b) => Number(b.value)),
+      pattern: [...root.querySelectorAll("tr[data-weekday]")].map((tr) => ({
+        weekday: Number(tr.dataset.weekday),
+        active: tr.querySelector(".rm-active").checked,
+        place: tr.querySelector(".rm-place").value,
+        start_time: tr.querySelector(".rm-time").value || null,
+        kultum: tr.querySelector(".rm-kultum").checked,
+        reminders: tr.querySelector(".rm-reminders").checked,
+      })),
+    };
+  }
+
+  async function reloadRamadan() {
+    state.ramadan = await api("/api/ramadan");
+    renderCalendar();
+    renderPlanner();
+  }
+
+  function wireRamadanCard(root) {
+    const card = root.querySelector(".planner-ramadan");
+    if (!card) return;
+    const save = async () => {
+      const saved = await api("/api/ramadan", { method: "PUT", body: JSON.stringify(readRamadanForm(card)) });
+      state.ramadan.settings = saved.settings;
+      state.ramadan.pattern = saved.pattern;
+    };
+    card.querySelector("[data-rm-save]").addEventListener("click", async () => {
+      try {
+        await save();
+        await reloadRamadan();
+        toast("Ramadan settings saved");
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    card.querySelector("[data-rm-generate]").addEventListener("click", async () => {
+      try {
+        await save();
+        const r = await api("/api/ramadan/generate", { method: "POST", body: "{}" });
+        await reloadRamadan();
+        toast(r.created ? `${r.created} day(s) created` : "No new days: they already exist");
+        if (r.outside) toast(`${r.outside} existing day(s) are outside the dates: use “Remove days outside the dates”`);
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    card.querySelector("[data-rm-prune]").addEventListener("click", async () => {
+      if (!confirm("Remove every Ramadan day that is outside the first and last day above?")) return;
+      try {
+        await save();
+        const r = await api("/api/ramadan/generate", { method: "POST", body: JSON.stringify({ prune: true }) });
+        await reloadRamadan();
+        toast(`${r.removed} day(s) removed`);
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    card.querySelector("[data-rm-add]").addEventListener("click", async () => {
+      const date = card.querySelector("#rm-add-date").value;
+      if (!date) return toast("Pick the date to add", true);
+      try {
+        await api("/api/gatherings", { method: "POST", body: JSON.stringify({ date }) });
+        await reloadRamadan();
+        toast("Day added");
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    card.querySelectorAll("[data-rm-edit]").forEach((btn) => btn.addEventListener("click", () => openGatheringModal(Number(btn.dataset.rmEdit))));
+    // Choosing a place that usually has a kultum ticks the kultum box, as a convenience.
+    card.querySelectorAll("tr[data-weekday] .rm-place").forEach((select) =>
+      select.addEventListener("change", () => {
+        const place = state.places.find((p) => p.name === select.value);
+        if (place && place.kultum_usual) select.closest("tr").querySelector(".rm-kultum").checked = true;
+      })
+    );
+  }
 
   // ---------- Places (admin) ----------
 

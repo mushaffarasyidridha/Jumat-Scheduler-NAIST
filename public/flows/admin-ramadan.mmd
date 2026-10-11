@@ -1,0 +1,15 @@
+flowchart TD
+  A["Before Ramadan: Admin planner, the Ramadan card<br/>set the first and last day, the usual Isha / Tarawih time, the kultum minutes"] --> B["Weekly pattern<br/>tick the weekdays that have a gathering<br/>pick the place and the time for each, tick kultum where it usually happens"]
+  B --> C["Press Save and create the days<br/>one day is made for every chosen weekday; days that exist are never changed"]
+  C --> D["Members see the days in the calendar<br/>a moon chip with the time, a microphone when there is a kultum"]
+  C --> E["Fine-tune a day: Edit<br/>place, time, kultum or not, kultum minutes, the note"]
+  E --> F{"Is there a kultum that day?"}
+  F -->|"yes"| G["Pick the speaker from the roster, or type a guest<br/>days with a kultum and no speaker are flagged"]
+  F -->|"no"| H["Nothing more for that day"]
+  G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups"]
+
+  classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
+  class A,B,C,E,F,G,H,I admin
+  class D member

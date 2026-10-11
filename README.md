@@ -222,6 +222,24 @@ code on that device) can still change it; to fix a wrong pick for a member, unlo
 the name, then press Lock. It is a guard in the page, not a login: the site has no accounts, so someone who
 clears their browser data or uses another device can pick again.
 
+## Ramadan (Isha + Tarawih, with a kultum on chosen days)
+
+In the Admin planner, the **🌙 Ramadan** card:
+
+1. Set the **first and last day** of Ramadan, the **usual Isha / Tarawih start** (for example 19:30), the **kultum length**
+   (7 minutes) and how long the calendar event lasts.
+2. In the **weekly pattern**, tick the weekdays that have a gathering, pick the **place** (from the Places list) and the
+   **start time** (empty = the usual start) for each, and tick **kultum** where one usually happens (choosing a place where
+   a kultum is usual ticks it for you). Untick **remind** for a weekday that should send no reminders.
+3. Press **Save and create the days**. One day is made for every chosen weekday between the two dates. Days that already
+   exist are never changed, so you can press it again after changing the pattern. **Remove days outside the dates** cleans up
+   after moving Ramadan; **Add this day** adds a single extra day.
+4. **Edit** a day: place, time, kultum or not (and its minutes), the kultum **speaker** (a roster person or a guest typed in by
+   name), reminders on or off, a note, delete. Days with a kultum but no speaker are flagged.
+
+Members see the days in the calendar as a moon chip with the time (a microphone when there is a kultum); tapping one shows
+the place, time and speaker and offers the announcement text for the WhatsApp / Facebook groups.
+
 ## Places (the venue dropdown)
 
 In the Admin planner, the **📍 Places** card lists the places you use (the Sentan assembly room, the dorm lounges ...).
