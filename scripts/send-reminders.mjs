@@ -267,6 +267,12 @@ async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
   if (!BRIDGE) return { synced: 0, failed: 0 };
   const db = { all: (sql, params = []) => d1(sql, params), run: (sql, params = []) => d1(sql, params) };
   const result = await syncUpcoming({ bridge: BRIDGE, db, siteUrl: SITE_URL, today, dryRun, forcePing });
+  const i = result.invites;
+  console.log(
+    `Google invitations: ${i.accounts} person(s) have a NAIST Google account saved, ${i.eligible} of them eligible (active, reminders on); ` +
+      `test mode ${i.testMode ? `ON (${i.listed} address(es), ${i.matched} matching an eligible saved account)` : "off"}; ` +
+      `${i.fridaysWithGuests} of ${result.total} upcoming Friday(s) have at least one guest to invite.`
+  );
   if (dryRun) {
     console.log(`Google Calendar: ${result.wouldSync} of ${result.total} upcoming Friday(s) would be updated.`);
     return { synced: 0, failed: 0 };
