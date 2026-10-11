@@ -213,6 +213,15 @@ never needs one). From then on:
 - It is only raised for someone who really is scheduled that Friday, for a Friday that has not passed. If they
   say they are available again, or you put someone else in their slot, the alert disappears by itself.
 
+## Choosing your name (and why it stays)
+
+Under **You are**, a member picks their own name once. After that the choice is fixed on that device: the box
+is greyed out with "Your name is set on this device. Wrong name? Ask the admin." This stops one member switching
+to another name to mark, or look at, someone else's availability. The admin (anyone who has entered the access
+code on that device) can still change it; to fix a wrong pick for a member, unlock editing on their device, change
+the name, then press Lock. It is a guard in the page, not a login: the site has no accounts, so someone who
+clears their browser data or uses another device can pick again.
+
 ## Reminders (automatic email, plus copy / WhatsApp by hand)
 
 **Automatic, by email.** Every morning (about 08:30 Japan time, plus a catch-up

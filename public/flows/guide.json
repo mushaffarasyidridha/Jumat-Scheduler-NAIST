@@ -125,6 +125,7 @@
   "features": [
     { "audience": "Members", "name": "See the schedule", "what": "A calendar of the Fridays with khatib, imam and venue.", "status": "live" },
     { "audience": "Members", "name": "Friday details and announcement", "what": "Tap a Friday to read it and copy the weekly announcement.", "status": "live" },
+    { "audience": "Members", "name": "Name locked on the device", "what": "After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). The admin, who holds the access code, can still change it. It is a guard in the page, not a login.", "status": "live" },
     { "audience": "Members", "name": "Say when you can or cannot come", "what": "Choose your name, then I'm available or I'm unavailable. No password.", "status": "live" },
     { "audience": "Members", "name": "Can't make it link", "what": "In every reminder and calendar event: one button that tells the admin you cannot come.", "status": "live" },
     { "audience": "Members", "name": "Calendar feed", "what": "A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text.", "status": "live" },

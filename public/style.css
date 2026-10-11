@@ -437,3 +437,5 @@ body.guide-noscroll { overflow: hidden; }
 .guide-badge-live, .guide-badge-done { color: var(--available); border-color: var(--available); }
 .guide-badge-needs-setup, .guide-badge-in-progress { color: #a8610d; border-color: #c77b1c; }
 .guide-badge-todo { color: var(--muted); }
+
+#whoami-note { font-size: 0.7rem; max-width: 220px; }

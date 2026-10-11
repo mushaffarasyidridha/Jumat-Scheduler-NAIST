@@ -91,6 +91,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | Members | See the schedule | A calendar of the Fridays with khatib, imam and venue. | ✅ live |
 | Members | Friday details and announcement | Tap a Friday to read it and copy the weekly announcement. | ✅ live |
+| Members | Name locked on the device | After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). The admin, who holds the access code, can still change it. It is a guard in the page, not a login. | ✅ live |
 | Members | Say when you can or cannot come | Choose your name, then I'm available or I'm unavailable. No password. | ✅ live |
 | Members | Can't make it link | In every reminder and calendar event: one button that tells the admin you cannot come. | ✅ live |
 | Members | Calendar feed | A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text. | ✅ live |
@@ -128,7 +129,7 @@ flowchart TD
   C --> D["Tap a Friday to see its details<br/>read khatib, imam and venue<br/>or generate the announcement and copy it to share"]
   C --> E["Put the schedule in your own calendar<br/>Google Calendar: Add the Jumat calendar<br/>Apple or Outlook: use the calendar feed link"]
   C --> F["Say when you can or cannot come"]
-  F --> F1["Choose your name at the top<br/>You are"]
+  F --> F1["Choose your name at the top, You are<br/>once: it is then fixed on this device<br/>the admin can change it"]
   F1 --> F2["Tap a Friday, then<br/>I'm available · I'm unavailable · Clear my mark"]
   F2 --> F3["The admin sees it when choosing<br/>who will be khatib or imam"]
 
