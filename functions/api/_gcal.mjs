@@ -5,6 +5,7 @@
 import shared from "../../public/reminder-message.js";
 import { eventTitle, eventDescription } from "./_ics.mjs";
 import { alertRecipients, buildAlertEmail, ALERT_ROW_SELECT } from "./_alertmail.mjs";
+import { joinRecipients, buildJoinEmail, JOIN_ROW_SELECT } from "./_joinmail.mjs";
 
 const { ROLE_SLOTS, prayerWindowUtc } = shared;
 
@@ -282,3 +283,36 @@ export async function emailAlertViaBridge({ bridge, db, alertId, siteUrl, today 
   }
 }
 
+
+// ---------- "someone asks to be added to the roster", through the bridge ----------
+
+// Same idea as the alert email: claim the request first (so the job cannot send it
+// twice), release the claim when nobody could be reached so the job retries.
+export async function emailJoinViaBridge({ bridge, db, requestId, siteUrl }) {
+  const claim = await db.run("UPDATE join_requests SET emailed_at = datetime('now') WHERE id = ? AND emailed_at IS NULL AND resolved_at IS NULL", [requestId]);
+  if (!claim.changes) return false;
+  const release = () => db.run("UPDATE join_requests SET emailed_at = NULL WHERE id = ?", [requestId]);
+  try {
+    const [request] = await db.all(`${JOIN_ROW_SELECT} WHERE id = ?`, [requestId]);
+    const admins = joinRecipients(await db.all(ADMINS_SQL, []));
+    if (!request || !admins.length) {
+      await release();
+      return false;
+    }
+    let delivered = 0;
+    for (const admin of admins) {
+      const email = buildJoinEmail({ request, admin, siteUrl });
+      try {
+        await bridge.sendMail({ to: admin.email, subject: email.subject, body: email.text });
+        delivered++;
+      } catch {
+        // try the others; the job retries by SMTP if nobody could be reached
+      }
+    }
+    if (!delivered) await release();
+    return delivered > 0;
+  } catch {
+    await release();
+    return false;
+  }
+}

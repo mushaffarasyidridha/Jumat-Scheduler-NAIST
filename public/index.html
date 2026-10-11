@@ -17,6 +17,7 @@
         <label for="whoami-select">You are</label>
         <select id="whoami-select"></select>
         <small id="whoami-note" class="muted"></small>
+        <button id="join-open-btn" class="linklike" type="button">My name isn't listed</button>
       </div>
     </div>
   </header>
@@ -178,6 +179,52 @@
         <button id="person-save-btn" class="btn btn-primary" type="button">Add</button>
       </div>
       <p id="person-error" class="error small hidden"></p>
+    </div>
+  </div>
+
+  <div id="join-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>My name isn't listed</h3>
+      <div id="join-form">
+        <p class="small muted">Type your name and details. The admin is told and will add you to the list; then you can pick your name under “You are”.</p>
+        <label>Your name <input id="join-name" type="text" maxlength="80" placeholder="e.g. Firoz Ahmed" autocomplete="name" /></label>
+        <label>Who are you
+          <select id="join-affiliation">
+            <option value="naist_student">NAIST Student</option>
+            <option value="naist_staff">NAIST Staff</option>
+            <option value="dependent">Dependent (e.g. spouse of a student)</option>
+            <option value="outside">Outside NAIST</option>
+          </select>
+        </label>
+        <label>Country <input id="join-country" type="text" maxlength="60" placeholder="e.g. Bangladesh" /></label>
+        <label>I can serve as
+          <select id="join-role">
+            <option value="khatib">Khatib</option>
+            <option value="imam">Imam</option>
+            <option value="both">Khatib &amp; Imam</option>
+          </select>
+        </label>
+        <label>Email <span class="muted small">(for reminders and calendar invitations; only the admin sees it)</span>
+          <input id="join-email" type="email" maxlength="120" placeholder="optional" autocomplete="email" />
+        </label>
+        <label>WhatsApp number <span class="muted small">(optional; only the admin sees it)</span>
+          <input id="join-whatsapp" type="tel" maxlength="30" placeholder="+81 90 1234 5678" autocomplete="tel" />
+        </label>
+        <label>Note <span class="muted small">(optional)</span>
+          <input id="join-note" type="text" maxlength="300" placeholder="e.g. new at NAIST since October" />
+        </label>
+        <input id="join-website" class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <div class="modal-actions">
+          <button id="join-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
+          <button id="join-send-btn" class="btn btn-primary" type="button">Send to the admin</button>
+        </div>
+        <p id="join-error" class="error small hidden"></p>
+      </div>
+      <div id="join-done" class="hidden">
+        <p><strong>Thank you.</strong> The admin has been told and will add you to the list.</p>
+        <p class="small muted">Come back after a little while and pick your name under “You are”.</p>
+        <div class="modal-actions"><button id="join-close-btn" class="btn btn-primary" type="button">Close</button></div>
+      </div>
     </div>
   </div>
 

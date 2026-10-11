@@ -1,13 +1,32 @@
 {
   "title": "How the NAIST Jumat Scheduler works",
   "intro": "Flowcharts of the whole system: what a member sees, what the admin does, what runs by itself, and what to do when the admin changes. This page is part of the website and is updated whenever the system changes.",
-  "owner": { "role": "Mushaffa Rasyid Ridha (the system owner)", "whatsapp": "+62 82217078820", "link": "https://wa.me/6282217078820" },
+  "owner": {
+    "role": "Mushaffa Rasyid Ridha (the system owner)",
+    "whatsapp": "+62 82217078820",
+    "link": "https://wa.me/6282217078820"
+  },
   "legend": [
-    { "color": "#3b78b8", "text": "Members and visitors" },
-    { "color": "#1f7a5c", "text": "Admin actions" },
-    { "color": "#6b7280", "text": "Automatic (the website and the robot)" },
-    { "color": "#c77b1c", "text": "Outside services (email, LINE, Google, WhatsApp)" },
-    { "color": "#b3261e", "text": "A problem, an alert or something to be careful with" }
+    {
+      "color": "#3b78b8",
+      "text": "Members and visitors"
+    },
+    {
+      "color": "#1f7a5c",
+      "text": "Admin actions"
+    },
+    {
+      "color": "#6b7280",
+      "text": "Automatic (the website and the robot)"
+    },
+    {
+      "color": "#c77b1c",
+      "text": "Outside services (email, LINE, Google, WhatsApp)"
+    },
+    {
+      "color": "#b3261e",
+      "text": "A problem, an alert or something to be careful with"
+    }
   ],
   "sections": [
     {
@@ -27,7 +46,9 @@
           "caption": "From the first availability mark to the prayer on Friday. Times are Japan time."
         }
       ],
-      "show": ["features"]
+      "show": [
+        "features"
+      ]
     },
     {
       "id": "members",
@@ -64,6 +85,11 @@
           "caption": "The more ways a person can be reached, the less you do by hand."
         },
         {
+          "file": "admin-join.mmd",
+          "title": "When someone cannot find their name",
+          "caption": "They send their details; you are told and add them with one click."
+        },
+        {
           "file": "admin-alerts.mmd",
           "title": "When someone cannot make it",
           "caption": "The alert reaches you on the website and by email, so a replacement can be found early."
@@ -82,7 +108,9 @@
           "caption": "Three triggers: an edit on the website, the twice-daily job, and a change of the code."
         }
       ],
-      "show": ["inventory"]
+      "show": [
+        "inventory"
+      ]
     },
     {
       "id": "newadmin",
@@ -119,41 +147,198 @@
           "caption": "Needs the community Gmail account (it stays when admins change) and a computer. Full wording is in the README, section Google Calendar."
         }
       ],
-      "show": ["setup"]
+      "show": [
+        "setup"
+      ]
     }
   ],
   "features": [
-    { "audience": "Members", "name": "See the schedule", "what": "A calendar of the Fridays with khatib, imam and venue.", "status": "live" },
-    { "audience": "Members", "name": "Friday details and announcement", "what": "Tap a Friday to read it and copy the weekly announcement.", "status": "live" },
-    { "audience": "Members", "name": "Name locked on the device", "what": "After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). The admin, who holds the access code, can still change it. It is a guard in the page, not a login.", "status": "live" },
-    { "audience": "Members", "name": "Say when you can or cannot come", "what": "Choose your name, then I'm available or I'm unavailable. No password.", "status": "live" },
-    { "audience": "Members", "name": "Can't make it link", "what": "In every reminder and calendar event: one button that tells the admin you cannot come.", "status": "live" },
-    { "audience": "Members", "name": "Calendar feed", "what": "A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text.", "status": "live" },
-    { "audience": "Members", "name": "Public Google Calendar", "what": "A shared Google Calendar the website keeps up to date within a minute.", "status": "live" },
-    { "audience": "Scheduled people", "name": "Reminder emails", "what": "7 days before and the day before, to people whose email is on the roster.", "status": "live" },
-    { "audience": "Scheduled people", "name": "Reminder LINE messages", "what": "The same reminders on LINE, for people who linked the bot.", "status": "live" },
-    { "audience": "Scheduled people", "name": "Add to Google Calendar link", "what": "In every reminder: a ready-made calendar event with their role.", "status": "live" },
-    { "audience": "Scheduled people", "name": "Google Calendar invitation", "what": "Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off.", "status": "live" },
-    { "audience": "Admin", "name": "Access code", "what": "Unlocks editing. Members never need it.", "status": "live" },
-    { "audience": "Admin", "name": "Roster", "what": "Add, edit, mark left NAIST or delete people; their contact details are visible only with the code.", "status": "live" },
-    { "audience": "Admin", "name": "Planner", "what": "Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. The secondary (standby, usually next week's khatib) gets no automatic reminder or invitation.", "status": "live" },
-    { "audience": "Admin", "name": "Guest speaker", "what": "Type a name such as Prof. Arai under any slot for someone who is not in the roster. They show in the calendar, announcement and Google event; no reminders can be sent to them, so the admin to-do lists them to message by hand.", "status": "live" },
-    { "audience": "Admin", "name": "Copy reminder and WhatsApp buttons", "what": "For people the robot cannot reach: copy the text or open WhatsApp with it typed.", "status": "live" },
-    { "audience": "Admin", "name": "Announcement for the groups", "what": "Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups.", "status": "live" },
-    { "audience": "Admin", "name": "Admin to-do messages", "what": "A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement.", "status": "live" },
-    { "audience": "Admin", "name": "Can't-make-it alerts", "what": "A red box and badge in the planner, and an email, when a scheduled person cannot come.", "status": "live" },
-    { "audience": "Admin", "name": "Invitation test mode", "what": "In the planner: invite only one address (your own) until you turn it off, to try the Google invitations before anyone else gets one.", "status": "live" },
-    { "audience": "Admin", "name": "Google Calendar sync", "what": "Status line and a Sync now button in the planner; instant alert emails.", "status": "live" },
-    { "audience": "Automatic", "name": "Daily job", "what": "08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync.", "status": "live" },
-    { "audience": "Automatic", "name": "Deploy", "what": "Every change of the code is published automatically, with its database changes.", "status": "live" }
+    {
+      "audience": "Members",
+      "name": "My name isn't listed",
+      "what": "Someone not on the roster types their name and details; the admin is told and adds them. Nothing is added automatically.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "See the schedule",
+      "what": "A calendar of the Fridays with khatib, imam and venue.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Friday details and announcement",
+      "what": "Tap a Friday to read it and copy the weekly announcement.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Name locked on the device",
+      "what": "After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). The admin, who holds the access code, can still change it. It is a guard in the page, not a login.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Say when you can or cannot come",
+      "what": "Choose your name, then I'm available or I'm unavailable. No password.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Can't make it link",
+      "what": "In every reminder and calendar event: one button that tells the admin you cannot come.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Calendar feed",
+      "what": "A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text.",
+      "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Public Google Calendar",
+      "what": "A shared Google Calendar the website keeps up to date within a minute.",
+      "status": "live"
+    },
+    {
+      "audience": "Scheduled people",
+      "name": "Reminder emails",
+      "what": "7 days before and the day before, to people whose email is on the roster.",
+      "status": "live"
+    },
+    {
+      "audience": "Scheduled people",
+      "name": "Reminder LINE messages",
+      "what": "The same reminders on LINE, for people who linked the bot.",
+      "status": "live"
+    },
+    {
+      "audience": "Scheduled people",
+      "name": "Add to Google Calendar link",
+      "what": "In every reminder: a ready-made calendar event with their role.",
+      "status": "live"
+    },
+    {
+      "audience": "Scheduled people",
+      "name": "Google Calendar invitation",
+      "what": "Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Access code",
+      "what": "Unlocks editing. Members never need it.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Roster",
+      "what": "Add, edit, mark left NAIST or delete people; their contact details are visible only with the code.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Planner",
+      "what": "Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. The secondary (standby, usually next week's khatib) gets no automatic reminder or invitation.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Guest speaker",
+      "what": "Type a name such as Prof. Arai under any slot for someone who is not in the roster. They show in the calendar, announcement and Google event; no reminders can be sent to them, so the admin to-do lists them to message by hand.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Copy reminder and WhatsApp buttons",
+      "what": "For people the robot cannot reach: copy the text or open WhatsApp with it typed.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Announcement for the groups",
+      "what": "Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Admin to-do messages",
+      "what": "A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Can't-make-it alerts",
+      "what": "A red box and badge in the planner, and an email, when a scheduled person cannot come.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Invitation test mode",
+      "what": "In the planner: invite only one address (your own) until you turn it off, to try the Google invitations before anyone else gets one.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Google Calendar sync",
+      "what": "Status line and a Sync now button in the planner; instant alert emails.",
+      "status": "live"
+    },
+    {
+      "audience": "Automatic",
+      "name": "Daily job",
+      "what": "08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync.",
+      "status": "live"
+    },
+    {
+      "audience": "Automatic",
+      "name": "Deploy",
+      "what": "Every change of the code is published automatically, with its database changes.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Join requests",
+      "what": "A box in the planner lists people who could not find their name, with Add to roster (form pre-filled) and Dismiss; the admins are also emailed.",
+      "status": "live"
+    }
   ],
   "setup": [
-    { "name": "Website, database and automatic deploy", "status": "done", "detail": "Live on Cloudflare Pages." },
-    { "name": "Community access code", "status": "done", "detail": "Set. Change it with the handover chart if an admin leaves." },
-    { "name": "Reminder emails (community Gmail)", "status": "done", "detail": "Test email received. Add each person's email in the roster to start their reminders." },
-    { "name": "LINE reminders", "status": "done", "detail": "Bot connected. Each person links with a code from the roster." },
-    { "name": "Google Calendar connection", "status": "done", "detail": "Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window." },
-    { "name": "An admin marked in the roster", "status": "todo", "detail": "Edit your own entry and tick Admin this period (needs an email or LINE link)." },
-    { "name": "GitHub default branch set to main", "status": "done", "detail": "main is the default branch, so new pull requests and the schedule use it." }
+    {
+      "name": "Website, database and automatic deploy",
+      "status": "done",
+      "detail": "Live on Cloudflare Pages."
+    },
+    {
+      "name": "Community access code",
+      "status": "done",
+      "detail": "Set. Change it with the handover chart if an admin leaves."
+    },
+    {
+      "name": "Reminder emails (community Gmail)",
+      "status": "done",
+      "detail": "Test email received. Add each person's email in the roster to start their reminders."
+    },
+    {
+      "name": "LINE reminders",
+      "status": "done",
+      "detail": "Bot connected. Each person links with a code from the roster."
+    },
+    {
+      "name": "Google Calendar connection",
+      "status": "done",
+      "detail": "Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window."
+    },
+    {
+      "name": "An admin marked in the roster",
+      "status": "todo",
+      "detail": "Edit your own entry and tick Admin this period (needs an email or LINE link)."
+    },
+    {
+      "name": "GitHub default branch set to main",
+      "status": "done",
+      "detail": "main is the default branch, so new pull requests and the schedule use it."
+    }
   ]
 }

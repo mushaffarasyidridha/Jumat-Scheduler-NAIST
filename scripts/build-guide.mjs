@@ -51,6 +51,8 @@ export const ROUTE_NOTES = {
   "/api/calendar/sync": "The planner's Sync now button: makes Google Calendar match the schedule.",
   "/api/fridays": "The schedule: the list of Fridays. It also creates the coming ones.",
   "/api/fridays/:id": "Assign khatib and imam, set the venue or a note for one Friday.",
+  "/api/join-requests": "Someone who cannot find their name sends their details (anyone can); the admin lists the waiting requests here.",
+  "/api/join-requests/:id": "The admin closes a request: added to the roster, or dismissed.",
   "/api/line/webhook": "Where LINE delivers messages to the bot. This is how a person links their LINE with the code.",
   "/api/people": "The roster: read the list (contact details only with the code) and add a person.",
   "/api/people/:id": "Edit or delete one person.",

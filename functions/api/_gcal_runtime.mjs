@@ -1,6 +1,6 @@
 // Glue between the Pages Functions (env.DB, request, env secrets) and the Google
 // sync code in _gcal.mjs.
-import { createBridge, syncUpcoming, emailAlertViaBridge } from "./_gcal.mjs";
+import { createBridge, syncUpcoming, emailAlertViaBridge, emailJoinViaBridge } from "./_gcal.mjs";
 import { todayInJapan } from "./_alerts.mjs";
 import { siteUrlFrom } from "./_site.mjs";
 
@@ -55,6 +55,17 @@ export async function emailAlertNow(env, alertId) {
     });
   } catch (e) {
     console.error("Alert email via the Google bridge failed:", e?.message || e);
+    return false;
+  }
+}
+
+export async function emailJoinNow(env, requestId) {
+  const bridge = bridgeFrom(env);
+  if (!bridge) return false;
+  try {
+    return await emailJoinViaBridge({ bridge, db: dbFrom(env), requestId, siteUrl: siteUrlFrom(env) });
+  } catch (e) {
+    console.error("Join request email via the Google bridge failed:", e?.message || e);
     return false;
   }
 }

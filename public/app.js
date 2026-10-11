@@ -13,6 +13,7 @@
     plannerShowAll: false,
     reminderStatus: null, // admin only: when the daily reminder job last ran
     alerts: [], // admin only: "can't make it" alerts waiting for the admin
+    joinRequests: [], // admin only: "my name isn't listed" requests waiting to be added
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -92,6 +93,7 @@
     localStorage.removeItem(LS_ACCESS);
     state.reminderStatus = null;
     state.alerts = [];
+    state.joinRequests = [];
     clearPrivateDom();
     updateUnlockUI();
     // Reload without the code so contact info and everyone's availability,
@@ -173,20 +175,32 @@
     }
   }
 
+  async function fetchJoinRequests() {
+    if (!hasAccessCode()) return [];
+    try {
+      const res = await fetch("/api/join-requests", { headers: { "x-access-code": localStorage.getItem(LS_ACCESS) } });
+      return res.ok ? await res.json() : [];
+    } catch {
+      return [];
+    }
+  }
+
   async function loadAll() {
     const availUrl = availabilityUrl();
-    const [people, fridays, availability, reminderStatus, alerts] = await Promise.all([
+    const [people, fridays, availability, reminderStatus, alerts, joinRequests] = await Promise.all([
       api("/api/people"),
       api("/api/fridays"),
       availUrl ? api(availUrl) : Promise.resolve([]),
       fetchReminderStatus(),
       fetchAlerts(),
+      fetchJoinRequests(),
     ]);
     state.people = people;
     state.fridays = fridays;
     state.availability = availability;
     state.reminderStatus = reminderStatus;
     state.alerts = alerts;
+    state.joinRequests = joinRequests;
     updateUnlockUI();
     renderWhoami();
     renderCalendar();
@@ -219,6 +233,7 @@
     select.value = current;
     const locked = nameLocked();
     select.disabled = locked;
+    $("#join-open-btn").classList.toggle("hidden", locked || hasAccessCode()); // the admin adds people directly
     $("#whoami-note").textContent = locked
       ? "🔒 Your name is set on this device. Wrong name? Ask the admin."
       : hasAccessCode()
@@ -762,6 +777,31 @@
     </div>`;
   }
 
+  // "My name isn't listed": people who typed their details, waiting for the admin to
+  // add them. "Add to roster" opens the usual Add person form, filled in.
+  function joinRequestsHtml() {
+    if (!state.joinRequests.length) return "";
+    const who = { naist_student: "NAIST student", naist_staff: "NAIST staff", dependent: "dependent", outside: "outside NAIST" };
+    const roles = { khatib: "khatib", imam: "imam", both: "khatib & imam" };
+    const items = state.joinRequests
+      .map((r) => {
+        const bits = [who[r.affiliation], r.country, r.role && `can serve as ${roles[r.role]}`, r.email, r.whatsapp, r.note].filter(Boolean);
+        return `
+        <li class="planner-join-item">
+          <span><strong>${escapeHtml(r.name)}</strong> asks to be added<span class="muted small">${escapeHtml(bits.join(" · "))}</span></span>
+          <span class="planner-alert-actions">
+            <button class="btn btn-sm btn-primary" data-join-add="${r.id}" type="button">Add to roster</button>
+            <button class="btn btn-sm btn-ghost" data-join-dismiss="${r.id}" type="button">Dismiss</button>
+          </span>
+        </li>`;
+      })
+      .join("");
+    return `<div class="planner-join">
+      <p class="planner-join-title">🙋 ${state.joinRequests.length === 1 ? "1 person" : `${state.joinRequests.length} people`} could not find their name</p>
+      <ul>${items}</ul>
+    </div>`;
+  }
+
   // The admin's own to-do reminder (send the WhatsApp / Facebook reminders,
   // post the announcement) only works if someone is marked admin AND can be
   // reached, so say so rather than let it silently never arrive.
@@ -919,6 +959,7 @@
     const turnsByKind = { khatib: buildTurns("khatib"), imam: buildTurns("imam") };
 
     const legend = `
+      ${joinRequestsHtml()}
       ${alertsHtml()}
       ${reminderStatusHtml()}
       ${googleStatusHtml()}
@@ -1057,6 +1098,27 @@
     });
     list.querySelector("[data-gcal-test-off]")?.addEventListener("click", () => {
       if (confirm("Turn test mode off? Everyone scheduled who has an email saved (and reminders on) will then be invited to their Friday.")) setTestMode("");
+    });
+
+    list.querySelectorAll("[data-join-add]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const request = state.joinRequests.find((r) => r.id === Number(btn.dataset.joinAdd));
+        if (request) openPersonModalFromRequest(request);
+      });
+    });
+    list.querySelectorAll("[data-join-dismiss]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.joinDismiss);
+        const request = state.joinRequests.find((r) => r.id === id);
+        if (!request || !confirm(`Dismiss the request from ${request.name}? They are not added to the roster.`)) return;
+        try {
+          await api(`/api/join-requests/${id}`, { method: "PATCH", body: JSON.stringify({ resolution: "dismissed" }) });
+          state.joinRequests = state.joinRequests.filter((r) => r.id !== id);
+          renderPlanner();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      });
     });
 
     list.querySelectorAll("[data-alert-ack]").forEach((btn) => {
@@ -1251,6 +1313,7 @@
   // ---------- Add / edit person modal ----------
 
   let editingPersonId = null;
+  let pendingJoinId = null; // set while the Add person form was opened from a "my name isn't listed" request
 
   function openPersonModal(person) {
     editingPersonId = person ? person.id : null;
@@ -1273,6 +1336,20 @@
     $("#person-error").classList.add("hidden");
     $("#person-modal").classList.remove("hidden");
     $("#person-name").focus();
+  }
+
+  // The Add person form, filled in from what the person typed. Saving it adds them
+  // and closes the request; cancelling leaves the request waiting.
+  function openPersonModalFromRequest(r) {
+    openPersonModal(null);
+    pendingJoinId = r.id;
+    $("#person-name").value = r.name;
+    $("#person-affiliation").value = r.affiliation || "naist_student";
+    $("#person-country").value = r.country || "";
+    $("#person-role").value = r.role || "khatib";
+    $("#person-email").value = r.email || "";
+    $("#person-whatsapp").value = r.whatsapp || "";
+    $("#person-note").value = r.note || "";
   }
 
   // LINE can only message people who added the bot, so linking is a handshake:
@@ -1350,8 +1427,14 @@
       }
     });
   }
-  $("#add-person-btn").addEventListener("click", () => openPersonModal(null));
-  $("#person-cancel-btn").addEventListener("click", () => $("#person-modal").classList.add("hidden"));
+  $("#add-person-btn").addEventListener("click", () => {
+    openPersonModal(null);
+    pendingJoinId = null;
+  });
+  $("#person-cancel-btn").addEventListener("click", () => {
+    pendingJoinId = null;
+    $("#person-modal").classList.add("hidden");
+  });
   $("#person-save-btn").addEventListener("click", async () => {
     const name = $("#person-name").value.trim();
     const payload = {
@@ -1389,7 +1472,18 @@
       } else {
         const person = await api("/api/people", { method: "POST", body: JSON.stringify(payload) });
         state.people.push(person);
-        toast(`${name} added to the roster`);
+        if (pendingJoinId) {
+          const id = pendingJoinId;
+          pendingJoinId = null;
+          try {
+            await api(`/api/join-requests/${id}`, { method: "PATCH", body: JSON.stringify({ resolution: "added" }) });
+          } catch {
+            // The person is added either way; the request would just stay listed until dismissed.
+          }
+          state.joinRequests = state.joinRequests.filter((r) => r.id !== id);
+          renderPlanner();
+        }
+        toast(`${name} added to the roster. Tell them to pick their name under “You are”.`);
       }
       renderRoster();
       renderWhoami();
@@ -1398,6 +1492,58 @@
     } catch (e) {
       $("#person-error").textContent = e.message;
       $("#person-error").classList.remove("hidden");
+    }
+  });
+
+  // ---------- "My name isn't listed" (public form) ----------
+
+  function openJoinModal() {
+    for (const id of ["name", "country", "email", "whatsapp", "note", "website"]) $(`#join-${id}`).value = "";
+    $("#join-affiliation").value = "naist_student";
+    $("#join-role").value = "khatib";
+    $("#join-error").classList.add("hidden");
+    $("#join-form").classList.remove("hidden");
+    $("#join-done").classList.add("hidden");
+    $("#join-modal").classList.remove("hidden");
+    $("#join-name").focus();
+  }
+  const closeJoinModal = () => $("#join-modal").classList.add("hidden");
+  $("#join-open-btn").addEventListener("click", openJoinModal);
+  $("#join-cancel-btn").addEventListener("click", closeJoinModal);
+  $("#join-close-btn").addEventListener("click", closeJoinModal);
+  $("#join-send-btn").addEventListener("click", async () => {
+    const error = (message) => {
+      $("#join-error").textContent = message;
+      $("#join-error").classList.remove("hidden");
+    };
+    const name = $("#join-name").value.trim();
+    if (name.length < 2) return error("Please type your name.");
+    const button = $("#join-send-btn");
+    button.disabled = true;
+    try {
+      // A plain fetch: this is open to everyone, no access code involved.
+      const res = await fetch("/api/join-requests", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name,
+          affiliation: $("#join-affiliation").value,
+          country: $("#join-country").value.trim(),
+          role: $("#join-role").value,
+          email: $("#join-email").value.trim(),
+          whatsapp: $("#join-whatsapp").value.trim(),
+          note: $("#join-note").value.trim(),
+          website: $("#join-website").value,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return error(data.error || "Could not send. Please try again, or ask the admin.");
+      $("#join-form").classList.add("hidden");
+      $("#join-done").classList.remove("hidden");
+    } catch {
+      error("Could not send. Check your connection and try again.");
+    } finally {
+      button.disabled = false;
     }
   });
 

@@ -130,6 +130,32 @@
       "note": "Assign khatib and imam, set the venue or a note for one Friday."
     },
     {
+      "route": "/api/join-requests",
+      "file": "functions/api/join-requests/index.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "public"
+        },
+        {
+          "method": "GET",
+          "access": "access code"
+        }
+      ],
+      "note": "Someone who cannot find their name sends their details (anyone can); the admin lists the waiting requests here."
+    },
+    {
+      "route": "/api/join-requests/:id",
+      "file": "functions/api/join-requests/[id].js",
+      "methods": [
+        {
+          "method": "PATCH",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin closes a request: added to the roster, or dismissed."
+    },
+    {
       "route": "/api/line/webhook",
       "file": "functions/api/line/webhook.js",
       "methods": [
@@ -244,6 +270,10 @@
     {
       "name": "gcal_state",
       "migration": "0012_gcal.sql"
+    },
+    {
+      "name": "join_requests",
+      "migration": "0014_join_requests.sql"
     }
   ],
   "migrations": [
@@ -298,6 +328,10 @@
     {
       "file": "0013_gcal_test_mode.sql",
       "note": "Invitation test mode: while this holds addresses (comma separated), only those"
+    },
+    {
+      "file": "0014_join_requests.sql",
+      "note": "\"My name isn't listed\": someone who is not on the roster types their name and"
     }
   ],
   "workflows": [
