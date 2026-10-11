@@ -65,6 +65,7 @@
     $("#add-person-btn").classList.toggle("hidden", !unlocked);
     $("#lock-btn").classList.toggle("hidden", !unlocked);
     $("#planner").classList.toggle("hidden", !unlocked);
+    if (state.people.length) renderWhoami(); // the admin may switch names, a member may not
   }
 
   function openAccessModal() {
@@ -198,6 +199,16 @@
 
   // ---------- Who am I ----------
 
+  // Once someone has chosen their name it is fixed on this device: a member cannot
+  // switch to another name (which would let them mark - or look at - somebody else's
+  // availability). Whoever holds the access code (the admin) can still change it.
+  // This is a guard in the page, not a login: the site has no accounts.
+  function nameLocked() {
+    if (hasAccessCode()) return false;
+    const current = localStorage.getItem(LS_WHOAMI);
+    return !!current && state.people.some((p) => p.status === "active" && String(p.id) === current);
+  }
+
   function renderWhoami() {
     const select = $("#whoami-select");
     const current = localStorage.getItem(LS_WHOAMI) || "";
@@ -206,9 +217,27 @@
       '<option value="">— select your name —</option>' +
       active.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
     select.value = current;
+    const locked = nameLocked();
+    select.disabled = locked;
+    $("#whoami-note").textContent = locked
+      ? "🔒 Your name is set on this device. Wrong name? Ask the admin."
+      : hasAccessCode()
+      ? "Admin: you can switch names while editing is unlocked."
+      : "Pick your name once: it cannot be changed afterwards without the admin.";
   }
   $("#whoami-select").addEventListener("change", async (e) => {
-    localStorage.setItem(LS_WHOAMI, e.target.value);
+    if (nameLocked()) return renderWhoami(); // a disabled select should not get here; belt and braces
+    const select = e.target;
+    const value = select.value;
+    if (value && !hasAccessCode()) {
+      const name = select.options[select.selectedIndex].textContent;
+      if (!confirm(`You are "${name}"?\n\nYou cannot change this afterwards on this device; only the admin can.`)) {
+        select.value = localStorage.getItem(LS_WHOAMI) || "";
+        return;
+      }
+    }
+    localStorage.setItem(LS_WHOAMI, value);
+    renderWhoami();
     // Without the access code, availability is fetched scoped to whoever is
     // selected - re-fetch so switching names shows the right person's marks.
     if (!hasAccessCode()) await loadAll();
@@ -412,7 +441,7 @@
     } else {
       action = `
         <label class="slot"><span>I am</span>
-          <select id="cant-person">
+          <select id="cant-person" ${nameLocked() ? "disabled" : ""}>
             <option value="">Choose your name…</option>
             ${scheduled.length ? `<optgroup label="Scheduled this Friday">${scheduled.map(option).join("")}</optgroup>` : ""}
             <optgroup label="Everyone else">${others.map(option).join("")}</optgroup>
@@ -440,8 +469,6 @@
           method: "POST",
           body: JSON.stringify({ person_id: personId, friday_id: friday.id, status: "unavailable" }),
         });
-        localStorage.setItem(LS_WHOAMI, String(personId));
-        renderWhoami();
         const idx = state.availability.findIndex((a) => a.person_id === row.person_id && a.friday_id === row.friday_id);
         if (idx >= 0) state.availability[idx] = row;
         else state.availability.push(row);
