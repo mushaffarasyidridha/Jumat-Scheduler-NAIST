@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { siteUrlFrom, DEFAULT_SITE_URL } from "../functions/api/_site.mjs";
-import { SQL, BridgeError, createBridge, guestsFor, parseInviteOnly, desiredEvent, planSync, sha256Hex, syncUpcoming, emailAlertViaBridge } from "../functions/api/_gcal.mjs";
+import { SQL, BridgeError, createBridge, guestsFor, inviteAddress, parseInviteOnly, desiredEvent, planSync, sha256Hex, syncUpcoming, emailAlertViaBridge } from "../functions/api/_gcal.mjs";
 
 const SITE = "https://x.test";
 const TODAY = "2026-10-09";
@@ -26,6 +26,19 @@ test("guests: scheduled, active people with a calendar account and reminders on;
     person({ id: 3, calendar_email: "zed@NAIST.ac.jp" }) // same address as person 1
   );
   assert.deepEqual(guestsFor(f, people), ["a@naist.ac.jp", "zed@naist.ac.jp"]);
+});
+
+test("guests: the Email is the invitation address; a separate Google Calendar address wins when saved", () => {
+  const f = friday({ primary_khatib_id: 1, secondary_khatib_id: 2, imam_id: 3 });
+  const people = byId(
+    person({ calendar_email: null, email: "Ahmad@Is.NAIST.jp" }),
+    person({ id: 2, calendar_email: "bilal@g.ext.naist.jp", email: "bilal@naist.ac.jp" }),
+    person({ id: 3, calendar_email: null, email: null }) // nothing to invite
+  );
+  assert.deepEqual(guestsFor(f, people), ["ahmad@is.naist.jp", "bilal@g.ext.naist.jp"]);
+  assert.deepEqual(guestsFor(f, people, ["ahmad@is.naist.jp"]), ["ahmad@is.naist.jp"], "test mode matches the email too");
+  assert.equal(inviteAddress({ email: " X@Y.org " }), "x@y.org");
+  assert.equal(inviteAddress({}), "");
 });
 
 test("guests: nobody who is inactive, opted out, has no account, or is not scheduled; guests typed as free text have no account", () => {
@@ -382,10 +395,10 @@ test("sync reports why nobody is invited, as counts only", async () => {
   const people = [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp", reminders: 0 }), person({ id: 3, calendar_email: "x@naist.ac.jp", status: "inactive" })];
 
   const off = await run({ bridge: fakeBridge(), db: fakeDb({ fridays, people }), dryRun: true });
-  assert.deepEqual(off.invites, { accounts: 3, eligible: 1, testMode: false, listed: 0, matched: 0, fridaysWithGuests: 1 });
+  assert.deepEqual(off.invites, { accounts: 3, eligible: 1, testMode: false, listed: 0, matched: 0, fridaysWithGuests: 1, people: 1 });
 
   const typo = await run({ bridge: fakeBridge(), db: fakeDb({ fridays, people, inviteOnly: "mee@naist.ac.jp" }), dryRun: true });
-  assert.deepEqual(typo.invites, { accounts: 3, eligible: 1, testMode: true, listed: 1, matched: 0, fridaysWithGuests: 0 }, "an address that matches no saved account invites nobody");
+  assert.deepEqual(typo.invites, { accounts: 3, eligible: 1, testMode: true, listed: 1, matched: 0, fridaysWithGuests: 0, people: 0 }, "an address that matches no saved account invites nobody");
 
   const none = await run({ bridge: fakeBridge(), db: fakeDb({ fridays, people: [] }), dryRun: true });
   assert.equal(none.invites.accounts, 0);

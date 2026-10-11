@@ -24,7 +24,7 @@ export const SQL = {
     LEFT JOIN people ip ON ip.id = f.imam_id
     WHERE f.is_history = 0 AND f.date >= ?
     ORDER BY f.date ASC`,
-  people: "SELECT id, name, status, reminders, calendar_email FROM people WHERE calendar_email IS NOT NULL",
+  people: "SELECT id, name, status, reminders, email, calendar_email FROM people WHERE calendar_email IS NOT NULL OR email IS NOT NULL",
   snapshots: "SELECT friday_id, hash, snapshot FROM gcal_sync",
   saveSnapshot: `INSERT INTO gcal_sync (friday_id, hash, snapshot, synced_at) VALUES (?, ?, ?, datetime('now'))
     ON CONFLICT(friday_id) DO UPDATE SET hash = excluded.hash, snapshot = excluded.snapshot, synced_at = datetime('now')`,
@@ -87,16 +87,20 @@ function jstIso(ms) {
   return new Date(ms + JST_OFFSET_MS).toISOString().slice(0, 19) + "+09:00";
 }
 
-// Who is invited: the people scheduled that Friday who have a calendar account
-// saved, are still active and have not switched their reminders off.
+// The address a person is invited at: the separate Google Calendar address when one
+// is saved, otherwise their (reminder) email. "" when they have neither.
+export const inviteAddress = (person) => String((person && (person.calendar_email || person.email)) || "").trim().toLowerCase();
+
+// Who is invited: the people scheduled that Friday who have an address to invite,
+// are still active and have not switched their reminders off.
 //
 // Test mode (inviteOnly, a list of addresses): only those addresses are invited.
 export function guestsFor(friday, peopleById, inviteOnly = []) {
   const emails = new Set();
   for (const slot of ROLE_SLOTS) {
     const person = peopleById.get(friday[slot.field]);
-    if (person && person.status === "active" && person.reminders && person.calendar_email) {
-      emails.add(person.calendar_email.trim().toLowerCase());
+    if (person && person.status === "active" && person.reminders && inviteAddress(person)) {
+      emails.add(inviteAddress(person));
     }
   }
   return [...emails].filter((email) => !inviteOnly.length || inviteOnly.includes(email)).sort();
@@ -180,8 +184,8 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
   }
 
   // Why nobody (or somebody) is invited: counts only, so it is safe to print in a public log.
-  const eligible = people.filter((p) => p.status === "active" && p.reminders && p.calendar_email);
-  const savedAddresses = new Set(eligible.map((p) => p.calendar_email.trim().toLowerCase()));
+  const eligible = people.filter((p) => p.status === "active" && p.reminders && inviteAddress(p));
+  const savedAddresses = new Set(eligible.map(inviteAddress));
   const invites = {
     accounts: people.length,
     eligible: eligible.length,
@@ -189,6 +193,7 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
     listed: inviteOnly.length,
     matched: inviteOnly.filter((a) => savedAddresses.has(a)).length,
     fridaysWithGuests: fridays.filter((f) => guestsFor(f, peopleById, inviteOnly).length > 0).length,
+    people: new Set(fridays.flatMap((f) => guestsFor(f, peopleById, inviteOnly))).size,
   };
 
   const result = { total: fridays.length, unchanged, synced: 0, failed: 0, deferred: 0, errors: [], calendar: null, invites };

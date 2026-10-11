@@ -131,9 +131,9 @@ plus the *Can't make it?* link. It is public (anyone can open or add it), and:
 - **It follows the website.** Assign a khatib, change the venue, rename someone: the event is updated within
   a minute (and the planner says when it last was, with a *Sync now* button). The reminder job re-checks twice
   a day, so a missed update is repaired.
-- **It invites people.** In the roster, *Edit* a person and fill in **NAIST Google account**. Whoever is
-  scheduled (primary, secondary or imam) with an account saved, and with their reminders on, is invited to
-  that Friday; take the account away, move them, or replace them and the invitation is updated or cancelled.
+- **It invites people.** In the roster, *Edit* a person: the invitation goes to their **Email** (the same one that gets the reminders). Fill in **Different address for Google Calendar invitations** only if their Google account is another address. Whoever is
+  scheduled (primary, secondary or imam) with an email saved, and with their reminders on, is invited to
+  that Friday; take the email away, move them, or replace them and the invitation is updated or cancelled.
   Changes that only reword the event (a different khatib's name in the title) are made quietly; changes to the
   guests, the time or the venue notify the guests.
 - **The guest list is hidden** (guests cannot see each other, and Google's help says guest lists are not shown on
@@ -147,9 +147,9 @@ Google account and does the calendar work for it. It needs no Google Cloud proje
 refresh tokens that expire. Until you set it up, nothing about Google changes on the site.
 
 **Try the invitations on yourself first (test mode).** In the Admin planner, under the Google Calendar line,
-open *Test the Google invitations on yourself first*, type your own address and press *Turn on*. It must be exactly the address saved in *NAIST Google account* on your roster entry. Any address can be invited: a Google account (for example `name@g.ext.naist.jp`) gets the event straight in its Google Calendar, any other address (for example a `naist.ac.jp` email) gets the invitation by email.
+open *Test the Google invitations on yourself first*, type your own address and press *Turn on*. It must be exactly the Email (or the Google Calendar address, if you filled that in) saved on your roster entry. Any address can be invited: a Google account (for example `name@g.ext.naist.jp`) gets the event straight in its Google Calendar, any other address (for example a `naist.ac.jp` email) gets the invitation by email.
 While test mode is on, only that address is invited to Friday events; everyone else is left out. Press
-*Turn off* when you are happy; then everyone scheduled with a NAIST Google account is invited. (If someone was
+*Turn off* when you are happy; then everyone scheduled who has an email saved (and reminders on) is invited. (If someone was
 already invited, turning test mode on sends them a cancellation, and turning it off invites them again.)
 
 ### Set it up (about 15 minutes, once; sign in as the community Google account)

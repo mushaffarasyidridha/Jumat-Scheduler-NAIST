@@ -154,15 +154,15 @@
       <label>Contact <span class="muted small">(only visible to people with the access code)</span>
         <input id="person-contact" type="text" placeholder="e.g. phone / WhatsApp / Facebook" />
       </label>
-      <label>Email <span class="muted small">(for automatic reminders, only visible to people with the access code)</span>
+      <label>Email <span class="muted small">(for automatic reminders and Google Calendar invitations; only visible to people with the access code)</span>
         <input id="person-email" type="email" placeholder="optional" autocomplete="off" />
       </label>
-      <label>NAIST Google account <span class="muted small">(optional: the address Google Calendar sends the invitation to. A Google account such as name@g.ext.naist.jp puts it straight into their calendar; any other address, like a naist.ac.jp email, gets the invitation by email. Invited to the Friday they are scheduled; only visible to people with the access code)</span>
-        <input id="person-calendar-email" type="email" placeholder="e.g. name@g.ext.naist.jp or name@naist.ac.jp" autocomplete="off" />
+      <label>Different address for Google Calendar invitations <span class="muted small">(optional: leave empty and the invitation goes to the Email above. Only fill it in if the Google account is another address, like name@g.ext.naist.jp. Invited to the Friday they are scheduled; only visible to people with the access code)</span>
+        <input id="person-calendar-email" type="email" placeholder="usually empty" autocomplete="off" />
       </label>
       <label class="check-row">
         <input id="person-reminders" type="checkbox" checked />
-        <span>Send automatic email reminders before this person's Friday</span>
+        <span>Send automatic email reminders and calendar invitations for this person's Friday</span>
       </label>
       <label class="check-row">
         <input id="person-admin" type="checkbox" />
