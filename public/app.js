@@ -1657,6 +1657,7 @@
         <label class="check-row"><input type="checkbox" data-g="kultum" ${g.kultum ? "checked" : ""} /><span>There is a kultum (7-minute talk) this day</span></label>
         <div data-g-kultum-box class="${g.kultum ? "" : "hidden"}">
           <label>Kultum speaker <select data-g="speaker_id">${speakerOptions}</select></label>
+          ${speakerReachHtml(g)}
           <label>or a guest, e.g. Prof. Arai <input type="text" maxlength="80" data-g="speaker_name" value="${g.speaker_id == null && g.speaker ? escapeHtml(g.speaker) : ""}" placeholder="type a name" /></label>
           <label>Kultum minutes <input type="number" min="1" max="60" data-g="kultum_minutes" value="${g.kultum_minutes}" /></label>
         </div>
@@ -1694,6 +1695,16 @@
       });
     }
     body.querySelector("[data-g-announce]").addEventListener("click", () => openGatheringAnnouncement(g));
+  }
+
+  // How the speaker will be reminded (email / LINE), or that the admin must do it by hand.
+  function speakerReachHtml(g) {
+    if (g.speaker_id == null) return g.speaker ? '<small class="planner-reach">Guest: no reminders or invitation can be sent, message them yourself.</small>' : "";
+    const person = state.people.find((p) => p.id === g.speaker_id);
+    const reach = reminderReach(person);
+    const days = state.ramadan.settings.reminder_days;
+    const when = days.length ? `${days.map((d) => (d === 0 ? "the day itself" : `${d}d before`)).join(", ")}` : "no reminder days chosen";
+    return reach ? `<small class="planner-reach ${reach.warn ? "warn" : ""}">${escapeHtml(reach.text)}${g.reminders && !reach.warn ? ` (${escapeHtml(when)})` : ""}</small>` : "";
   }
 
   async function saveGathering(g, body) {

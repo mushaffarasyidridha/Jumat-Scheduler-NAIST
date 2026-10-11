@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { siteUrlFrom, DEFAULT_SITE_URL } from "../functions/api/_site.mjs";
-import { SQL, BridgeError, createBridge, guestsFor, inviteAddress, parseInviteOnly, desiredEvent, planSync, sha256Hex, syncUpcoming, emailAlertViaBridge } from "../functions/api/_gcal.mjs";
+import { SQL, BridgeError, createBridge, guestsFor, gatheringGuests, desiredGathering, inviteAddress, parseInviteOnly, desiredEvent, planSync, sha256Hex, syncUpcoming, emailAlertViaBridge } from "../functions/api/_gcal.mjs";
 
 const SITE = "https://x.test";
 const TODAY = "2026-10-09";
@@ -116,7 +116,7 @@ test("bridge client: errors are clear, flag a wrong secret, and never contain th
 
 // ---------- the whole sync ----------
 
-function fakeDb({ fridays = [], people = [], snapshots = [], inviteOnly = null, places = [] } = {}) {
+function fakeDb({ fridays = [], people = [], snapshots = [], inviteOnly = null, places = [], gatherings = [], ramadan = { kultum_minutes: 7, event_minutes: 90 } } = {}) {
   const runs = [];
   return {
     runs,
@@ -126,11 +126,17 @@ function fakeDb({ fridays = [], people = [], snapshots = [], inviteOnly = null, 
       if (sql === SQL.people) return people;
       if (sql === SQL.snapshots) return snapshots;
       if (sql === SQL.places) return places;
+      if (sql === SQL.gatherings) return gatherings;
+      if (sql === SQL.ramadan) return [ramadan];
       if (sql === SQL.state) return [{ invite_only: inviteOnly }];
       throw new Error(`unexpected SQL: ${sql}`);
     },
     async run(sql, params) {
       runs.push({ sql, params });
+      if (sql === SQL.deleteSnapshot) {
+        const i = snapshots.findIndex((x) => x.friday_id === params[0]);
+        if (i >= 0) snapshots.splice(i, 1);
+      }
       if (sql === SQL.saveSnapshot) {
         const [id, hash, snapshot] = params;
         const row = snapshots.find((s) => s.friday_id === id);
@@ -155,6 +161,10 @@ function fakeBridge({ failOn = () => false, pingFails = null } = {}) {
       calls.push({ action: "upsert", event });
       const failure = failOn(event);
       if (failure) throw failure;
+      return { ok: true };
+    },
+    async deleteEvent(id) {
+      calls.push({ action: "delete", id });
       return { ok: true };
     },
   };
@@ -466,4 +476,96 @@ test("join email via the bridge: nobody to tell, or a failed send, releases the 
 
   const claimed = joinDb({ claim: 0 });
   assert.equal(await emailJoinViaBridge({ bridge: { async sendMail() { throw new Error("must not send"); } }, db: claimed, requestId: 7, siteUrl: SITE }), false);
+});
+
+
+// ---------- Ramadan days in Google Calendar and the feed ----------
+
+import { GATHERING_ID_OFFSET } from "../functions/api/_ramadan.mjs";
+import { buildCalendar, gatheringTitle, gatheringWindowUtc } from "../functions/api/_ics.mjs";
+
+const gday = (over = {}) => ({ id: 5, date: "2026-10-12", place: "Assembly Room - SENTAN", start_time: "19:45", kultum: 1, kultum_minutes: null, speaker_id: 1, speaker: "Ahmad", reminders: 1, info: null, ...over });
+const rSettings = { kultum_minutes: 7, event_minutes: 90 };
+
+test("Ramadan event: titled with the kultum speaker, 19:45 Japan time for 90 minutes, at the place, the announcement as its text", () => {
+  const e = desiredGathering({ gathering: gday(), peopleById: byId(person({ calendar_email: "me@naist.ac.jp" })), siteUrl: SITE, settings: rSettings });
+  assert.equal(e.friday_id, GATHERING_ID_OFFSET + 5);
+  assert.equal(e.title, "Isha + Tarawih - Kultum: Ahmad");
+  assert.equal(e.start, "2026-10-12T19:45:00+09:00");
+  assert.equal(e.end, "2026-10-12T21:15:00+09:00");
+  assert.equal(e.location, "Assembly Room - SENTAN");
+  assert.match(e.description, /Isha and Tarawih will be held in sha Allah at Assembly Room - SENTAN/);
+  assert.match(e.description, /Kultum \(7 minutes\): Ahmad/);
+  assert.match(e.description, /Can't make it\? Please tell the coordinator/);
+  assert.deepEqual(e.guests, ["me@naist.ac.jp"]);
+  assert.equal(desiredGathering({ gathering: gday({ kultum: 0 }), peopleById: byId(person()), siteUrl: SITE, settings: rSettings }).title, "Isha + Tarawih");
+  const w = gatheringWindowUtc(gday(), 90);
+  assert.equal(new Date(w.startMs).toISOString(), "2026-10-12T10:45:00.000Z");
+});
+
+test("Ramadan guests: only the kultum speaker, only on a kultum day, with the same rules as Fridays", () => {
+  const people = byId(person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp" }));
+  assert.deepEqual(gatheringGuests(gday(), people), ["me@naist.ac.jp"]);
+  assert.deepEqual(gatheringGuests(gday({ kultum: 0 }), people), [], "no kultum, nobody to invite");
+  assert.deepEqual(gatheringGuests(gday({ speaker_id: null, speaker: "Prof. Arai" }), people), [], "a guest speaker has no address");
+  assert.deepEqual(gatheringGuests(gday({ speaker_id: 9 }), people), []);
+  assert.deepEqual(gatheringGuests(gday(), byId(person({ reminders: 0 }))), [], "reminders off: not invited");
+  assert.deepEqual(gatheringGuests(gday(), people, ["other@naist.ac.jp"]), [], "test mode lists someone else");
+  assert.deepEqual(gatheringGuests(gday(), people, ["me@naist.ac.jp"]), ["me@naist.ac.jp"], "test mode lists the speaker");
+});
+
+test("Ramadan sync: days are sent under offset ids next to the Fridays, then left alone; past days are not touched", async () => {
+  const db = fakeDb({ fridays: three(), people: [person()], gatherings: [gday({ id: 5, date: "2026-10-12" }), gday({ id: 6, date: "2026-10-13", kultum: 0 }), gday({ id: 4, date: "2026-10-01" })], ramadan: rSettings });
+  const bridge = fakeBridge();
+  const first = await run({ bridge, db });
+  assert.equal(first.gatherings, 2, "only the upcoming two (today is 9 Oct)");
+  assert.equal(first.synced, 5, "3 Fridays + 2 Ramadan days");
+  const ids = bridge.calls.filter((c) => c.event).map((c) => c.event.friday_id).sort((a, b) => a - b);
+  assert.deepEqual(ids, [10, 11, 12, GATHERING_ID_OFFSET + 5, GATHERING_ID_OFFSET + 6]);
+  bridge.calls.length = 0;
+  const second = await run({ bridge, db });
+  assert.deepEqual(bridge.calls, [], "nothing changed: Google is not contacted");
+  assert.equal(second.synced, 0);
+});
+
+test("Ramadan sync: a new speaker or time updates that day (guests are notified); wording-only changes stay quiet", async () => {
+  const db = fakeDb({ fridays: [], people: [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, name: "Bilal", calendar_email: "b@naist.ac.jp" })], gatherings: [gday()], ramadan: rSettings });
+  const bridge = fakeBridge();
+  await run({ bridge, db });
+  assert.equal(bridge.calls.find((c) => c.event).event.send_updates, "all", "first time: the speaker is invited");
+
+  bridge.calls.length = 0;
+  const gatherings = [gday({ speaker_id: 2, speaker: "Bilal" })];
+  await run({ bridge, db: fakeDb({ fridays: [], people: db.__people || [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, name: "Bilal", calendar_email: "b@naist.ac.jp" })], gatherings, snapshots: db.snapshots, ramadan: rSettings }) });
+  const change = bridge.calls.find((c) => c.event).event;
+  assert.deepEqual(change.guests, ["b@naist.ac.jp"]);
+  assert.equal(change.send_updates, "all", "the guest list changed: invitation and cancellation");
+
+  bridge.calls.length = 0;
+  const people2 = [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, name: "Bilal", calendar_email: "b@naist.ac.jp" })];
+  await run({ bridge, db: fakeDb({ fridays: [], people: people2, gatherings: [gday({ speaker_id: 2, speaker: "Bilal", info: "bring dates" })], snapshots: db.snapshots, ramadan: rSettings }) });
+  assert.equal(bridge.calls.find((c) => c.event).event.send_updates, "none", "only the note changed: quiet");
+});
+
+test("Ramadan sync: a deleted day has its event removed and forgotten; a past day is kept", async () => {
+  const gone = { friday_id: GATHERING_ID_OFFSET + 9, hash: "x", snapshot: "{}" };
+  const db = fakeDb({ fridays: [], people: [], gatherings: [gday({ id: 4, date: "2026-10-01" })], snapshots: [gone, { friday_id: GATHERING_ID_OFFSET + 4, hash: "y", snapshot: "{}" }], ramadan: rSettings });
+  const bridge = fakeBridge();
+  const result = await run({ bridge, db });
+  assert.deepEqual(bridge.calls.filter((c) => c.action === "delete").map((c) => c.id), [GATHERING_ID_OFFSET + 9], "only the deleted day's event");
+  assert.equal(result.removed, 1);
+  assert.deepEqual(db.snapshots.map((s) => s.friday_id), [GATHERING_ID_OFFSET + 4], "its snapshot is forgotten; the past day's stays");
+  const dry = await run({ bridge: fakeBridge(), db: fakeDb({ fridays: [], gatherings: [], snapshots: [gone], ramadan: rSettings }), dryRun: true });
+  assert.equal(dry.wouldRemove, 1);
+});
+
+test("the calendar feed carries the Ramadan days with their own UID, time in UTC, place and text", () => {
+  const text = buildCalendar({ fridays: [], gatherings: [{ ...gday(), updated_at: "2026-10-09 06:00:00" }], siteUrl: SITE, nowMs: 0, places: [{ name: "Assembly Room - SENTAN", details: "Sentan 1F", maps_url: "https://maps.app.goo.gl/x" }], settings: rSettings }).replace(/\r?\n /g, "");
+  assert.match(text, /UID:jumat-gathering-5@jumat-scheduler-naist/);
+  assert.match(text, /DTSTART:20261012T104500Z/);
+  assert.match(text, /DTEND:20261012T121500Z/);
+  assert.match(text, /SUMMARY:Isha \+ Tarawih - Kultum: Ahmad/);
+  assert.match(text, /LOCATION:Assembly Room - SENTAN/);
+  assert.match(text, /Place: Sentan 1F/);
+  assert.equal(gatheringTitle(gday({ kultum: 0 })), "Isha + Tarawih");
 });

@@ -3,7 +3,8 @@
 // over small interfaces (a bridge, and a db with all()/run()), so the website's
 // Functions and the reminder job share it, and it is unit-tested in Node.
 import shared from "../../public/reminder-message.js";
-import { eventTitle, eventDescription } from "./_ics.mjs";
+import { eventTitle, eventDescription, gatheringTitle, gatheringDescription, gatheringWindowUtc } from "./_ics.mjs";
+import { GATHERING_ID_OFFSET } from "./_ramadan.mjs";
 import { alertRecipients, buildAlertEmail, ALERT_ROW_SELECT } from "./_alertmail.mjs";
 import { joinRecipients, buildJoinEmail, JOIN_ROW_SELECT } from "./_joinmail.mjs";
 
@@ -26,6 +27,12 @@ export const SQL = {
     WHERE f.is_history = 0 AND f.date >= ?
     ORDER BY f.date ASC`,
   places: "SELECT name, details, maps_url FROM places",
+  gatherings: `
+    SELECT g.id, g.date, g.place, g.start_time, g.kultum, g.kultum_minutes, g.speaker_id,
+           COALESCE(p.name, g.speaker_name) AS speaker, g.reminders, g.info
+    FROM gatherings g LEFT JOIN people p ON p.id = g.speaker_id ORDER BY g.date ASC`,
+  ramadan: "SELECT kultum_minutes, event_minutes FROM ramadan_settings WHERE id = 1",
+  deleteSnapshot: "DELETE FROM gcal_sync WHERE friday_id = ?",
   people: "SELECT id, name, status, reminders, email, calendar_email FROM people WHERE calendar_email IS NOT NULL OR email IS NOT NULL",
   snapshots: "SELECT friday_id, hash, snapshot FROM gcal_sync",
   saveSnapshot: `INSERT INTO gcal_sync (friday_id, hash, snapshot, synced_at) VALUES (?, ?, ?, datetime('now'))
@@ -98,16 +105,41 @@ export const inviteAddress = (person) => String((person && (person.calendar_emai
 // are still active and have not switched their reminders off.
 //
 // Test mode (inviteOnly, a list of addresses): only those addresses are invited.
+function inviteeAddress(person, inviteOnly) {
+  if (!person || person.status !== "active" || !person.reminders) return null;
+  const address = inviteAddress(person);
+  return address && (!inviteOnly.length || inviteOnly.includes(address)) ? address : null;
+}
+
 export function guestsFor(friday, peopleById, inviteOnly = []) {
   const emails = new Set();
   for (const slot of ROLE_SLOTS) {
     if (slot.notify === false) continue; // the secondary khatib is not invited
-    const person = peopleById.get(friday[slot.field]);
-    if (person && person.status === "active" && person.reminders && inviteAddress(person)) {
-      emails.add(inviteAddress(person));
-    }
+    const address = inviteeAddress(peopleById.get(friday[slot.field]), inviteOnly);
+    if (address) emails.add(address);
   }
-  return [...emails].filter((email) => !inviteOnly.length || inviteOnly.includes(email)).sort();
+  return [...emails].sort();
+}
+
+// A Ramadan day (Isha + Tarawih): only the kultum speaker is invited, and only on a day with a kultum.
+export function gatheringGuests(g, peopleById, inviteOnly = []) {
+  if (!g.kultum || g.speaker_id == null) return [];
+  const address = inviteeAddress(peopleById.get(g.speaker_id), inviteOnly);
+  return address ? [address] : [];
+}
+
+// What the event for one Ramadan day should be. Its id is offset from the Fridays'.
+export function desiredGathering({ gathering: g, peopleById, siteUrl, inviteOnly = [], places = [], settings = {} }) {
+  const { startMs, endMs } = gatheringWindowUtc(g, settings.event_minutes || 90);
+  return {
+    friday_id: GATHERING_ID_OFFSET + g.id,
+    title: gatheringTitle(g),
+    description: gatheringDescription(g, { siteUrl, places, settings }),
+    location: (g.place || "").trim(),
+    start: jstIso(startMs),
+    end: jstIso(endMs),
+    guests: gatheringGuests(g, peopleById, inviteOnly),
+  };
 }
 
 // The saved test-mode setting is a comma separated string; anything that is not an
@@ -188,6 +220,22 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
     else work.push({ friday, desired, hash, plan });
   }
 
+  // Ramadan days (Isha + Tarawih) from today on go the same way, under offset ids.
+  const [ramadan] = await db.all(SQL.ramadan, []);
+  const allGatherings = await db.all(SQL.gatherings, []);
+  const gatherings = allGatherings.filter((g) => g.date >= today);
+  let gatheringUnchanged = 0;
+  for (const gathering of gatherings) {
+    const desired = desiredGathering({ gathering, peopleById, siteUrl, inviteOnly, places, settings: ramadan || {} });
+    const hash = await sha256Hex(JSON.stringify(desired));
+    const plan = planSync(hash, desired, snapshots.get(desired.friday_id));
+    if (plan.action === "none") gatheringUnchanged++;
+    else work.push({ friday: { id: desired.friday_id, date: gathering.date }, desired, hash, plan });
+  }
+  // A Ramadan day the admin deleted: its event goes too (past days stay as they were).
+  const existing = new Set(allGatherings.map((g) => GATHERING_ID_OFFSET + g.id));
+  const orphans = [...snapshots.keys()].filter((id) => id >= GATHERING_ID_OFFSET && !existing.has(id));
+
   // Why nobody (or somebody) is invited: counts only, so it is safe to print in a public log.
   const eligible = people.filter((p) => p.status === "active" && p.reminders && inviteAddress(p));
   const savedAddresses = new Set(eligible.map(inviteAddress));
@@ -201,9 +249,9 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
     people: new Set(fridays.flatMap((f) => guestsFor(f, peopleById, inviteOnly))).size,
   };
 
-  const result = { total: fridays.length, unchanged, synced: 0, failed: 0, deferred: 0, errors: [], calendar: null, invites };
-  if (dryRun) return { ...result, wouldSync: work.length };
-  if (!work.length && !forcePing) return result;
+  const result = { total: fridays.length, unchanged, synced: 0, failed: 0, deferred: 0, errors: [], calendar: null, invites, gatherings: gatherings.length, removed: 0 };
+  if (dryRun) return { ...result, wouldSync: work.length, wouldRemove: orphans.length };
+  if (!work.length && !orphans.length && !forcePing) return result;
 
   const fail = async (message) => {
     result.failed++;
@@ -237,6 +285,23 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
     } catch (e) {
       result.failed++;
       result.errors.push({ date: friday.date, message: e.message });
+      if (e.unauthorized) break;
+    }
+  }
+
+  for (const id of orphans) {
+    if (calls >= maxCalls) {
+      result.deferred++;
+      continue;
+    }
+    calls++;
+    try {
+      await bridge.deleteEvent(id);
+      await db.run(SQL.deleteSnapshot, [id]);
+      result.removed++;
+    } catch (e) {
+      result.failed++;
+      result.errors.push({ message: e.message });
       if (e.unauthorized) break;
     }
   }

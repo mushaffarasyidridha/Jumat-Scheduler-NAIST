@@ -23,6 +23,12 @@ import {
   todayInTokyo,
   minutesInTokyo,
   tooLateToSend,
+  tooLateForKultum,
+  dueKultumReminders,
+  buildKultumEmail,
+  buildKultumLineText,
+  GATHERING_ID_OFFSET,
+  parseReminderDaysSetting,
   addDays,
   dueReminders,
   dueAdminTodos,
@@ -103,10 +109,12 @@ async function getTransporter() {
 
 // A reminder for a person on a Friday, or (type "admin") the admin's to-do.
 function emailFor(item) {
+  if (item.type === "kultum") return buildKultumEmail({ ...item, siteUrl: SITE_URL });
   return item.type === "admin" ? buildAdminEmail({ ...item, siteUrl: SITE_URL }) : buildEmail({ ...item, siteUrl: SITE_URL });
 }
 
 function chatFor(item) {
+  if (item.type === "kultum") return buildKultumLineText(item);
   return item.type === "admin" ? buildAdminChatText({ ...item, siteUrl: SITE_URL }) : buildLineText({ ...item, siteUrl: SITE_URL });
 }
 
@@ -187,6 +195,13 @@ const FRIDAYS_SQL = `
   LEFT JOIN people ip ON ip.id = f.imam_id
   WHERE f.is_history = 0 AND f.date >= ? AND f.date <= ?
   ORDER BY f.date`;
+
+// Ramadan days in the window that have a kultum, reminders on and a roster speaker.
+const KULTUM_SQL = `
+  SELECT id, date, place, start_time, kultum, kultum_minutes, speaker_id, reminders
+  FROM gatherings
+  WHERE date >= ? AND date <= ? AND kultum = 1 AND reminders = 1 AND speaker_id IS NOT NULL
+  ORDER BY date`;
 
 // Someone scheduled said they can't make it: tell the admin(s) by email. The
 // website shows the same alert straight away; this is the email half. Marked
@@ -289,7 +304,7 @@ async function sendJoinEmails({ people }) {
 function printSamples(due) {
   const seen = new Set();
   for (const item of due) {
-    const sample = item.type === "admin" ? `admin ${item.channel}` : item.channel;
+    const sample = item.type === "admin" ? `admin ${item.channel}` : item.type === "kultum" ? `kultum ${item.channel}` : item.channel;
     if (seen.has(sample)) continue;
     seen.add(sample);
     let body;
@@ -318,17 +333,17 @@ async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
       `${i.fridaysWithGuests} of ${result.total} upcoming Friday(s) have at least one guest to invite (${i.people} different person/people).`
   );
   if (dryRun) {
-    console.log(`Google Calendar: ${result.wouldSync} of ${result.total} upcoming Friday(s) would be updated.`);
+    console.log(`Google Calendar: ${result.wouldSync} of ${result.total} upcoming Friday(s)${result.gatherings ? ` + ${result.gatherings} Ramadan day(s)` : ""} would be updated${result.wouldRemove ? `, ${result.wouldRemove} removed` : ""}.`);
     return { synced: 0, failed: 0 };
   }
   if (result.calendar) console.log(`Google Calendar connection OK (calendar "${result.calendar.name || "?"}").`);
   if (result.synced || result.failed || result.deferred) {
     console.log(
       `Google Calendar: ${result.synced} Friday(s) updated, ${result.unchanged} already up to date` +
-        `${result.deferred ? `, ${result.deferred} left for the next run` : ""}${result.failed ? `, ${result.failed} FAILED` : ""}.`
+        `${result.removed ? `, ${result.removed} removed` : ""}${result.deferred ? `, ${result.deferred} left for the next run` : ""}${result.failed ? `, ${result.failed} FAILED` : ""}.`
     );
   } else {
-    console.log(`Google Calendar: all ${result.total} upcoming Friday(s) already up to date.`);
+    console.log(`Google Calendar: all ${result.total} upcoming Friday(s)${result.gatherings ? ` and ${result.gatherings} Ramadan day(s)` : ""} already up to date.`);
   }
   for (const e of result.errors) console.error(`FAILED: Google Calendar${e.date ? ` ${e.date}` : ""}: ${redact(e.message)}`);
   return { synced: result.synced, failed: result.failed };
@@ -362,26 +377,41 @@ async function main() {
   const people = await d1(
     "SELECT id, name, status, is_admin, email, reminders, line_user_id, reminder_token FROM people WHERE email IS NOT NULL OR line_user_id IS NOT NULL"
   );
+  // Ramadan: days with a kultum and a named speaker in the next week (none outside Ramadan).
+  let gatherings = [];
+  let ramadan = { kultum_minutes: 7, reminder_days: [3, 2, 1, 0] };
+  try {
+    const [settings] = await d1("SELECT kultum_minutes, reminder_days FROM ramadan_settings WHERE id = 1");
+    if (settings) ramadan = { kultum_minutes: settings.kultum_minutes, reminder_days: parseReminderDaysSetting(settings.reminder_days) };
+    gatherings = await d1(KULTUM_SQL, [today, addDays(today, WINDOW_DAYS)]);
+  } catch (e) {
+    console.log(`Ramadan days are not available yet (${redact(e.message)}); skipped.`);
+  }
+
+  const logIds = [...fridays.map((f) => f.id), ...gatherings.map((g) => GATHERING_ID_OFFSET + g.id)];
   let sentKeys = new Set();
-  if (fridays.length) {
+  if (logIds.length) {
     const rows = await d1(
-      `SELECT friday_id, person_id, kind, channel FROM reminder_log WHERE friday_id IN (${fridays.map(() => "?").join(",")})`,
-      fridays.map((f) => f.id)
+      `SELECT friday_id, person_id, kind, channel FROM reminder_log WHERE friday_id IN (${logIds.map(() => "?").join(",")})`,
+      logIds
     );
     sentKeys = new Set(rows.map((r) => sentKey(r.friday_id, r.person_id, r.kind, r.channel)));
   }
 
-  const allDue = [...dueReminders({ today, fridays, people, sentKeys }), ...dueAdminTodos({ today, fridays, people, sentKeys })].sort(
-    (a, b) => a.days - b.days || a.person.name.localeCompare(b.person.name)
-  );
+  const allDue = [
+    ...dueReminders({ today, fridays, people, sentKeys }),
+    ...dueAdminTodos({ today, fridays, people, sentKeys }),
+    ...dueKultumReminders({ today, gatherings, settings: ramadan, people, sentKeys }),
+  ].sort((a, b) => a.days - b.days || a.person.name.localeCompare(b.person.name));
   // Not logged as sent: it was never sent, and it is moot once the day is over.
   const nowMinutes = minutesInTokyo();
-  const tooLate = allDue.filter((d) => tooLateToSend(d.days, nowMinutes));
-  const due = allDue.filter((d) => !tooLateToSend(d.days, nowMinutes));
-  console.log(`${fridays.length} Friday(s) in the next ${WINDOW_DAYS} days; ${due.length} reminder(s) due.`);
+  const lateItem = (d) => (d.type === "kultum" ? tooLateForKultum(d.days, nowMinutes, d.gathering.start_time) : tooLateToSend(d.days, nowMinutes));
+  const tooLate = allDue.filter(lateItem);
+  const due = allDue.filter((d) => !lateItem(d));
+  console.log(`${fridays.length} Friday(s) in the next ${WINDOW_DAYS} days${gatherings.length ? `, ${gatherings.length} Ramadan day(s) with a kultum speaker` : ""}; ${due.length} reminder(s) due.`);
   if (tooLate.length) {
     console.log(
-      `Skipped ${tooLate.length} same-day reminder(s): it is already past 11:00 in Japan, too late to help.`
+      `Skipped ${tooLate.length} same-day reminder(s): too late in the day to help.`
     );
   }
 
@@ -391,7 +421,8 @@ async function main() {
   let lineUsed = 0;
 
   for (const item of due) {
-    const label = `${item.channel.padEnd(5)} ${item.person.name} - ${formatDateShort(item.friday.date)} (${item.kind})`;
+    const when = item.type === "kultum" ? item.gathering.date : item.friday.date;
+    const label = `${item.channel.padEnd(5)} ${item.person.name} - ${item.type === "kultum" ? "kultum " : ""}${formatDateShort(when)} (${item.kind})`;
     if (DRY_RUN) {
       console.log(`would send: ${label}`);
       continue;
@@ -413,7 +444,7 @@ async function main() {
     console.log(`sent: ${label}`);
     try {
       await d1("INSERT OR IGNORE INTO reminder_log (friday_id, person_id, kind, channel) VALUES (?, ?, ?, ?)", [
-        item.friday.id,
+        item.logId ?? item.friday.id,
         item.person.id,
         item.kind,
         item.channel,

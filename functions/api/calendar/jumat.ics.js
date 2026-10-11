@@ -19,7 +19,15 @@ export async function onRequestGet({ request, env }) {
     .all();
 
   const { results: places } = await env.DB.prepare("SELECT name, details, maps_url FROM places").all();
-  return new Response(buildCalendar({ fridays: results, siteUrl: new URL(request.url).origin, places }), {
+  // Ramadan: the Isha + Tarawih days join the feed (a week back, like the Fridays).
+  const settings = (await env.DB.prepare("SELECT kultum_minutes, event_minutes FROM ramadan_settings WHERE id = 1").first()) || {};
+  const { results: gatherings } = await env.DB.prepare(
+    `SELECT g.id, g.date, g.place, g.start_time, g.kultum, g.kultum_minutes, COALESCE(p.name, g.speaker_name) AS speaker, g.info, g.updated_at
+     FROM gatherings g LEFT JOIN people p ON p.id = g.speaker_id WHERE g.date >= ? ORDER BY g.date ASC`
+  )
+    .bind(from)
+    .all();
+  return new Response(buildCalendar({ fridays: results, siteUrl: new URL(request.url).origin, places, gatherings, settings }), {
     headers: {
       "content-type": "text/calendar; charset=utf-8",
       // Calendar apps poll on their own schedule; a short shared cache keeps

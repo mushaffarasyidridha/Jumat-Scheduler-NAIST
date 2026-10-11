@@ -544,3 +544,69 @@ test("alert email: who, when, the role, the line-up now, what to do, unsubscribe
   assert.ok(text.includes(unsubscribeUrl));
   assert.ok(!/undefined|null/.test(text));
 });
+
+// ---------- Ramadan: the kultum speaker's reminders ----------
+
+import { dueKultumReminders, kultumOffsetFor, tooLateForKultum, buildKultumEmail, buildKultumLineText, GATHERING_ID_OFFSET, parseReminderDaysSetting } from "./reminder-lib.mjs";
+
+const kSettings = { kultum_minutes: 7, reminder_days: [3, 2, 1, 0] };
+const gathering = (over = {}) => ({ id: 5, date: "2026-10-12", place: "Assembly Room - SENTAN", start_time: "19:45", kultum: 1, kultum_minutes: null, speaker_id: 1, speaker: "Ahmad", reminders: 1, ...over });
+const kdue = (over = {}, today = "2026-10-09") =>
+  dueKultumReminders({ today, gatherings: [gathering(over.g)], settings: over.settings || kSettings, people: over.people || [person({ id: 1, name: "Ahmad" })], sentKeys: over.sentKeys || new Set() });
+
+test("kultum: the chosen days are 3, 2, 1 before and the day itself; one reminder per run, the nearest reached", () => {
+  assert.equal(kultumOffsetFor(4, [3, 2, 1, 0]), null, "too early");
+  assert.equal(kultumOffsetFor(3, [3, 2, 1, 0]), 3);
+  assert.equal(kultumOffsetFor(2, [3, 2, 1, 0]), 2);
+  assert.equal(kultumOffsetFor(0, [3, 2, 1, 0]), 0);
+  assert.equal(kultumOffsetFor(-1, [3, 2, 1, 0]), null, "already over");
+  assert.equal(kultumOffsetFor(2, [3, 1]), 3, "a 3-day reminder missed on day 3 is still sent on day 2, as the 3-day one");
+  assert.equal(kultumOffsetFor(1, [3, 1]), 1);
+  assert.equal(kultumOffsetFor(3, []), null, "no days chosen: nothing");
+  assert.deepEqual(parseReminderDaysSetting("3,2,1,0"), [3, 2, 1, 0]);
+  assert.deepEqual(parseReminderDaysSetting(""), []);
+});
+
+test("kultum: the speaker is reminded on email and LINE, once per kind and channel", () => {
+  const people = [person({ id: 1, name: "Ahmad", line_user_id: "U" + "a".repeat(32) })];
+  const due = kdue({ people }); // 12 Oct is 3 days after 9 Oct
+  assert.deepEqual(due.map((d) => [d.kind, d.channel, d.person.name, d.minutes, d.type]), [["g3", "email", "Ahmad", 7, "kultum"], ["g3", "line", "Ahmad", 7, "kultum"]]);
+  assert.equal(due[0].logId, GATHERING_ID_OFFSET + 5);
+  const sent = new Set([due[0].key]);
+  assert.deepEqual(kdue({ people, sentKeys: sent }).map((d) => d.channel), ["line"], "the email already went");
+  assert.deepEqual(kdue({ people, sentKeys: new Set(due.map((d) => d.key)) }), [], "both went: nothing more");
+  assert.deepEqual(kdue({ people }, "2026-10-11").map((d) => d.kind), ["g1", "g1"], "the next reminder is a new kind");
+});
+
+test("kultum: no reminder without a kultum, a roster speaker, reminders on, or a way to reach them", () => {
+  assert.deepEqual(kdue({ g: { kultum: 0 } }), []);
+  assert.deepEqual(kdue({ g: { reminders: 0 } }), [], "reminders switched off for that day");
+  assert.deepEqual(kdue({ g: { speaker_id: null, speaker: "Prof. Arai" } }), [], "a guest has no contact details");
+  assert.deepEqual(kdue({ people: [person({ id: 1, reminders: 0 })] }), [], "the person opted out");
+  assert.deepEqual(kdue({ people: [person({ id: 1, email: null })] }), [], "no email or LINE");
+  assert.deepEqual(kdue({ g: { speaker_id: 99 } }), [], "not on the roster");
+  assert.deepEqual(kdue({}, "2026-10-01"), [], "more than 3 days away");
+  assert.deepEqual(kdue({}, "2026-10-13"), [], "the day has passed");
+  assert.equal(kdue({ settings: { kultum_minutes: 10, reminder_days: [3] }, g: { kultum_minutes: null } })[0].minutes, 10, "the setting's minutes");
+  assert.equal(kdue({ g: { kultum_minutes: 12 } })[0].minutes, 12, "a day's own minutes");
+});
+
+test("kultum: the same-day reminder stops two hours before the start", () => {
+  assert.equal(tooLateForKultum(0, 17 * 60 + 44, "19:45"), false);
+  assert.equal(tooLateForKultum(0, 17 * 60 + 45, "19:45"), true);
+  assert.equal(tooLateForKultum(1, 23 * 60, "19:45"), false, "only the day itself is cut off");
+});
+
+test("kultum: the email and the chat text carry the date with its weekday, the time, the minutes and the place", () => {
+  const args = { gathering: gathering(), person: person({ id: 1, name: "Ahmad", reminder_token: "t".repeat(32) }), days: 3, minutes: 7, siteUrl: "https://x.test" };
+  const { subject, text, unsubscribeUrl } = buildKultumEmail(args);
+  assert.equal(subject, "Kultum reminder: 12 October 2026 (in 3 days)");
+  for (const part of ["Assalamu'alaikum Ahmad", "Monday, 12 October 2026 (in 3 days)", "Isha and Tarawih start: 19:45", "about 7 minutes", "Assembly Room - SENTAN", "https://x.test", unsubscribeUrl]) assert.ok(text.includes(part), `missing: ${part}`);
+  assert.match(unsubscribeUrl, /unsubscribe\?t=t{32}$/);
+  const chat = buildKultumLineText(args);
+  assert.match(chat, /🌙 Kultum reminder/);
+  assert.match(chat, /Monday, 12 October 2026 \(in 3 days\)/);
+  assert.match(chat, /start at 19:45; the kultum is a short talk of about 7 minutes/);
+  assert.ok(!/undefined|null/.test(text + chat));
+  assert.match(buildKultumLineText({ ...args, gathering: gathering({ place: null }) }), /📍 to be announced/);
+});
