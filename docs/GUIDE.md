@@ -89,6 +89,7 @@ flowchart TD
 
 | Who | Feature | What it does | Status |
 | --- | --- | --- | --- |
+| Members | My name isn't listed | Someone not on the roster types their name and details; the admin is told and adds them. Nothing is added automatically. | ✅ live |
 | Members | See the schedule | A calendar of the Fridays with khatib, imam and venue. | ✅ live |
 | Members | Friday details and announcement | Tap a Friday to read it and copy the weekly announcement. | ✅ live |
 | Members | Name locked on the device | After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). The admin, who holds the access code, can still change it. It is a guard in the page, not a login. | ✅ live |
@@ -112,6 +113,7 @@ flowchart TD
 | Admin | Google Calendar sync | Status line and a Sync now button in the planner; instant alert emails. | ✅ live |
 | Automatic | Daily job | 08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync. | ✅ live |
 | Automatic | Deploy | Every change of the code is published automatically, with its database changes. | ✅ live |
+| Admin | Join requests | A box in the planner lists people who could not find their name, with Add to roster (form pre-filled) and Dismiss; the admins are also emailed. | ✅ live |
 
 ## For members
 
@@ -128,6 +130,7 @@ flowchart TD
 
   C --> D["Tap a Friday to see its details<br/>read khatib, imam and venue<br/>or generate the announcement and copy it to share"]
   C --> E["Put the schedule in your own calendar<br/>Google Calendar: Add the Jumat calendar<br/>Apple or Outlook: use the calendar feed link"]
+  C --> N["Cannot find your name?<br/>press My name isn't listed, type your name and details<br/>the admin is told and adds you, then pick your name under You are"]
   C --> F["Say when you can or cannot come"]
   F --> F1["Choose your name at the top, You are<br/>once: it is then fixed on this device<br/>the admin can change it"]
   F1 --> F2["Tap a Friday, then<br/>I'm available · I'm unavailable · Clear my mark"]
@@ -135,7 +138,7 @@ flowchart TD
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
-  class A,B,C,D,E,F,F1,F2 member
+  class A,B,C,D,E,F,F1,F2,N member
   class F3 robot
 ```
 
@@ -220,6 +223,30 @@ flowchart TD
   class F warn
 ```
 
+### When someone cannot find their name
+
+They send their details; you are told and add them with one click.
+
+```mermaid
+flowchart TD
+  A["Someone cannot find their name<br/>presses My name isn't listed, types their name and details"] --> B["The request is saved<br/>nothing is added to the roster yet"]
+  B --> C["You are told<br/>a box in the Admin planner, and an email to the admins"]
+  C --> D{"Do you know them?"}
+  D -->|"yes"| E["Press Add to roster<br/>the Add person form opens, already filled in"]
+  E --> F["Check it, add an email, save<br/>the request closes by itself"]
+  F --> G["Tell them: pick your name under You are"]
+  D -->|"no, or spam"| H["Press Dismiss<br/>nothing is added"]
+
+  classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
+  classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
+  classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
+  class A member
+  class B robot
+  class C,D,E,F,G admin
+  class H warn
+```
+
 ### When someone cannot make it
 
 The alert reaches you on the website and by email, so a replacement can be found early.
@@ -263,6 +290,8 @@ flowchart TD
     E2 --> E3["Google Calendar is updated within a minute<br/>only once connected"]
     U1["A scheduled person presses I can't make it"] --> U2["An alert is saved"]
     U2 --> U3["Admins are emailed at once<br/>only once Google is connected"]
+    J1["Someone not on the roster sends their details"] --> J2["A request is saved and shown in the planner"]
+    J2 --> J3["Admins are emailed at once<br/>only once Google is connected, otherwise by the next daily run"]
   end
 
   subgraph t2["⏰ Twice a day - 08:23 and 14:23 Japan time"]
@@ -285,8 +314,8 @@ flowchart TD
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   class E1 admin
-  class U1 member
-  class E2,E3,U2,U3,R1,R2,R3,R4,R5,R6,D1,D2 robot
+  class U1,J1 member
+  class E2,E3,U2,U3,J2,J3,R1,R2,R3,R4,R5,R6,D1,D2 robot
 ```
 
 ### The exact list, from the code
@@ -306,6 +335,8 @@ flowchart TD
 | `/api/calendar/test-mode` | The planner's invitation test mode: invite only the addresses typed there until it is turned off. | POST: access code |
 | `/api/fridays` | The schedule: the list of Fridays. It also creates the coming ones. | GET: public |
 | `/api/fridays/:id` | Assign khatib and imam, set the venue or a note for one Friday. | PATCH: access code |
+| `/api/join-requests` | Someone who cannot find their name sends their details (anyone can); the admin lists the waiting requests here. | POST: public; GET: access code |
+| `/api/join-requests/:id` | The admin closes a request: added to the roster, or dismissed. | PATCH: access code |
 | `/api/line/webhook` | Where LINE delivers messages to the bot. This is how a person links their LINE with the code. | POST: LINE signature |
 | `/api/people` | The roster: read the list (contact details only with the code) and add a person. | GET: public, more with the code; POST: access code |
 | `/api/people/:id` | Edit or delete one person. | DELETE: access code; PATCH: access code |
@@ -325,6 +356,7 @@ flowchart TD
 | `availability_alerts` | `0011_alerts.sql` |
 | `gcal_sync` | `0012_gcal.sql` |
 | `gcal_state` | `0012_gcal.sql` |
+| `join_requests` | `0014_join_requests.sql` |
 
 #### Database changes, in order
 
@@ -343,6 +375,7 @@ flowchart TD
 | `0011_alerts.sql` | "Can't make it" alerts. |
 | `0012_gcal.sql` | Google Calendar: one event per Friday on a shared (public) calendar, kept up to |
 | `0013_gcal_test_mode.sql` | Invitation test mode: while this holds addresses (comma separated), only those |
+| `0014_join_requests.sql` | "My name isn't listed": someone who is not on the roster types their name and |
 
 #### Robot jobs (GitHub Actions)
 

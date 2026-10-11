@@ -222,6 +222,16 @@ code on that device) can still change it; to fix a wrong pick for a member, unlo
 the name, then press Lock. It is a guard in the page, not a login: the site has no accounts, so someone who
 clears their browser data or uses another device can pick again.
 
+## "My name isn't listed" (people not on the roster yet)
+
+Below **You are** there is a small link, *My name isn't listed*, for members who cannot find their name. It opens
+a short form (name, who they are, country, what they can serve as, optional email / WhatsApp / note). Sending it
+**adds nobody**: it saves a request, shows it to the admin in a blue box at the top of the Admin planner
+(*Add to roster*, which opens the usual Add person form already filled in, or *Dismiss*), and emails the admins:
+at once through the Google script when it is connected, otherwise at the next run of the reminder job (the job's
+log only says how many are waiting, never who). Protections: a name already on the list is turned away with
+"pick it under You are", a hidden field catches simple bots, at most 10 requests an hour and 50 waiting at once.
+
 ## Reminders (automatic email, plus copy / WhatsApp by hand)
 
 **Automatic, by email.** Every morning (about 08:30 Japan time, plus a catch-up

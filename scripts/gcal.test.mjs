@@ -405,3 +405,64 @@ test("sync reports why nobody is invited, as counts only", async () => {
   assert.equal(none.invites.accounts, 0);
   assert.ok(!JSON.stringify(off.invites).includes("@"), "no address in the report");
 });
+
+// ---------- "my name isn't listed": the admin's email ----------
+
+import { joinRecipients, buildJoinEmail } from "../functions/api/_joinmail.mjs";
+import { emailJoinViaBridge } from "../functions/api/_gcal.mjs";
+
+const joinRequest = { id: 7, name: "Firoz Ahmed", affiliation: "naist_student", country: "Bangladesh", role: "both", email: "f@example.org", whatsapp: "+81 90 1234 5678", note: "new at NAIST", resolved_at: null };
+
+test("join email: who asked, what they typed, what to do, how to stop", () => {
+  const { subject, text } = buildJoinEmail({ request: joinRequest, admin: adminRow(), siteUrl: SITE });
+  assert.equal(subject, "Jumat: Firoz Ahmed asks to be added to the roster");
+  for (const part of ["Assalamu'alaikum Aisha", "Name: Firoz Ahmed", "NAIST student", "Bangladesh", "Khatib and imam", "f@example.org", "+81 90 1234 5678", "new at NAIST", "Add to roster", `${SITE}/api/reminders/unsubscribe?t=${"a".repeat(32)}`]) {
+    assert.ok(text.includes(part), `missing: ${part}`);
+  }
+  const sparse = buildJoinEmail({ request: { id: 8, name: "Sam" }, admin: adminRow(), siteUrl: SITE }).text;
+  assert.ok(!/undefined|null/.test(sparse) && !sparse.includes("Email:"), "a sparse request prints no empty lines");
+});
+
+test("join email: only active admins with an email and reminders on", () => {
+  const people = [adminRow(), adminRow({ id: 10, email: null }), adminRow({ id: 11, status: "inactive" }), adminRow({ id: 12, reminders: 0 }), { id: 13, status: "active", is_admin: 0, email: "x@y.org", reminders: 1 }];
+  assert.deepEqual(joinRecipients(people).map((p) => p.id), [9]);
+});
+
+function joinDb({ request = joinRequest, admins = [adminRow()], claim = 1 } = {}) {
+  const runs = [];
+  return {
+    runs,
+    async all(sql) {
+      if (sql.includes("FROM join_requests")) return request ? [request] : [];
+      if (sql.includes("FROM people WHERE is_admin = 1")) return admins;
+      throw new Error(`unexpected SQL: ${sql}`);
+    },
+    async run(sql, params) {
+      runs.push({ sql, params });
+      return { changes: sql.includes("SET emailed_at = datetime('now')") ? claim : 1 };
+    },
+  };
+}
+
+test("join email via the bridge: every admin is mailed and the request is claimed", async () => {
+  const sent = [];
+  const bridge = { async sendMail(m) { sent.push(m); } };
+  const db = joinDb({ admins: [adminRow(), adminRow({ id: 10, name: "Bilal", email: "b@example.org" })] });
+  assert.equal(await emailJoinViaBridge({ bridge, db, requestId: 7, siteUrl: SITE }), true);
+  assert.deepEqual(sent.map((m) => m.to), ["aisha@example.org", "b@example.org"]);
+  assert.match(sent[0].subject, /Firoz Ahmed asks to be added/);
+  assert.ok(!db.runs.some((r) => r.sql.includes("emailed_at = NULL")), "claim kept");
+});
+
+test("join email via the bridge: nobody to tell, or a failed send, releases the claim so the job retries; an already-claimed request is skipped", async () => {
+  const none = joinDb({ admins: [] });
+  assert.equal(await emailJoinViaBridge({ bridge: { async sendMail() {} }, db: none, requestId: 7, siteUrl: SITE }), false);
+  assert.ok(none.runs.some((r) => r.sql.includes("emailed_at = NULL")));
+
+  const failing = joinDb();
+  assert.equal(await emailJoinViaBridge({ bridge: { async sendMail() { throw new BridgeError("nope"); } }, db: failing, requestId: 7, siteUrl: SITE }), false);
+  assert.ok(failing.runs.some((r) => r.sql.includes("emailed_at = NULL")));
+
+  const claimed = joinDb({ claim: 0 });
+  assert.equal(await emailJoinViaBridge({ bridge: { async sendMail() { throw new Error("must not send"); } }, db: claimed, requestId: 7, siteUrl: SITE }), false);
+});

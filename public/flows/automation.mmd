@@ -4,6 +4,8 @@ flowchart TD
     E2 --> E3["Google Calendar is updated within a minute<br/>only once connected"]
     U1["A scheduled person presses I can't make it"] --> U2["An alert is saved"]
     U2 --> U3["Admins are emailed at once<br/>only once Google is connected"]
+    J1["Someone not on the roster sends their details"] --> J2["A request is saved and shown in the planner"]
+    J2 --> J3["Admins are emailed at once<br/>only once Google is connected, otherwise by the next daily run"]
   end
 
   subgraph t2["⏰ Twice a day - 08:23 and 14:23 Japan time"]
@@ -26,5 +28,5 @@ flowchart TD
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   class E1 admin
-  class U1 member
-  class E2,E3,U2,U3,R1,R2,R3,R4,R5,R6,D1,D2 robot
+  class U1,J1 member
+  class E2,E3,U2,U3,J2,J3,R1,R2,R3,R4,R5,R6,D1,D2 robot

@@ -439,3 +439,11 @@ body.guide-noscroll { overflow: hidden; }
 .guide-badge-todo { color: var(--muted); }
 
 #whoami-note { font-size: 0.7rem; max-width: 220px; }
+
+.linklike { background: none; border: 0; padding: 0; color: var(--primary); font: inherit; font-size: 0.75rem; text-decoration: underline; cursor: pointer; text-align: left; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.planner-join { border: 1px solid var(--primary); border-radius: var(--radius); padding: 10px 12px; margin: 0 0 4px; }
+.planner-join-title { margin: 0 0 6px; font-weight: 600; color: var(--primary); }
+.planner-join ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.planner-join-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; font-size: 0.9rem; }
+.planner-join-item .muted { display: block; }

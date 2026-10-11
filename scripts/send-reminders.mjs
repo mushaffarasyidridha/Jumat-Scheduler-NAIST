@@ -16,6 +16,7 @@
 
 import { readFileSync } from "node:fs";
 import { ALERT_ROW_SELECT } from "../functions/api/_alertmail.mjs";
+import { joinRecipients, buildJoinEmail, JOIN_ROW_SELECT } from "../functions/api/_joinmail.mjs";
 import { createBridge, syncUpcoming } from "../functions/api/_gcal.mjs";
 import {
   DEFAULT_SITE_URL,
@@ -242,6 +243,49 @@ async function sendAlertEmails({ today, people }) {
   return { count: alerts.length, sent, failed };
 }
 
+// Someone typed their details because they could not find their name: tell the
+// admin(s) by email. The website shows the request in the planner straight away;
+// this is the email half. The log says only how many (this repository is public).
+async function sendJoinEmails({ people }) {
+  const requests = await d1(`${JOIN_ROW_SELECT} WHERE emailed_at IS NULL AND resolved_at IS NULL ORDER BY id`, []);
+  if (!requests.length) return { count: 0, sent: 0, failed: 0 };
+  console.log(`${requests.length} request(s) to join the roster waiting for the admin.`);
+  const admins = joinRecipients(people);
+  if (!admins.length) {
+    console.log("No admin has an email address, so the request email(s) wait until one is set (the website shows them already).");
+    return { count: requests.length, sent: 0, failed: 0 };
+  }
+  let sent = 0;
+  let failed = 0;
+  for (const request of requests) {
+    const label = `join request #${request.id}`;
+    if (DRY_RUN) {
+      console.log(`would send: ${label} -> ${admins.length} admin(s)`);
+      continue;
+    }
+    let delivered = 0;
+    for (const admin of admins) {
+      try {
+        await deliverEmail({ to: admin.email, ...buildJoinEmail({ request, admin, siteUrl: SITE_URL }) });
+        delivered++;
+      } catch (e) {
+        failed++;
+        console.error(`FAILED: ${label}: ${redact(e.message)}`);
+      }
+    }
+    if (!delivered) continue;
+    sent++;
+    console.log(`sent: ${label}`);
+    try {
+      await d1("UPDATE join_requests SET emailed_at = datetime('now') WHERE id = ?", [request.id]);
+    } catch (e) {
+      failed++;
+      console.error(`!! delivered but NOT recorded (may be sent again on the next run): ${label}: ${redact(e.message)}`);
+    }
+  }
+  return { count: requests.length, sent, failed };
+}
+
 function printSamples(due) {
   const seen = new Set();
   for (const item of due) {
@@ -383,6 +427,9 @@ async function main() {
   const alertStats = await sendAlertEmails({ today, people });
   sent += alertStats.sent;
   failed += alertStats.failed;
+  const joinStats = await sendJoinEmails({ people });
+  sent += joinStats.sent;
+  failed += joinStats.failed;
 
   const google = await reconcileGoogle({ today });
   failed += google.failed;
@@ -397,7 +444,7 @@ async function main() {
   await d1("INSERT INTO reminder_runs (mode, sent, failed, note) VALUES ('send', ?, ?, ?)", [
     sent,
     failed,
-    due.length || alertStats.count ? null : "nothing due",
+    due.length || alertStats.count || joinStats.count ? null : "nothing due",
   ]);
   await d1("DELETE FROM reminder_runs WHERE ran_at < datetime('now', '-90 days')");
 
