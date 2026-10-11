@@ -146,6 +146,12 @@ that. So the site talks to a tiny **Apps Script** (`google-apps-script/Code.gs`)
 Google account and does the calendar work for it. It needs no Google Cloud project, no OAuth client and no
 refresh tokens that expire. Until you set it up, nothing about Google changes on the site.
 
+**Try the invitations on yourself first (test mode).** In the Admin planner, under the Google Calendar line,
+open *Test the Google invitations on yourself first*, type your own NAIST Google address and press *Turn on*.
+While test mode is on, only that address is invited to Friday events; everyone else is left out. Press
+*Turn off* when you are happy; then everyone scheduled with a NAIST Google account is invited. (If someone was
+already invited, turning test mode on sends them a cancellation, and turning it off invites them again.)
+
 ### Set it up (about 15 minutes, once; sign in as the community Google account)
 
 Always use the **community Gmail** (the one that sends the reminder emails), never a person's own account:

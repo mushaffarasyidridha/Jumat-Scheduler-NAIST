@@ -250,6 +250,8 @@ main {
   color: var(--text);
   font-size: 0.8rem;
 }
+.planner-test { margin-top: 4px; }
+.planner-test .planner-guest { max-width: 420px; }
 .planner-send { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 a.btn { display: inline-block; text-decoration: none; }
 .planner-status { margin: 0; }

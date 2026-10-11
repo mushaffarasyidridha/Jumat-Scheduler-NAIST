@@ -107,6 +107,7 @@ flowchart TD
 | Admin | Announcement for the groups | Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups. | ✅ live |
 | Admin | Admin to-do messages | A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement. | ✅ live |
 | Admin | Can't-make-it alerts | A red box and badge in the planner, and an email, when a scheduled person cannot come. | ✅ live |
+| Admin | Invitation test mode | In the planner: invite only one address (your own) until you turn it off, to try the Google invitations before anyone else gets one. | ✅ live |
 | Admin | Google Calendar sync | Status line and a Sync now button in the planner; instant alert emails. | ✅ live |
 | Automatic | Daily job | 08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync. | ✅ live |
 | Automatic | Deploy | Every change of the code is published automatically, with its database changes. | ✅ live |
@@ -301,6 +302,7 @@ flowchart TD
 | `/api/calendar/info` | Tells the home page whether the shared Google Calendar is connected, to show its buttons. | GET: public |
 | `/api/calendar/jumat.ics` | The calendar feed for Apple, Outlook or Google (From URL). | GET: public |
 | `/api/calendar/sync` | The planner's Sync now button: makes Google Calendar match the schedule. | POST: access code |
+| `/api/calendar/test-mode` | The planner's invitation test mode: invite only the addresses typed there until it is turned off. | POST: access code |
 | `/api/fridays` | The schedule: the list of Fridays. It also creates the coming ones. | GET: public |
 | `/api/fridays/:id` | Assign khatib and imam, set the venue or a note for one Friday. | PATCH: access code |
 | `/api/line/webhook` | Where LINE delivers messages to the bot. This is how a person links their LINE with the code. | POST: LINE signature |
@@ -339,6 +341,7 @@ flowchart TD
 | `0010_admin.sql` | Who is the admin this period. |
 | `0011_alerts.sql` | "Can't make it" alerts. |
 | `0012_gcal.sql` | Google Calendar: one event per Friday on a shared (public) calendar, kept up to |
+| `0013_gcal_test_mode.sql` | Invitation test mode: while this holds addresses (comma separated), only those |
 
 #### Robot jobs (GitHub Actions)
 
@@ -463,13 +466,14 @@ flowchart TD
   H --> I["8. Actions: Send Jumat reminders<br/>tick google_check, then Run workflow"]
   I --> J{"The log says<br/>Google Calendar connection OK?"}
   J -->|"yes"| K["9. Private window check<br/>open the public calendar without signing in<br/>events visible, no guest list"]
+  K --> M["10. Optional: try the invitations on yourself<br/>Planner, Google Calendar line, Test the Google invitations on yourself first<br/>type your own address, Turn on; Turn off when happy"]
   J -->|"no"| L["Read the message<br/>unauthorized: the two SECRET texts differ<br/>not JSON: the web app is not deployed for Anyone"]
   L --> G
 
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,G,H,I,K admin
+  class A,G,H,I,K,M admin
   class B,C,D,E,F out
   class J,L warn
 ```
@@ -488,4 +492,4 @@ flowchart TD
 
 ## Help
 
-Something not working, or a question? Contact the system owner on WhatsApp: [+62 82217078820](https://wa.me/6282217078820).
+Something not working, or a question? Contact Mushaffa Rasyid Ridha (the system owner) on WhatsApp: [+62 82217078820](https://wa.me/6282217078820).

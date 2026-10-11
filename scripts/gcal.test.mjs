@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { siteUrlFrom, DEFAULT_SITE_URL } from "../functions/api/_site.mjs";
-import { SQL, BridgeError, createBridge, guestsFor, desiredEvent, planSync, sha256Hex, syncUpcoming, emailAlertViaBridge } from "../functions/api/_gcal.mjs";
+import { SQL, BridgeError, createBridge, guestsFor, parseInviteOnly, desiredEvent, planSync, sha256Hex, syncUpcoming, emailAlertViaBridge } from "../functions/api/_gcal.mjs";
 
 const SITE = "https://x.test";
 const TODAY = "2026-10-09";
@@ -102,7 +102,7 @@ test("bridge client: errors are clear, flag a wrong secret, and never contain th
 
 // ---------- the whole sync ----------
 
-function fakeDb({ fridays = [], people = [], snapshots = [] } = {}) {
+function fakeDb({ fridays = [], people = [], snapshots = [], inviteOnly = null } = {}) {
   const runs = [];
   return {
     runs,
@@ -111,6 +111,7 @@ function fakeDb({ fridays = [], people = [], snapshots = [] } = {}) {
       if (sql === SQL.fridays) return fridays.filter((f) => f.date >= params[0]);
       if (sql === SQL.people) return people;
       if (sql === SQL.snapshots) return snapshots;
+      if (sql === SQL.state) return [{ invite_only: inviteOnly }];
       throw new Error(`unexpected SQL: ${sql}`);
     },
     async run(sql, params) {
@@ -339,4 +340,39 @@ test("site address: one canonical address for links, with an optional override a
   assert.equal(siteUrlFrom({}), DEFAULT_SITE_URL);
   assert.equal(siteUrlFrom({ SITE_URL: "" }), DEFAULT_SITE_URL, "an empty variable means 'not set'");
   assert.equal(siteUrlFrom({ SITE_URL: "https://jumat.example.org//" }), "https://jumat.example.org");
+});
+
+// ---------- invitation test mode ----------
+
+test("test mode: the saved text keeps only real addresses, lower-cased, once each", () => {
+  assert.deepEqual(parseInviteOnly("Me@NAIST.ac.jp, me@naist.ac.jp; other@x.org  junk, @bad, a@b"), ["me@naist.ac.jp", "other@x.org"]);
+  assert.deepEqual(parseInviteOnly(null), []);
+  assert.deepEqual(parseInviteOnly(""), []);
+  assert.deepEqual(parseInviteOnly("not an address"), [], "a damaged value never invites anyone by accident");
+});
+
+test("test mode: only the listed addresses are invited, the others are left out", () => {
+  const f = friday({ primary_khatib_id: 1, secondary_khatib_id: 2 });
+  const people = byId(person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp" }));
+  assert.deepEqual(guestsFor(f, people, []), ["me@naist.ac.jp", "other@naist.ac.jp"], "off: everyone");
+  assert.deepEqual(guestsFor(f, people, ["me@naist.ac.jp"]), ["me@naist.ac.jp"]);
+  assert.deepEqual(guestsFor(f, people, ["nobody@x.org"]), [], "a list nobody matches invites nobody");
+});
+
+test("test mode: the saved setting limits the invitations in a sync, and turning it off invites everyone again", async () => {
+  const people = [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp" })];
+  const fridays = [friday({ id: 11, date: "2026-10-16", primary_khatib_id: 1, secondary_khatib_id: 2 })];
+
+  const db = fakeDb({ fridays, people, inviteOnly: "me@naist.ac.jp" });
+  const bridge = fakeBridge();
+  await run({ bridge, db });
+  assert.deepEqual(bridge.calls.find((c) => c.event).event.guests, ["me@naist.ac.jp"]);
+
+  // Same line-up, test mode off: the other person is now invited (an invitation email).
+  const off = fakeDb({ fridays, people, snapshots: db.snapshots });
+  const bridge2 = fakeBridge();
+  await run({ bridge: bridge2, db: off });
+  const event = bridge2.calls.find((c) => c.event).event;
+  assert.deepEqual(event.guests, ["me@naist.ac.jp", "other@naist.ac.jp"]);
+  assert.equal(event.send_updates, "all", "the guest list changed: Google sends the invitation");
 });

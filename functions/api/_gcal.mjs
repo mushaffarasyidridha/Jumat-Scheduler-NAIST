@@ -30,7 +30,8 @@ export const SQL = {
     ON CONFLICT(friday_id) DO UPDATE SET hash = excluded.hash, snapshot = excluded.snapshot, synced_at = datetime('now')`,
   stateOk: "UPDATE gcal_state SET calendar_id = COALESCE(?, calendar_id), last_ok_at = datetime('now'), last_error = NULL WHERE id = 1",
   stateError: "UPDATE gcal_state SET last_error = ?, last_error_at = datetime('now') WHERE id = 1",
-  state: "SELECT calendar_id, last_ok_at, last_error, last_error_at FROM gcal_state WHERE id = 1",
+  state: "SELECT calendar_id, last_ok_at, last_error, last_error_at, invite_only FROM gcal_state WHERE id = 1",
+  setInviteOnly: "UPDATE gcal_state SET invite_only = ? WHERE id = 1",
 };
 
 // ---------- the bridge (an HTTPS client for the Apps Script web app) ----------
@@ -88,7 +89,9 @@ function jstIso(ms) {
 
 // Who is invited: the people scheduled that Friday who have a calendar account
 // saved, are still active and have not switched their reminders off.
-export function guestsFor(friday, peopleById) {
+//
+// Test mode (inviteOnly, a list of addresses): only those addresses are invited.
+export function guestsFor(friday, peopleById, inviteOnly = []) {
   const emails = new Set();
   for (const slot of ROLE_SLOTS) {
     const person = peopleById.get(friday[slot.field]);
@@ -96,10 +99,17 @@ export function guestsFor(friday, peopleById) {
       emails.add(person.calendar_email.trim().toLowerCase());
     }
   }
-  return [...emails].sort();
+  return [...emails].filter((email) => !inviteOnly.length || inviteOnly.includes(email)).sort();
 }
 
-export function desiredEvent({ friday, peopleById, siteUrl }) {
+// The saved test-mode setting is a comma separated string; anything that is not an
+// address is ignored, so a damaged value can never invite someone by accident.
+const EMAIL_SHAPE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
+export function parseInviteOnly(text) {
+  return [...new Set(String(text || "").split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => EMAIL_SHAPE.test(x)))].sort();
+}
+
+export function desiredEvent({ friday, peopleById, siteUrl, inviteOnly = [] }) {
   const { startMs, endMs } = prayerWindowUtc(friday.date);
   return {
     friday_id: friday.id,
@@ -108,7 +118,7 @@ export function desiredEvent({ friday, peopleById, siteUrl }) {
     location: (friday.venue || "").trim(),
     start: jstIso(startMs),
     end: jstIso(endMs),
-    guests: guestsFor(friday, peopleById),
+    guests: guestsFor(friday, peopleById, inviteOnly),
   };
 }
 
@@ -156,11 +166,13 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
     (await db.all(SQL.snapshots, [])).map((row) => [row.friday_id, { hash: row.hash, snapshot: parseSnapshot(row.snapshot) }])
   );
   const peopleById = new Map(people.map((p) => [p.id, p]));
+  const [state] = await db.all(SQL.state, []);
+  const inviteOnly = parseInviteOnly(state && state.invite_only);
 
   const work = [];
   let unchanged = 0;
   for (const friday of fridays) {
-    const desired = desiredEvent({ friday, peopleById, siteUrl });
+    const desired = desiredEvent({ friday, peopleById, siteUrl, inviteOnly });
     const hash = await sha256Hex(JSON.stringify(desired));
     const plan = planSync(hash, desired, snapshots.get(friday.id));
     if (plan.action === "none") unchanged++;
