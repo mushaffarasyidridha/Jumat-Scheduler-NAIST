@@ -54,6 +54,8 @@ export const ROUTE_NOTES = {
   "/api/join-requests": "Someone who cannot find their name sends their details (anyone can); the admin lists the waiting requests here.",
   "/api/join-requests/:id": "The admin closes a request: added to the roster, or dismissed.",
   "/api/line/webhook": "Where LINE delivers messages to the bot. This is how a person links their LINE with the code.",
+  "/api/places": "The places (dorm lounges, the Sentan assembly room ...) for the venue dropdown; the admin adds one.",
+  "/api/places/:id": "The admin edits or deletes one place (a rename follows onto the coming Fridays).",
   "/api/people": "The roster: read the list (contact details only with the code) and add a person.",
   "/api/people/:id": "Edit or delete one person.",
   "/api/people/:id/line": "Create or remove the code a person uses to link their LINE.",

@@ -18,7 +18,8 @@ export async function onRequestGet({ request, env }) {
     .bind(from)
     .all();
 
-  return new Response(buildCalendar({ fridays: results, siteUrl: new URL(request.url).origin }), {
+  const { results: places } = await env.DB.prepare("SELECT name, details, maps_url FROM places").all();
+  return new Response(buildCalendar({ fridays: results, siteUrl: new URL(request.url).origin, places }), {
     headers: {
       "content-type": "text/calendar; charset=utf-8",
       // Calendar apps poll on their own schedule; a short shared cache keeps

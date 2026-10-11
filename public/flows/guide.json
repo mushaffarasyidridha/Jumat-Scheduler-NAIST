@@ -302,6 +302,12 @@
       "name": "Join requests",
       "what": "A box in the planner lists people who could not find their name, with Add to roster (form pre-filled) and Dismiss; the admins are also emailed.",
       "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Places",
+      "what": "A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event.",
+      "status": "live"
     }
   ],
   "setup": [

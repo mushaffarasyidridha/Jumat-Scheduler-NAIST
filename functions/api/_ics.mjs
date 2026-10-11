@@ -58,8 +58,8 @@ export function cantMakeItLink(siteUrl, friday) {
 // The description of the event is the weekly broadcast itself, so whoever opens
 // the event reads exactly what is posted in the groups, plus how to say you
 // can't make it.
-export function eventDescription(friday, siteUrl) {
-  const parts = [buildAnnouncementText(friday, hadithForDate(friday.date))];
+export function eventDescription(friday, siteUrl, places = []) {
+  const parts = [buildAnnouncementText(friday, hadithForDate(friday.date), places)];
   const info = (friday.info || "").trim();
   if (info && info.toUpperCase() !== "TBA") parts.push(`Note: ${info}`);
   parts.push(`Can't make it? Please tell us here, so a replacement can be found: ${cantMakeItLink(siteUrl, friday)}`);
@@ -72,7 +72,7 @@ function modifiedMs(friday, fallbackMs) {
   return Number.isNaN(ms) ? fallbackMs : ms;
 }
 
-export function buildEvent(friday, { siteUrl, nowMs }) {
+export function buildEvent(friday, { siteUrl, nowMs, places = [] }) {
   const { startMs, endMs } = prayerWindowUtc(friday.date);
   const stamp = calendarStamp(modifiedMs(friday, nowMs));
   const venue = (friday.venue || "").trim();
@@ -85,7 +85,7 @@ export function buildEvent(friday, { siteUrl, nowMs }) {
     `DTEND:${calendarStamp(endMs)}`,
     `SUMMARY:${escapeText(eventTitle(friday))}`,
     ...(venue ? [`LOCATION:${escapeText(venue)}`] : []),
-    `DESCRIPTION:${escapeText(eventDescription(friday, siteUrl))}`,
+    `DESCRIPTION:${escapeText(eventDescription(friday, siteUrl, places))}`,
     `URL:${siteUrl}`,
     // Informational for everyone who subscribes: it should not mark their
     // calendar as busy during the prayer.
@@ -94,7 +94,7 @@ export function buildEvent(friday, { siteUrl, nowMs }) {
   ].map(foldLine);
 }
 
-export function buildCalendar({ fridays, siteUrl, nowMs = Date.now() }) {
+export function buildCalendar({ fridays, siteUrl, nowMs = Date.now(), places = [] }) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -107,7 +107,7 @@ export function buildCalendar({ fridays, siteUrl, nowMs = Date.now() }) {
     // Hints for calendar apps; Google decides for itself (every few hours).
     "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
     "X-PUBLISHED-TTL:PT6H",
-    ...fridays.flatMap((friday) => buildEvent(friday, { siteUrl, nowMs })),
+    ...fridays.flatMap((friday) => buildEvent(friday, { siteUrl, nowMs, places })),
     "END:VCALENDAR",
   ];
   return lines.join("\r\n") + "\r\n";

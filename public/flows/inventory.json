@@ -212,6 +212,36 @@
       "note": "Create or remove the code a person uses to link their LINE."
     },
     {
+      "route": "/api/places",
+      "file": "functions/api/places/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        },
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The places (dorm lounges, the Sentan assembly room ...) for the venue dropdown; the admin adds one."
+    },
+    {
+      "route": "/api/places/:id",
+      "file": "functions/api/places/[id].js",
+      "methods": [
+        {
+          "method": "PATCH",
+          "access": "access code"
+        },
+        {
+          "method": "DELETE",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin edits or deletes one place (a rename follows onto the coming Fridays)."
+    },
+    {
       "route": "/api/reminders/status",
       "file": "functions/api/reminders/status.js",
       "methods": [
@@ -274,6 +304,10 @@
     {
       "name": "join_requests",
       "migration": "0014_join_requests.sql"
+    },
+    {
+      "name": "places",
+      "migration": "0015_places.sql"
     }
   ],
   "migrations": [
@@ -332,6 +366,10 @@
     {
       "file": "0014_join_requests.sql",
       "note": "\"My name isn't listed\": someone who is not on the roster types their name and"
+    },
+    {
+      "file": "0015_places.sql",
+      "note": "Places (dorm lounges, the Sentan assembly room, ...) the admin can add, edit and"
     }
   ],
   "workflows": [

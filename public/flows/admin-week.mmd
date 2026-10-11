@@ -5,7 +5,8 @@ flowchart TD
   C -->|"no"| D
   C1 --> D["Look at the coming Fridays<br/>a warning mark means an empty slot or two turns too close"]
   D --> E["Pick the primary khatib, secondary khatib and imam<br/>people who are available come first in each list<br/>or type a guest who is not in the roster, e.g. Prof. Arai, and press Set"]
-  E --> F["It is saved at once<br/>Google Calendar follows, once connected"]
+  E --> E2["Venue: open Details and announcement<br/>pick the place from the dropdown (Places card: add, edit, delete)"]
+  E2 --> F["It is saved at once<br/>Google Calendar follows, once connected"]
   F --> G["The robot sends the reminders by itself<br/>7 days before and the day before"]
   G --> H{"Does the person have<br/>an email or LINE?"}
   H -->|"yes"| I["Nothing more to do"]
@@ -19,6 +20,6 @@ flowchart TD
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,B,D,E,J,L admin
+  class E2,A,B,D,E,J,L admin
   class F,G,I,K,M robot
   class C1 warn

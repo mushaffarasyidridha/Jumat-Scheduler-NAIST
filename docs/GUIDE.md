@@ -114,6 +114,7 @@ flowchart TD
 | Automatic | Daily job | 08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync. | ✅ live |
 | Automatic | Deploy | Every change of the code is published automatically, with its database changes. | ✅ live |
 | Admin | Join requests | A box in the planner lists people who could not find their name, with Add to roster (form pre-filled) and Dismiss; the admins are also emailed. | ✅ live |
+| Admin | Places | A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event. | ✅ live |
 
 ## For members
 
@@ -183,7 +184,8 @@ flowchart TD
   C -->|"no"| D
   C1 --> D["Look at the coming Fridays<br/>a warning mark means an empty slot or two turns too close"]
   D --> E["Pick the primary khatib, secondary khatib and imam<br/>people who are available come first in each list<br/>or type a guest who is not in the roster, e.g. Prof. Arai, and press Set"]
-  E --> F["It is saved at once<br/>Google Calendar follows, once connected"]
+  E --> E2["Venue: open Details and announcement<br/>pick the place from the dropdown (Places card: add, edit, delete)"]
+  E2 --> F["It is saved at once<br/>Google Calendar follows, once connected"]
   F --> G["The robot sends the reminders by itself<br/>7 days before and the day before"]
   G --> H{"Does the person have<br/>an email or LINE?"}
   H -->|"yes"| I["Nothing more to do"]
@@ -197,7 +199,7 @@ flowchart TD
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,B,D,E,J,L admin
+  class E2,A,B,D,E,J,L admin
   class F,G,I,K,M robot
   class C1 warn
 ```
@@ -341,6 +343,8 @@ flowchart TD
 | `/api/people` | The roster: read the list (contact details only with the code) and add a person. | GET: public, more with the code; POST: access code |
 | `/api/people/:id` | Edit or delete one person. | DELETE: access code; PATCH: access code |
 | `/api/people/:id/line` | Create or remove the code a person uses to link their LINE. | POST: access code; DELETE: access code |
+| `/api/places` | The places (dorm lounges, the Sentan assembly room ...) for the venue dropdown; the admin adds one. | GET: public; POST: access code |
+| `/api/places/:id` | The admin edits or deletes one place (a rename follows onto the coming Fridays). | PATCH: access code; DELETE: access code |
 | `/api/reminders/status` | What the planner shows about the reminder job, the admin and Google Calendar. | GET: access code |
 | `/api/reminders/unsubscribe` | The stop-these-reminders link at the bottom of every email. | GET: private link; POST: private link |
 
@@ -357,6 +361,7 @@ flowchart TD
 | `gcal_sync` | `0012_gcal.sql` |
 | `gcal_state` | `0012_gcal.sql` |
 | `join_requests` | `0014_join_requests.sql` |
+| `places` | `0015_places.sql` |
 
 #### Database changes, in order
 
@@ -376,6 +381,7 @@ flowchart TD
 | `0012_gcal.sql` | Google Calendar: one event per Friday on a shared (public) calendar, kept up to |
 | `0013_gcal_test_mode.sql` | Invitation test mode: while this holds addresses (comma separated), only those |
 | `0014_join_requests.sql` | "My name isn't listed": someone who is not on the roster types their name and |
+| `0015_places.sql` | Places (dorm lounges, the Sentan assembly room, ...) the admin can add, edit and |
 
 #### Robot jobs (GitHub Actions)
 

@@ -14,6 +14,7 @@
     reminderStatus: null, // admin only: when the daily reminder job last ran
     alerts: [], // admin only: "can't make it" alerts waiting for the admin
     joinRequests: [], // admin only: "my name isn't listed" requests waiting to be added
+    places: [], // the places the admin manages; the venue dropdown
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -187,13 +188,14 @@
 
   async function loadAll() {
     const availUrl = availabilityUrl();
-    const [people, fridays, availability, reminderStatus, alerts, joinRequests] = await Promise.all([
+    const [people, fridays, availability, reminderStatus, alerts, joinRequests, places] = await Promise.all([
       api("/api/people"),
       api("/api/fridays"),
       availUrl ? api(availUrl) : Promise.resolve([]),
       fetchReminderStatus(),
       fetchAlerts(),
       fetchJoinRequests(),
+      api("/api/places").catch(() => []),
     ]);
     state.people = people;
     state.fridays = fridays;
@@ -201,6 +203,7 @@
     state.reminderStatus = reminderStatus;
     state.alerts = alerts;
     state.joinRequests = joinRequests;
+    state.places = places;
     updateUnlockUI();
     renderWhoami();
     renderCalendar();
@@ -556,7 +559,7 @@
       <div class="meta-row">
         <div class="slot">
           <label>Venue</label>
-          <input type="text" data-role="venue" value="${escapeHtml(friday.venue || "")}" placeholder="e.g. Assembly Room - SENTAN" />
+          ${venueFieldHtml(friday)}
         </div>
         <div class="slot">
           <label>Info / notes</label>
@@ -579,6 +582,16 @@
     body.querySelectorAll("select[data-role], input[data-role]").forEach((field) => {
       field.addEventListener("change", () => {
         if (field.value === "__guest") return; // that is the guest already saved
+        if (field.dataset.role === "venue-select") {
+          if (field.value === "__other") {
+            const other = body.querySelector('[data-role="venue-other"]');
+            other.classList.remove("hidden");
+            other.focus();
+            return;
+          }
+          return saveFridayField(friday, "venue", field.value);
+        }
+        if (field.dataset.role === "venue-other") return saveFridayField(friday, "venue", field.value.trim());
         saveFridayField(friday, field.dataset.role, field.value);
       });
     });
@@ -586,6 +599,24 @@
     body.querySelector('[data-role="mark-unavailable"]').addEventListener("click", () => setAvailability(friday.id, "unavailable"));
     body.querySelector('[data-role="clear-availability"]').addEventListener("click", () => clearAvailability(friday.id));
     body.querySelector('[data-role="generate-announcement"]').addEventListener("click", () => openAnnouncementModal(friday));
+  }
+
+  // The venue: pick one of the admin's places (or "Other" to type something one-off).
+  function venueFieldHtml(friday) {
+    const current = (friday.venue || "").trim();
+    const known = state.places.some((p) => p.name.toLowerCase() === current.toLowerCase());
+    const options = [
+      `<option value="">— to be announced —</option>`,
+      ...state.places.map((p) => `<option value="${escapeHtml(p.name)}" ${p.name.toLowerCase() === current.toLowerCase() ? "selected" : ""}>${escapeHtml(p.name)}</option>`),
+      current && !known ? `<option value="${escapeHtml(current)}" selected>${escapeHtml(current)} (not in the list)</option>` : "",
+      `<option value="__other">Other place…</option>`,
+    ].join("");
+    const place = state.places.find((p) => p.name.toLowerCase() === current.toLowerCase());
+    const detail = place && (place.details || place.maps_url)
+      ? `<p class="small muted venue-detail">${escapeHtml(place.details || "")}${place.maps_url ? ` <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}</p>`
+      : "";
+    return `<select data-role="venue-select">${options}</select>
+      <input type="text" data-role="venue-other" class="hidden" maxlength="120" placeholder="Type the place" />${detail}`;
   }
 
   async function saveFridayField(friday, role, value) {
@@ -602,6 +633,8 @@
       Object.assign(friday, updated);
       renderCalendar();
       renderPlanner();
+      // A new place has its own details and map link: redraw the open Friday window.
+      if (role === "venue" && state.openFridayId === friday.id) renderDayModalBody(friday);
       toast("Saved");
     } catch (e) {
       toast(e.message, true);
@@ -775,6 +808,26 @@
       <p class="planner-alerts-title">🔔 ${state.alerts.length === 1 ? "1 person" : `${state.alerts.length} people`} can't make it</p>
       <ul>${items}</ul>
     </div>`;
+  }
+
+  // The places the admin manages (the venue dropdown). Edit, delete, add.
+  function placesHtml() {
+    const items = state.places
+      .map((p) => {
+        const bits = [p.details, p.maps_url && "map link saved", p.kultum_usual && "kultum usual"].filter(Boolean);
+        return `<li class="planner-place-item">
+          <span><strong>${escapeHtml(p.name)}</strong><span class="muted small">${escapeHtml(bits.join(" · "))}</span></span>
+          <span class="planner-alert-actions">
+            <button class="btn btn-sm btn-ghost" data-place-edit="${p.id}" type="button">Edit</button>
+            <button class="btn btn-sm btn-ghost" data-place-delete="${p.id}" type="button">Delete</button>
+          </span>
+        </li>`;
+      })
+      .join("");
+    return `<details class="small planner-notes planner-places"><summary>📍 Places (${state.places.length}): the venue dropdown</summary>
+      <ul>${items || '<li class="muted">No places yet.</li>'}</ul>
+      <button class="btn btn-sm" data-place-add type="button">+ Add place</button>
+    </details>`;
   }
 
   // "My name isn't listed": people who typed their details, waiting for the admin to
@@ -961,6 +1014,7 @@
     const legend = `
       ${joinRequestsHtml()}
       ${alertsHtml()}
+      ${placesHtml()}
       ${reminderStatusHtml()}
       ${googleStatusHtml()}
       ${adminStatusHtml()}
@@ -1100,6 +1154,28 @@
       if (confirm("Turn test mode off? Everyone scheduled who has an email saved (and reminders on) will then be invited to their Friday.")) setTestMode("");
     });
 
+    list.querySelector("[data-place-add]")?.addEventListener("click", () => openPlaceModal(null));
+    list.querySelectorAll("[data-place-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => openPlaceModal(state.places.find((p) => p.id === Number(btn.dataset.placeEdit))));
+    });
+    list.querySelectorAll("[data-place-delete]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const place = state.places.find((p) => p.id === Number(btn.dataset.placeDelete));
+        if (!place) return;
+        const used = state.fridays.filter((f) => !f.is_history && (f.venue || "").toLowerCase() === place.name.toLowerCase()).length;
+        const warning = used ? `\n\n${used} coming Friday(s) use it; they keep the name as text.` : "";
+        if (!confirm(`Delete the place "${place.name}"?${warning}`)) return;
+        try {
+          await api(`/api/places/${place.id}`, { method: "DELETE" });
+          state.places = state.places.filter((p) => p.id !== place.id);
+          renderPlanner();
+          toast(`${place.name} deleted`);
+        } catch (e) {
+          toast(e.message, true);
+        }
+      });
+    });
+
     list.querySelectorAll("[data-join-add]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const request = state.joinRequests.find((r) => r.id === Number(btn.dataset.joinAdd));
@@ -1201,7 +1277,7 @@
   let announcementHadith = null;
 
   function renderAnnouncementText() {
-    $("#announcement-text").value = announcement.buildAnnouncementText(announcementFriday, announcementHadith);
+    $("#announcement-text").value = announcement.buildAnnouncementText(announcementFriday, announcementHadith, state.places);
   }
 
   function openAnnouncementModal(friday) {
@@ -1492,6 +1568,51 @@
     } catch (e) {
       $("#person-error").textContent = e.message;
       $("#person-error").classList.remove("hidden");
+    }
+  });
+
+  // ---------- Places (admin) ----------
+
+  let editingPlaceId = null;
+  function openPlaceModal(place) {
+    editingPlaceId = place ? place.id : null;
+    $("#place-modal-title").textContent = place ? "Edit place" : "Add a place";
+    $("#place-save-btn").textContent = place ? "Save" : "Add";
+    $("#place-name").value = place ? place.name : "";
+    $("#place-details").value = place ? place.details : "";
+    $("#place-maps").value = place ? place.maps_url : "";
+    $("#place-kultum").checked = place ? place.kultum_usual : false;
+    $("#place-error").classList.add("hidden");
+    $("#place-modal").classList.remove("hidden");
+    $("#place-name").focus();
+  }
+  $("#place-cancel-btn").addEventListener("click", () => $("#place-modal").classList.add("hidden"));
+  $("#place-save-btn").addEventListener("click", async () => {
+    const payload = {
+      name: $("#place-name").value,
+      details: $("#place-details").value,
+      maps_url: $("#place-maps").value,
+      kultum_usual: $("#place-kultum").checked,
+    };
+    try {
+      if (editingPlaceId) {
+        const updated = await api(`/api/places/${editingPlaceId}`, { method: "PATCH", body: JSON.stringify(payload) });
+        const old = state.places.find((p) => p.id === editingPlaceId);
+        // A rename follows onto the coming Fridays: reload them so the dropdowns match.
+        const renamed = old && old.name !== updated.name;
+        Object.assign(old, updated);
+        if (renamed) state.fridays = await api("/api/fridays");
+      } else {
+        state.places.push(await api("/api/places", { method: "POST", body: JSON.stringify(payload) }));
+      }
+      state.places.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+      $("#place-modal").classList.add("hidden");
+      renderPlanner();
+      renderCalendar();
+      toast("Place saved");
+    } catch (e) {
+      $("#place-error").textContent = e.message;
+      $("#place-error").classList.remove("hidden");
     }
   });
 

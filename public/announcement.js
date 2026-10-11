@@ -87,24 +87,37 @@
     return "TBA";
   }
 
-  // Map links only for venues we actually have one for - never guessed for
-  // the others (the venue is free text and changes week to week).
-  const VENUE_MAP_LINKS = {
+  // Map links only for venues we actually have one for - never guessed for the
+  // others. The admin's places (name, details, map link) come in as `places`;
+  // the Sentan link stays as a fallback for pages and tests that pass none.
+  const FALLBACK_MAP_LINKS = {
     "assembly room - sentan": "https://maps.app.goo.gl/Dd44PcXYVqFm7KDA6",
   };
 
-  function venueLine(friday) {
+  function findPlace(places, venue) {
+    const key = String(venue || "").trim().toLowerCase();
+    return (places || []).find((p) => String(p.name).trim().toLowerCase() === key) || null;
+  }
+
+  function venueLine(friday, places) {
     const venue = (friday.venue || "").trim();
     if (!venue) return "Friday Prayer will be held in sha Allah (venue to be announced).";
-    const link = VENUE_MAP_LINKS[venue.toLowerCase()];
+    const place = findPlace(places, venue);
+    const link = (place && place.maps_url) || (!place && FALLBACK_MAP_LINKS[venue.toLowerCase()]) || "";
     return `Friday Prayer will be held in sha Allah at ${venue}${link ? ` (${link})` : ""}.`;
   }
 
-  function buildAnnouncementText(friday, hadith) {
+  // How to find the place, when the admin wrote something about it.
+  function placeDetailLine(friday, places) {
+    const place = findPlace(places, friday.venue);
+    return place && place.details ? `\nPlace: ${place.details}` : "";
+  }
+
+  function buildAnnouncementText(friday, hadith, places) {
     return `Assalamualaikum Warrahmatullah Wabarakatuh,
 Dear Brothers,
 
-${venueLine(friday)}
+${venueLine(friday, places)}${placeDetailLine(friday, places)}
 Date: ${formatDateAnnouncement(friday.date)}
 Time: ${reminder.PRAYER_TIME}
 Khatib: ${khatibLine(friday)}
@@ -128,6 +141,7 @@ ${hadith.arabic}`;
     formatDateAnnouncement,
     khatibLine,
     venueLine,
+    findPlace,
     buildAnnouncementText,
   };
 });
