@@ -617,7 +617,7 @@
   const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
   const PLANNER_SLOTS = [
     { field: "primary_khatib_id", label: "Primary khatib", turns: "khatib", roles: ["khatib", "both"], name: "primary_name", guest: "primary_khatib_name" },
-    { field: "secondary_khatib_id", label: "Secondary khatib", turns: "khatib", roles: ["khatib", "both"], name: "secondary_name", guest: "secondary_khatib_name" },
+    { field: "secondary_khatib_id", label: "Secondary khatib", turns: "khatib", roles: ["khatib", "both"], name: "secondary_name", guest: "secondary_khatib_name", notify: false },
     { field: "imam_id", label: "Imam", turns: "imam", roles: ["imam", "both"], name: "imam_name", guest: "imam_name" },
   ];
 
@@ -931,7 +931,8 @@
 
       const selects = PLANNER_SLOTS.map((slot) => {
         const person = state.people.find((p) => p.id === f[slot.field]);
-        const reach = reminderReach(person);
+        // The secondary khatib gets no automatic reminder (usually next week's khatib), so no "reached by" line.
+        const reach = slot.notify === false ? null : reminderReach(person);
         // Manual sending, for people the automatic email can't reach (or any
         // time you'd rather nudge someone yourself). Only for roster people:
         // a free-text guest has no contact details to use.
@@ -957,7 +958,8 @@
               <input type="text" maxlength="80" data-guest="${slot.guest}" value="${escapeHtml(guestNameFor(f, slot))}" placeholder="or a guest, e.g. Prof. Arai" aria-label="Guest name for ${escapeHtml(slot.label)}" autocomplete="off" />
               <button class="btn btn-sm btn-ghost" data-guest-set="${slot.guest}" type="button">Set</button>
             </div>
-            ${guestNameFor(f, slot) ? '<small class="planner-reach">Guest: no reminders can be sent, message them yourself.</small>' : ""}
+            ${guestNameFor(f, slot) && slot.notify !== false ? '<small class="planner-reach">Guest: no reminders can be sent, message them yourself.</small>' : ""}
+            ${slot.notify === false ? '<small class="planner-reach">Standby: no automatic reminder or invitation.</small>' : ""}
             ${send}
           </div>`;
       }).join("");

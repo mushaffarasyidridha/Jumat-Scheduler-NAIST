@@ -87,6 +87,7 @@ function jstIso(ms) {
   return new Date(ms + JST_OFFSET_MS).toISOString().slice(0, 19) + "+09:00";
 }
 
+// (The secondary khatib is never invited: see ROLE_SLOTS in public/reminder-message.js.)
 // The address a person is invited at: the separate Google Calendar address when one
 // is saved, otherwise their (reminder) email. "" when they have neither.
 export const inviteAddress = (person) => String((person && (person.calendar_email || person.email)) || "").trim().toLowerCase();
@@ -98,6 +99,7 @@ export const inviteAddress = (person) => String((person && (person.calendar_emai
 export function guestsFor(friday, peopleById, inviteOnly = []) {
   const emails = new Set();
   for (const slot of ROLE_SLOTS) {
+    if (slot.notify === false) continue; // the secondary khatib is not invited
     const person = peopleById.get(friday[slot.field]);
     if (person && person.status === "active" && person.reminders && inviteAddress(person)) {
       emails.add(inviteAddress(person));
