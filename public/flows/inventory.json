@@ -130,6 +130,32 @@
       "note": "Assign khatib and imam, set the venue or a note for one Friday."
     },
     {
+      "route": "/api/gatherings",
+      "file": "functions/api/gatherings/index.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin adds one extra Ramadan day by hand."
+    },
+    {
+      "route": "/api/gatherings/:id",
+      "file": "functions/api/gatherings/[id].js",
+      "methods": [
+        {
+          "method": "PATCH",
+          "access": "access code"
+        },
+        {
+          "method": "DELETE",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin changes one Ramadan day (place, time, kultum, speaker, reminders) or deletes it."
+    },
+    {
       "route": "/api/join-requests",
       "file": "functions/api/join-requests/index.js",
       "methods": [
@@ -242,6 +268,32 @@
       "note": "The admin edits or deletes one place (a rename follows onto the coming Fridays)."
     },
     {
+      "route": "/api/ramadan",
+      "file": "functions/api/ramadan/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        },
+        {
+          "method": "PUT",
+          "access": "access code"
+        }
+      ],
+      "note": "Ramadan: the dates, the weekly pattern and the days (anyone can read; the admin saves the settings)."
+    },
+    {
+      "route": "/api/ramadan/generate",
+      "file": "functions/api/ramadan/generate.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin makes the Ramadan days from the dates and the weekly pattern."
+    },
+    {
       "route": "/api/reminders/status",
       "file": "functions/api/reminders/status.js",
       "methods": [
@@ -308,6 +360,18 @@
     {
       "name": "places",
       "migration": "0015_places.sql"
+    },
+    {
+      "name": "ramadan_settings",
+      "migration": "0016_ramadan.sql"
+    },
+    {
+      "name": "ramadan_pattern",
+      "migration": "0016_ramadan.sql"
+    },
+    {
+      "name": "gatherings",
+      "migration": "0016_ramadan.sql"
     }
   ],
   "migrations": [
@@ -370,6 +434,10 @@
     {
       "file": "0015_places.sql",
       "note": "Places (dorm lounges, the Sentan assembly room, ...) the admin can add, edit and"
+    },
+    {
+      "file": "0016_ramadan.sql",
+      "note": "Ramadan: the dates, a weekly pattern, and one \"gathering\" (Isha + Tarawih, with a"
     }
   ],
   "workflows": [

@@ -452,3 +452,24 @@ body.guide-noscroll { overflow: hidden; }
 .planner-place-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; }
 .planner-place-item .muted { display: block; }
 .venue-detail { margin: 4px 0 0; }
+
+/* Ramadan: the weekdays carry gatherings too, so the columns are equal while a month has any. */
+.calendar-weekdays.has-gatherings, .calendar-grid.has-gatherings { grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.5fr) minmax(0, 1fr); }
+.calendar-grid.has-gatherings .cal-day-summary .name { padding: 2px 3px; }
+.gathering-chip { display: block; font-size: 0.62rem; padding: 1px 4px; border-radius: 8px; border: 1px solid var(--primary); color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.cal-day.gathering-day { cursor: pointer; background: var(--surface); }
+.planner-ramadan .ramadan-grid { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin: 6px 0; }
+.planner-ramadan .ramadan-grid th, .planner-ramadan .ramadan-grid td { padding: 3px 4px; text-align: left; vertical-align: middle; }
+.planner-ramadan .ramadan-grid th { font-size: 0.68rem; text-transform: uppercase; color: var(--muted); }
+.planner-ramadan select, .planner-ramadan input[type="time"], .planner-ramadan input[type="date"], .planner-ramadan input[type="number"] { padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.8rem; max-width: 100%; }
+.planner-ramadan .ramadan-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0; }
+.planner-ramadan .ramadan-fields label { display: flex; flex-direction: column; gap: 2px; font-size: 0.75rem; color: var(--muted); }
+.planner-ramadan .ramadan-days { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+.planner-ramadan .ramadan-day { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; font-size: 0.85rem; }
+.planner-ramadan .ramadan-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+@media (max-width: 640px) { .planner-ramadan .ramadan-grid { display: block; } .planner-ramadan .ramadan-grid thead { display: none; } .planner-ramadan .ramadan-grid tr { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 6px 0; border-bottom: 1px solid var(--border); } }
+.gathering-form label { display: block; margin: 6px 0; font-size: 0.8rem; color: var(--muted); }
+.gathering-form select, .gathering-form input[type="text"], .gathering-form input[type="time"], .gathering-form input[type="number"] { width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; }
+
+/* The announcement opens from inside the day windows, so it sits on top of them. */
+#announcement-modal { z-index: 95; }

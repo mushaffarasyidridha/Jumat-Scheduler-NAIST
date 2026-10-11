@@ -134,8 +134,29 @@ ${hadith.english}
 ${hadith.arabic}`;
   }
 
+  // The WhatsApp / Facebook text for one Ramadan day (Isha + Tarawih, maybe a kultum).
+  function buildGatheringText(g, { places, settings } = {}) {
+    const place = findPlace(places, g.place);
+    const link = (place && place.maps_url) || (!place && FALLBACK_MAP_LINKS[String(g.place || "").trim().toLowerCase()]) || "";
+    const where = g.place ? `at ${g.place}${link ? ` (${link})` : ""}` : "(venue to be announced)";
+    const minutes = g.kultum_minutes || (settings && settings.kultum_minutes) || 7;
+    const lines = [
+      "Assalamualaikum Warrahmatullah Wabarakatuh,",
+      "Dear Brothers and Sisters,",
+      "",
+      `Isha and Tarawih will be held in sha Allah ${where}.`,
+    ];
+    if (place && place.details) lines.push(`Place: ${place.details}`);
+    lines.push(`Date: ${formatDateAnnouncement(g.date)}`, `Time: ${g.start_time}`);
+    if (g.kultum) lines.push(`Kultum (${minutes} minutes): ${g.speaker || "TBA"}`);
+    if (g.info) lines.push("", `Note: ${g.info}`);
+    lines.push("", "Please bring your own prayer mat. JazakumUllahu khairan.");
+    return lines.join("\n");
+  }
+
   return {
     HADITHS,
+    buildGatheringText,
     randomHadith,
     hadithForDate,
     formatDateAnnouncement,
