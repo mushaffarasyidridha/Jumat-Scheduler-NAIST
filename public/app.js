@@ -685,8 +685,22 @@
     // Test mode: invite only the typed address(es) until it is turned off, so the
     // invitations can be tried on yourself before anyone else receives one.
     const only = g.invite_only || [];
+    const saved = new Set(
+      state.people.filter((p) => p.status === "active" && p.reminders && p.calendar_email).map((p) => p.calendar_email.trim().toLowerCase())
+    );
+    const matching = only.filter((a) => saved.has(a)).length;
     const testMode = only.length
-      ? `<p class="small planner-status warn">🧪 Invitation test mode is ON: only <strong>${escapeHtml(only.join(", "))}</strong> receives Google invitations, nobody else. <button class="btn btn-sm" data-gcal-test-off type="button">Turn off</button></p>`
+      ? `<p class="small planner-status warn">🧪 Invitation test mode is ON: only <strong>${escapeHtml(only.join(", "))}</strong> receives Google invitations, nobody else.
+           <button class="btn btn-sm" data-gcal-test-off type="button">Turn off</button></p>
+         ${
+           matching
+             ? ""
+             : '<p class="small planner-status warn">⚠ That address is not the NAIST Google account saved on anybody in the roster, so <strong>nobody is being invited</strong>. Type the exact address below (or save it on your roster entry: Edit, NAIST Google account).</p>'
+         }
+         <div class="planner-guest planner-test">
+           <input type="email" data-gcal-test-input value="${escapeHtml(only.join(", "))}" aria-label="Address to invite in test mode" autocomplete="off" />
+           <button class="btn btn-sm" data-gcal-test-on type="button">Change</button>
+         </div>`
       : `<details class="small planner-notes planner-test"><summary>Test the Google invitations on yourself first</summary>
            <p class="muted">While test mode is on, only the address you type below is invited. Everyone else is left out until you turn it off.</p>
            <div class="planner-guest">
