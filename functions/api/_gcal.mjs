@@ -179,7 +179,19 @@ export async function syncUpcoming({ bridge, db, siteUrl, today, dryRun = false,
     else work.push({ friday, desired, hash, plan });
   }
 
-  const result = { total: fridays.length, unchanged, synced: 0, failed: 0, deferred: 0, errors: [], calendar: null };
+  // Why nobody (or somebody) is invited: counts only, so it is safe to print in a public log.
+  const eligible = people.filter((p) => p.status === "active" && p.reminders && p.calendar_email);
+  const savedAddresses = new Set(eligible.map((p) => p.calendar_email.trim().toLowerCase()));
+  const invites = {
+    accounts: people.length,
+    eligible: eligible.length,
+    testMode: inviteOnly.length > 0,
+    listed: inviteOnly.length,
+    matched: inviteOnly.filter((a) => savedAddresses.has(a)).length,
+    fridaysWithGuests: fridays.filter((f) => guestsFor(f, peopleById, inviteOnly).length > 0).length,
+  };
+
+  const result = { total: fridays.length, unchanged, synced: 0, failed: 0, deferred: 0, errors: [], calendar: null, invites };
   if (dryRun) return { ...result, wouldSync: work.length };
   if (!work.length && !forcePing) return result;
 

@@ -376,3 +376,18 @@ test("test mode: the saved setting limits the invitations in a sync, and turning
   assert.deepEqual(event.guests, ["me@naist.ac.jp", "other@naist.ac.jp"]);
   assert.equal(event.send_updates, "all", "the guest list changed: Google sends the invitation");
 });
+
+test("sync reports why nobody is invited, as counts only", async () => {
+  const fridays = [friday({ id: 11, date: "2026-10-16", primary_khatib_id: 1, secondary_khatib_id: 2 })];
+  const people = [person({ calendar_email: "me@naist.ac.jp" }), person({ id: 2, calendar_email: "other@naist.ac.jp", reminders: 0 }), person({ id: 3, calendar_email: "x@naist.ac.jp", status: "inactive" })];
+
+  const off = await run({ bridge: fakeBridge(), db: fakeDb({ fridays, people }), dryRun: true });
+  assert.deepEqual(off.invites, { accounts: 3, eligible: 1, testMode: false, listed: 0, matched: 0, fridaysWithGuests: 1 });
+
+  const typo = await run({ bridge: fakeBridge(), db: fakeDb({ fridays, people, inviteOnly: "mee@naist.ac.jp" }), dryRun: true });
+  assert.deepEqual(typo.invites, { accounts: 3, eligible: 1, testMode: true, listed: 1, matched: 0, fridaysWithGuests: 0 }, "an address that matches no saved account invites nobody");
+
+  const none = await run({ bridge: fakeBridge(), db: fakeDb({ fridays, people: [] }), dryRun: true });
+  assert.equal(none.invites.accounts, 0);
+  assert.ok(!JSON.stringify(off.invites).includes("@"), "no address in the report");
+});
