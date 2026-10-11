@@ -488,7 +488,7 @@ flowchart TD
 | LINE reminders | ✅ done | Bot connected. Each person links with a code from the roster. |
 | Google Calendar connection | ✅ done | Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window. |
 | An admin marked in the roster | ☐ to do | Edit your own entry and tick Admin this period (needs an email or LINE link). |
-| GitHub default branch set to main | ☐ to do | Recommended: Settings, Branches. The scheduled job runs the code on main either way. |
+| GitHub default branch set to main | ✅ done | main is the default branch, so new pull requests and the schedule use it. |
 
 ## Help
 
