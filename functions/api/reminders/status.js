@@ -1,5 +1,5 @@
 import { json, requireAccess, sqliteUtcToIso } from "../_utils.js";
-import { SQL } from "../_gcal.mjs";
+import { SQL, parseInviteOnly } from "../_gcal.mjs";
 import { bridgeFrom } from "../_gcal_runtime.mjs";
 
 // What the admin planner needs to know about the reminder system: when the
@@ -24,6 +24,7 @@ export async function onRequestGet({ request, env }) {
     google.last_ok_at = sqliteUtcToIso(state.last_ok_at);
     google.last_error = state.last_error || null;
     google.last_error_at = sqliteUtcToIso(state.last_error_at);
+    google.invite_only = parseInviteOnly(state.invite_only);
   }
   return json({
     google,

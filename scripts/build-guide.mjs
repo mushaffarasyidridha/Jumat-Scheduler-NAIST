@@ -47,6 +47,7 @@ export const ROUTE_NOTES = {
   "/api/calendar/add": "The Add to Google Calendar link in reminders: sends the person to Google with a ready-made event.",
   "/api/calendar/info": "Tells the home page whether the shared Google Calendar is connected, to show its buttons.",
   "/api/calendar/jumat.ics": "The calendar feed for Apple, Outlook or Google (From URL).",
+  "/api/calendar/test-mode": "The planner's invitation test mode: invite only the addresses typed there until it is turned off.",
   "/api/calendar/sync": "The planner's Sync now button: makes Google Calendar match the schedule.",
   "/api/fridays": "The schedule: the list of Fridays. It also creates the coming ones.",
   "/api/fridays/:id": "Assign khatib and imam, set the venue or a note for one Friday.",

@@ -9,12 +9,13 @@ flowchart TD
   H --> I["8. Actions: Send Jumat reminders<br/>tick google_check, then Run workflow"]
   I --> J{"The log says<br/>Google Calendar connection OK?"}
   J -->|"yes"| K["9. Private window check<br/>open the public calendar without signing in<br/>events visible, no guest list"]
+  K --> M["10. Optional: try the invitations on yourself<br/>Planner, Google Calendar line, Test the Google invitations on yourself first<br/>type your own address, Turn on; Turn off when happy"]
   J -->|"no"| L["Read the message<br/>unauthorized: the two SECRET texts differ<br/>not JSON: the web app is not deployed for Anyone"]
   L --> G
 
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,G,H,I,K admin
+  class A,G,H,I,K,M admin
   class B,C,D,E,F out
   class J,L warn

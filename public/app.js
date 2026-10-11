@@ -680,7 +680,21 @@
       : when
       ? `last updated ${escapeHtml(when)}; it follows every change made here`
       : "connected, nothing sent yet: press “Sync now” to fill the calendar";
-    return `<p class="small planner-status ${g.last_error ? "warn" : ""}">📆 Google Calendar: ${text}. <button class="btn btn-sm btn-ghost" data-gcal-sync type="button">Sync now</button></p>`;
+    const status = `<p class="small planner-status ${g.last_error ? "warn" : ""}">📆 Google Calendar: ${text}. <button class="btn btn-sm btn-ghost" data-gcal-sync type="button">Sync now</button></p>`;
+
+    // Test mode: invite only the typed address(es) until it is turned off, so the
+    // invitations can be tried on yourself before anyone else receives one.
+    const only = g.invite_only || [];
+    const testMode = only.length
+      ? `<p class="small planner-status warn">🧪 Invitation test mode is ON: only <strong>${escapeHtml(only.join(", "))}</strong> receives Google invitations, nobody else. <button class="btn btn-sm" data-gcal-test-off type="button">Turn off</button></p>`
+      : `<details class="small planner-notes planner-test"><summary>Test the Google invitations on yourself first</summary>
+           <p class="muted">While test mode is on, only the address you type below is invited. Everyone else is left out until you turn it off.</p>
+           <div class="planner-guest">
+             <input type="email" data-gcal-test-input placeholder="your NAIST Google address" autocomplete="off" aria-label="Address to invite in test mode" />
+             <button class="btn btn-sm" data-gcal-test-on type="button">Turn on</button>
+           </div>
+         </details>`;
+    return status + testMode;
   }
 
   // "Can't make it" alerts: someone scheduled for a Friday said they can't come.
@@ -979,6 +993,25 @@
       }
       state.reminderStatus = await fetchReminderStatus();
       renderPlanner();
+    });
+
+    const setTestMode = async (inviteOnly) => {
+      try {
+        const r = await api("/api/calendar/test-mode", { method: "POST", body: JSON.stringify({ invite_only: inviteOnly }) });
+        toast(r.invite_only.length ? `Test mode on: only ${r.invite_only.join(", ")} will be invited` : "Test mode off: everyone scheduled with a NAIST Google account is invited");
+      } catch (err) {
+        toast(err.message, true);
+      }
+      state.reminderStatus = await fetchReminderStatus();
+      renderPlanner();
+    };
+    list.querySelector("[data-gcal-test-on]")?.addEventListener("click", () => {
+      const address = list.querySelector("[data-gcal-test-input]").value.trim();
+      if (!address) return toast("Type your own address first", true);
+      setTestMode(address);
+    });
+    list.querySelector("[data-gcal-test-off]")?.addEventListener("click", () => {
+      if (confirm("Turn test mode off? Everyone scheduled who has a NAIST Google account will then be invited to their Friday.")) setTestMode("");
     });
 
     list.querySelectorAll("[data-alert-ack]").forEach((btn) => {

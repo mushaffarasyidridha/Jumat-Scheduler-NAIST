@@ -1,7 +1,7 @@
 {
   "title": "How the NAIST Jumat Scheduler works",
   "intro": "Flowcharts of the whole system: what a member sees, what the admin does, what runs by itself, and what to do when the admin changes. This page is part of the website and is updated whenever the system changes.",
-  "owner": { "role": "the system owner", "whatsapp": "+62 82217078820", "link": "https://wa.me/6282217078820" },
+  "owner": { "role": "Mushaffa Rasyid Ridha (the system owner)", "whatsapp": "+62 82217078820", "link": "https://wa.me/6282217078820" },
   "legend": [
     { "color": "#3b78b8", "text": "Members and visitors" },
     { "color": "#1f7a5c", "text": "Admin actions" },
@@ -141,6 +141,7 @@
     { "audience": "Admin", "name": "Announcement for the groups", "what": "Generate and copy the weekly announcement to post in the WhatsApp and Facebook groups.", "status": "live" },
     { "audience": "Admin", "name": "Admin to-do messages", "what": "A week before (only if something needs doing) and the day before: who to message by hand, empty slots, post the announcement.", "status": "live" },
     { "audience": "Admin", "name": "Can't-make-it alerts", "what": "A red box and badge in the planner, and an email, when a scheduled person cannot come.", "status": "live" },
+    { "audience": "Admin", "name": "Invitation test mode", "what": "In the planner: invite only one address (your own) until you turn it off, to try the Google invitations before anyone else gets one.", "status": "live" },
     { "audience": "Admin", "name": "Google Calendar sync", "what": "Status line and a Sync now button in the planner; instant alert emails.", "status": "live" },
     { "audience": "Automatic", "name": "Daily job", "what": "08:23 and 14:23 Japan time: reminders, to-dos, alert emails, calendar re-sync.", "status": "live" },
     { "audience": "Automatic", "name": "Deploy", "what": "Every change of the code is published automatically, with its database changes.", "status": "live" }

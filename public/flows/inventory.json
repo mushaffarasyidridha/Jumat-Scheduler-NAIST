@@ -97,6 +97,17 @@
       "note": "The planner's Sync now button: makes Google Calendar match the schedule."
     },
     {
+      "route": "/api/calendar/test-mode",
+      "file": "functions/api/calendar/test-mode.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The planner's invitation test mode: invite only the addresses typed there until it is turned off."
+    },
+    {
       "route": "/api/fridays",
       "file": "functions/api/fridays/index.js",
       "methods": [
@@ -283,6 +294,10 @@
     {
       "file": "0012_gcal.sql",
       "note": "Google Calendar: one event per Friday on a shared (public) calendar, kept up to"
+    },
+    {
+      "file": "0013_gcal_test_mode.sql",
+      "note": "Invitation test mode: while this holds addresses (comma separated), only those"
     }
   ],
   "workflows": [
