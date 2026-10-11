@@ -132,7 +132,7 @@
     { "audience": "Scheduled people", "name": "Reminder emails", "what": "7 days before and the day before, to people whose email is on the roster.", "status": "live" },
     { "audience": "Scheduled people", "name": "Reminder LINE messages", "what": "The same reminders on LINE, for people who linked the bot.", "status": "live" },
     { "audience": "Scheduled people", "name": "Add to Google Calendar link", "what": "In every reminder: a ready-made calendar event with their role.", "status": "live" },
-    { "audience": "Scheduled people", "name": "Google Calendar invitation", "what": "Invited automatically if their NAIST Google account is on the roster.", "status": "live" },
+    { "audience": "Scheduled people", "name": "Google Calendar invitation", "what": "Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off.", "status": "live" },
     { "audience": "Admin", "name": "Access code", "what": "Unlocks editing. Members never need it.", "status": "live" },
     { "audience": "Admin", "name": "Roster", "what": "Add, edit, mark left NAIST or delete people; their contact details are visible only with the code.", "status": "live" },
     { "audience": "Admin", "name": "Planner", "what": "Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown.", "status": "live" },

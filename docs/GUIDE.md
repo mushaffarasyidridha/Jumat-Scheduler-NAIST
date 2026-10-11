@@ -98,7 +98,7 @@ flowchart TD
 | Scheduled people | Reminder emails | 7 days before and the day before, to people whose email is on the roster. | ✅ live |
 | Scheduled people | Reminder LINE messages | The same reminders on LINE, for people who linked the bot. | ✅ live |
 | Scheduled people | Add to Google Calendar link | In every reminder: a ready-made calendar event with their role. | ✅ live |
-| Scheduled people | Google Calendar invitation | Invited automatically if their NAIST Google account is on the roster. | ✅ live |
+| Scheduled people | Google Calendar invitation | Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off. | ✅ live |
 | Admin | Access code | Unlocks editing. Members never need it. | ✅ live |
 | Admin | Roster | Add, edit, mark left NAIST or delete people; their contact details are visible only with the code. | ✅ live |
 | Admin | Planner | Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. | ✅ live |
@@ -144,7 +144,7 @@ How you are told, and what to do if you cannot come.
 
 ```mermaid
 flowchart TD
-  A["The admin picks you for a Friday"] --> B["You are told in the way the admin can reach you:<br/>Email, if your email is on the roster<br/>LINE, if you linked LINE<br/>a WhatsApp or Facebook message from the admin, if neither<br/>a Google Calendar invitation, if your NAIST Google account is on the roster"]
+  A["The admin picks you for a Friday"] --> B["You are told in the way the admin can reach you:<br/>Email, if your email is on the roster<br/>LINE, if you linked LINE<br/>a WhatsApp or Facebook message from the admin, if neither<br/>a Google Calendar invitation, to the same email"]
   B --> C["Reminders: 7 days before and the day before<br/>the secondary khatib is told to be ready to step in"]
   C --> D{"Can you still come?"}
   D -->|"yes"| E["Jumat prayer starts at 12:35<br/>the calendar event runs 12:35 to 13:05"]
@@ -205,7 +205,7 @@ The more ways a person can be reached, the less you do by hand.
 ```mermaid
 flowchart TD
   A["Roster: + Add person<br/>or Edit on an existing person"] --> B["Name, role (khatib, imam or both),<br/>affiliation, country, note"]
-  B --> C["How can this person be reached? Fill in any of these:<br/>Email: automatic reminder emails, keep the reminders box ticked<br/>LINE: press Get LINE link code, the person sends the code to the bot<br/>WhatsApp number like +81 90 1234 5678: a one-tap button in the planner<br/>NAIST Google account: invited to their Friday in Google Calendar<br/>Nothing yet: you copy the reminder and send it by hand"]
+  B --> C["How can this person be reached? Fill in any of these:<br/>Email: automatic reminder emails and the Google Calendar invitation, keep the reminders box ticked<br/>LINE: press Get LINE link code, the person sends the code to the bot<br/>WhatsApp number like +81 90 1234 5678: a one-tap button in the planner<br/>Different address for Google Calendar: only if the Google account is another address<br/>Nothing yet: you copy the reminder and send it by hand"]
   C --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
   D --> G{"Later, if something changes"}
   G -->|"left NAIST"| E["Mark left NAIST<br/>the person stays in the history but is no longer offered"]

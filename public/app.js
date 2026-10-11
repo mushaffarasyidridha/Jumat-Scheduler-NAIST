@@ -686,7 +686,9 @@
     // invitations can be tried on yourself before anyone else receives one.
     const only = g.invite_only || [];
     const saved = new Set(
-      state.people.filter((p) => p.status === "active" && p.reminders && p.calendar_email).map((p) => p.calendar_email.trim().toLowerCase())
+      state.people
+        .filter((p) => p.status === "active" && p.reminders && (p.calendar_email || p.email))
+        .map((p) => (p.calendar_email || p.email).trim().toLowerCase())
     );
     const matching = only.filter((a) => saved.has(a)).length;
     const testMode = only.length
@@ -695,7 +697,7 @@
          ${
            matching
              ? ""
-             : '<p class="small planner-status warn">⚠ That address is not the NAIST Google account saved on anybody in the roster, so <strong>nobody is being invited</strong>. Type the exact address below (or save it on your roster entry: Edit, NAIST Google account).</p>'
+             : '<p class="small planner-status warn">⚠ That address is not the Email (or Google Calendar address) saved on anybody in the roster, so <strong>nobody is being invited</strong>. Type the exact address below.</p>'
          }
          <div class="planner-guest planner-test">
            <input type="email" data-gcal-test-input value="${escapeHtml(only.join(", "))}" aria-label="Address to invite in test mode" autocomplete="off" />
@@ -1012,7 +1014,7 @@
     const setTestMode = async (inviteOnly) => {
       try {
         const r = await api("/api/calendar/test-mode", { method: "POST", body: JSON.stringify({ invite_only: inviteOnly }) });
-        toast(r.invite_only.length ? `Test mode on: only ${r.invite_only.join(", ")} will be invited` : "Test mode off: everyone scheduled with a NAIST Google account is invited");
+        toast(r.invite_only.length ? `Test mode on: only ${r.invite_only.join(", ")} will be invited` : "Test mode off: everyone scheduled who has an email is invited");
       } catch (err) {
         toast(err.message, true);
       }
@@ -1025,7 +1027,7 @@
       setTestMode(address);
     });
     list.querySelector("[data-gcal-test-off]")?.addEventListener("click", () => {
-      if (confirm("Turn test mode off? Everyone scheduled who has a NAIST Google account will then be invited to their Friday.")) setTestMode("");
+      if (confirm("Turn test mode off? Everyone scheduled who has an email saved (and reminders on) will then be invited to their Friday.")) setTestMode("");
     });
 
     list.querySelectorAll("[data-alert-ack]").forEach((btn) => {
@@ -1148,7 +1150,7 @@
           <div class="roster-meta">${[affiliationLabel(p.affiliation), p.country, p.role !== "khatib" ? p.role : null, p.note].filter(Boolean).map(escapeHtml).join(" · ")}</div>
           ${"contact" in p ? `<div class="roster-meta">${p.contact ? "📞 " + escapeHtml(p.contact) : '<span class="muted">no contact on file</span>'}</div>` : ""}
           ${p.whatsapp ? `<div class="roster-meta">💬 ${escapeHtml(p.whatsapp)}</div>` : ""}
-          ${p.calendar_email ? `<div class="roster-meta">📆 calendar invites to ${escapeHtml(p.calendar_email)}</div>` : ""}
+          ${p.reminders && (p.calendar_email || p.email) ? `<div class="roster-meta">📆 calendar invites to ${escapeHtml(p.calendar_email || p.email)}</div>` : ""}
           ${reminderReach(p) ? `<div class="roster-meta">${escapeHtml(reminderReach(p).text)}</div>` : ""}
           ${p.is_admin ? '<div class="roster-meta">🛠 Admin this period: gets the to-do reminders</div>' : ""}
         </div>
@@ -1401,7 +1403,7 @@
       $("#subscribe-intro").textContent =
         "The khatib and imam of every Friday are on the shared Jumat calendar, each event with the weekly announcement. Add it to Google Calendar once and it follows the schedule.";
       $("#subscribe-note").textContent =
-        "Changes made on this website reach that calendar within a minute or so. If you are scheduled and your NAIST account is on the roster, you also get an invitation. Apple / Outlook: use the buttons above. No Google account? Use this page, or the announcement posted in the WhatsApp / Facebook groups.";
+        "Changes made on this website reach that calendar within a minute or so. If you are scheduled and your email is on the roster, you also get an invitation. Apple / Outlook: use the buttons above. No Google account? Use this page, or the announcement posted in the WhatsApp / Facebook groups.";
     } catch {
       // Not connected, or offline: the feed buttons stay.
     }
