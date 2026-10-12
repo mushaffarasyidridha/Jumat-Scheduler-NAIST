@@ -268,6 +268,17 @@
       "note": "The admin edits or deletes one place (a rename follows onto the coming Fridays)."
     },
     {
+      "route": "/api/places/from-toa",
+      "file": "functions/api/places/from-toa.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin ticks TOA rooms and each becomes a place already linked to its room (a room that is already a place, or whose name is taken, is skipped)."
+    },
+    {
       "route": "/api/ramadan",
       "file": "functions/api/ramadan/index.js",
       "methods": [

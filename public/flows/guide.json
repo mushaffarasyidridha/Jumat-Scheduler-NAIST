@@ -311,7 +311,7 @@
     {
       "audience": "Admin",
       "name": "Places",
-      "what": "A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event.",
+      "what": "A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link (or tick TOA rooms from a list to add them as places already linked to their room); the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event.",
       "status": "live"
     },
     {
@@ -378,7 +378,7 @@
     },
     {
       "name": "TOA integration key",
-      "status": "todo",
+      "status": "done",
       "detail": "TOA now has its own API for schedulers. In the TOA app go to Settings, Integration keys, New key (name it NAIST scheduler), copy the key once into the GitHub secret TOA_API_KEY, then run Actions: Send Jumat reminders with toa_check. The old TOA_EMAIL and TOA_PASSWORD secrets are no longer used and can be deleted."
     },
     {

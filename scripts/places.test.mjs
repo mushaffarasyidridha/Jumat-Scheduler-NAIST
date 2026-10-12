@@ -2,7 +2,7 @@
 // calendar text use the place's details and map link.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parsePlace, shapePlace, placeLookup } from "../functions/api/_places.mjs";
+import { parsePlace, shapePlace, placeLookup, planPlacesFromRooms } from "../functions/api/_places.mjs";
 import { eventDescription, buildEvent } from "../functions/api/_ics.mjs";
 import announcement from "../public/announcement.js";
 
@@ -76,4 +76,38 @@ test("a place linked to a TOA room puts the TOA app link in the announcements", 
   const day = announcement.buildGatheringText({ date: "2027-02-08", place: "Dorm 7", start_time: "19:30", kultum: 0 }, { places });
   assert.ok(day.includes("https://toa-rooms.pages.dev/app/#/room/room_111"));
   assert.ok(!announcement.buildGatheringText({ date: "2027-02-08", place: "Plain Hall", start_time: "19:30" }, { places }).includes("TOA"));
+});
+
+test("places from TOA rooms: ticked rooms become places, clashes are skipped with a reason", () => {
+  const rooms = [
+    { id: "room_1", name: "Dorm 1 Lounge" },
+    { id: "room_2", name: "Sentan Seminar Room" },
+    { id: "room_3", name: "Musholla BS" },
+    { id: "room_4", name: "assembly room - sentan" },
+  ];
+  const places = [
+    { name: "Assembly Room - SENTAN", toa_room_id: null },
+    { name: "Musholla BS", toa_room_id: "room_3" },
+  ];
+  const plan = planPlacesFromRooms({ rooms, places, ids: ["room_1", "room_2", "room_3", "room_4", "room_9", "room_1"] });
+  assert.deepEqual(plan.create.map((r) => r.name), ["Dorm 1 Lounge", "Sentan Seminar Room"]);
+  const why = Object.fromEntries(plan.skipped.map((s) => [s.id, s.why]));
+  assert.match(why.room_3, /already a place/);
+  assert.match(why.room_4, /name exists/);
+  assert.match(why.room_9, /not in the TOA room list/);
+  assert.equal(plan.create.length + plan.skipped.length, 5, "a repeated id counts once");
+});
+
+test("places from TOA rooms: the 30-place limit is kept and two rooms with one name make one place", () => {
+  const rooms = [
+    { id: "a", name: "Lounge" },
+    { id: "b", name: "LOUNGE" },
+    { id: "c", name: "Other" },
+  ];
+  const places = Array.from({ length: 28 }, (_, i) => ({ name: `P${i}`, toa_room_id: null }));
+  const plan = planPlacesFromRooms({ rooms, places, ids: ["a", "b", "c"] });
+  assert.deepEqual(plan.create.map((r) => r.id), ["a", "c"]);
+  assert.match(plan.skipped.find((s) => s.id === "b").why, /name exists/);
+  const full = planPlacesFromRooms({ rooms, places: Array.from({ length: 30 }, (_, i) => ({ name: `P${i}` })), ids: ["a"] });
+  assert.match(full.skipped[0].why, /limit/);
 });
