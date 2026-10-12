@@ -120,6 +120,7 @@ flowchart TD
 | Admin | Ramadan days | First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. The kultum speaker is reminded by email or LINE 3, 2 and 1 day before and on the day (a guest is not), and each evening appears in Google Calendar and the public calendar feed with the speaker invited. | ✅ live |
 | Members | Ramadan days in the calendar | Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement. | ✅ live |
 | Admin | Ramadan evenings in the TOA app | Pick a place's TOA room by name on the Places card (the list is every TOA room the dedicated TOA account is admin of, refreshed by the daily job; no long ids to type). The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA. | ✅ live |
+| Members | Link to the TOA app | When a place is linked to its TOA room, its announcement (Fridays and Ramadan evenings), the Google Calendar and calendar-feed event and the day's window carry a link to that room in the TOA web app, where the queue and any live broadcast can be followed. | ✅ live |
 
 ## For members
 
@@ -189,7 +190,7 @@ flowchart TD
   C -->|"no"| D
   C1 --> D["Look at the coming Fridays<br/>a warning mark means an empty slot or two turns too close"]
   D --> E["Pick the primary khatib, secondary khatib and imam<br/>people who are available come first in each list<br/>or type a guest who is not in the roster, e.g. Prof. Arai, and press Set"]
-  E --> E2["Venue: open Details and announcement<br/>pick the place from the dropdown (Places card: add, edit, delete)"]
+  E --> E2["Venue: open Details and announcement<br/>pick the place from the dropdown (Places card: add, edit, delete, link its TOA room)"]
   E2 --> F["It is saved at once<br/>Google Calendar follows, once connected"]
   F --> G["The robot sends the reminders by itself<br/>7 days before and the day before"]
   G --> H{"Does the person have<br/>an email or LINE?"}
@@ -295,7 +296,7 @@ flowchart TD
   E --> F{"Is there a kultum that day?"}
   F -->|"yes"| G["Pick the speaker from the roster, or type a guest<br/>days with a kultum and no speaker are flagged"]
   F -->|"no"| H["Nothing more for that day"]
-  G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups"]
+  G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups<br/>it carries the TOA app link when the place has a TOA room"]
   G --> J["The robot reminds the kultum speaker<br/>3, 2 and 1 day before and on the day, by email or LINE<br/>untick Remind to send none, a guest is messaged by hand"]
   G --> L["TOA app: if the place has a TOA room picked by name on the Places card (the rooms the TOA account administers)<br/>the evening is added to that room's TOA queue with the speaker<br/>the robot does it at the next run, or press toa_check in Actions"]
   G --> K["Google Calendar: the evening appears with the speaker invited<br/>change or delete the day and the event follows"]

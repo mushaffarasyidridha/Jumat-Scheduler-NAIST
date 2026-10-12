@@ -638,8 +638,8 @@
       `<option value="__other">Other place…</option>`,
     ].join("");
     const place = state.places.find((p) => p.name.toLowerCase() === current.toLowerCase());
-    const detail = place && (place.details || place.maps_url)
-      ? `<p class="small muted venue-detail">${escapeHtml(place.details || "")}${place.maps_url ? ` <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}</p>`
+    const detail = place && (place.details || place.maps_url || place.toa_room_id)
+      ? `<p class="small muted venue-detail">${escapeHtml(place.details || "")}${place.maps_url ? ` <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}${toaLinkHtml(place)}</p>`
       : "";
     return `<select data-role="venue-select">${options}</select>
       <input type="text" data-role="venue-other" class="hidden" maxlength="120" placeholder="Type the place" />${detail}`;
@@ -1615,11 +1615,17 @@
     </select>`;
   }
 
+  // Opens the place's room in the TOA web app (its queue and any live broadcast).
+  function toaLinkHtml(place) {
+    return place && place.toa_room_id
+      ? ` <a href="${escapeHtml(window.JumatAnnouncement.toaRoomUrl(place.toa_room_id))}" target="_blank" rel="noopener noreferrer">live / queue in TOA</a>`
+      : "";
+  }
   function gatheringSummaryLines(g) {
     const place = state.places.find((p) => p.name.toLowerCase() === (g.place || "").toLowerCase());
     const lines = [
       `<p class="small"><strong>Time:</strong> ${escapeHtml(g.start_time)} (Isha, then Tarawih)</p>`,
-      `<p class="small"><strong>Place:</strong> ${g.place ? escapeHtml(g.place) : "to be announced"}${place && place.maps_url ? ` · <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}</p>`,
+      `<p class="small"><strong>Place:</strong> ${g.place ? escapeHtml(g.place) : "to be announced"}${place && place.maps_url ? ` · <a href="${escapeHtml(place.maps_url)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}${place && place.toa_room_id ? ` ·${toaLinkHtml(place)}` : ""}</p>`,
     ];
     if (place && place.details) lines.push(`<p class="small muted">${escapeHtml(place.details)}</p>`);
     lines.push(
@@ -1653,6 +1659,7 @@
         people.map((p) => `<option value="${p.id}" ${p.id === g.speaker_id ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("");
       body.innerHTML = `<div class="gathering-form">
         <label>Place ${gatheringPlaceSelectHtml(g.place, "place")}</label>
+        <p class="small muted" data-g-place-toa>${toaLinkHtml(state.places.find((p) => p.name.toLowerCase() === (g.place || "").toLowerCase()))}</p>
         <label>Start time (Isha / Tarawih) <input type="time" data-g="start_time" value="${escapeHtml(g.start_time)}" /></label>
         <label class="check-row"><input type="checkbox" data-g="kultum" ${g.kultum ? "checked" : ""} /><span>There is a kultum (7-minute talk) this day</span></label>
         <div data-g-kultum-box class="${g.kultum ? "" : "hidden"}">
@@ -1670,6 +1677,9 @@
         </div>
         <p class="error small hidden" data-g-error></p>
       </div>`;
+      body.querySelector('[data-g="place"]').addEventListener("change", (e) => {
+        body.querySelector("[data-g-place-toa]").innerHTML = toaLinkHtml(state.places.find((p) => p.name.toLowerCase() === e.target.value.toLowerCase()));
+      });
       body.querySelector('[data-g="kultum"]').addEventListener("change", (e) => body.querySelector("[data-g-kultum-box]").classList.toggle("hidden", !e.target.checked));
       // A speaker is a roster person or a typed guest, never both: choosing one clears the other.
       const speakerSelect = body.querySelector('[data-g="speaker_id"]');
@@ -1906,7 +1916,8 @@
       state.toaRooms.map((r) => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)}</option>`).join("") +
       `<option value="__other">Another room (type its id or link)</option>`;
     pick.value = state.toaRooms.some((r) => r.id === current) ? current : current ? "__other" : "";
-    $("#place-toa").classList.toggle("hidden", !state.toaRooms.length || pick.value !== "__other");
+    // With no list to choose from, the id box is the only way in, so it stays.
+    $("#place-toa").classList.toggle("hidden", state.toaRooms.length > 0 && pick.value !== "__other");
   }
   $("#place-toa-pick").addEventListener("change", (e) => {
     const v = e.target.value;

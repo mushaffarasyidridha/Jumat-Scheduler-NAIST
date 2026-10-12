@@ -250,6 +250,10 @@ removes it when the day is deleted. It signs in as one dedicated TOA account (Gi
 only ever touches entries it created itself (keys `sched_<date>_isha_tarawih`); admins' own entries, attendees and status are
 never overwritten. Until the secrets exist, nothing is sent. The log prints counts only.
 
+A place with a TOA room also puts a link to that room in the **TOA web app** (`https://toa-rooms.pages.dev/app/#/room/<id>`: its
+queue and any live broadcast) into its announcements (Friday and Ramadan), the Google Calendar and feed events, and the day's
+window. The TOA app cannot be embedded in a page (it forbids framing), so this is a link, not a frame.
+
 Members see the days in the calendar as a moon chip with the time (a microphone when there is a kultum); tapping one shows
 the place, time and speaker and offers the announcement text for the WhatsApp / Facebook groups.
 

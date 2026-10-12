@@ -26,7 +26,7 @@ export const SQL = {
     LEFT JOIN people ip ON ip.id = f.imam_id
     WHERE f.is_history = 0 AND f.date >= ?
     ORDER BY f.date ASC`,
-  places: "SELECT name, details, maps_url FROM places",
+  places: "SELECT name, details, maps_url, toa_room_id FROM places",
   gatherings: `
     SELECT g.id, g.date, g.place, g.start_time, g.kultum, g.kultum_minutes, g.speaker_id,
            COALESCE(p.name, g.speaker_name) AS speaker, g.reminders, g.info

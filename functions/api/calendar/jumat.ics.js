@@ -18,7 +18,7 @@ export async function onRequestGet({ request, env }) {
     .bind(from)
     .all();
 
-  const { results: places } = await env.DB.prepare("SELECT name, details, maps_url FROM places").all();
+  const { results: places } = await env.DB.prepare("SELECT name, details, maps_url, toa_room_id FROM places").all();
   // Ramadan: the Isha + Tarawih days join the feed (a week back, like the Fridays).
   const settings = (await env.DB.prepare("SELECT kultum_minutes, event_minutes FROM ramadan_settings WHERE id = 1").first()) || {};
   const { results: gatherings } = await env.DB.prepare(

@@ -65,3 +65,15 @@ test("calendar event text carries the place details too", () => {
   const lines = buildEvent({ ...friday, updated_at: "2026-10-09 06:00:00" }, { siteUrl: "https://x.test", nowMs: 0, places }).join("\n").replace(/\r?\n /g, "");
   assert.match(lines, /maps\.app\.goo\.gl\/lounge/);
 });
+
+test("a place linked to a TOA room puts the TOA app link in the announcements", async () => {
+  const { default: announcement } = await import("../public/announcement.js");
+  const places = [{ name: "Dorm 7", details: "", maps_url: "", toa_room_id: "room_111" }, { name: "Plain Hall", details: "", maps_url: "", toa_room_id: "" }];
+  const friday = { date: "2027-02-12", venue: "Dorm 7", imam_name: "Ali" };
+  const text = announcement.buildAnnouncementText(friday, announcement.hadithForDate(friday.date), places);
+  assert.ok(text.includes("Live and queue in the TOA app: https://toa-rooms.pages.dev/app/#/room/room_111"));
+  assert.ok(!announcement.buildAnnouncementText({ ...friday, venue: "Plain Hall" }, announcement.hadithForDate(friday.date), places).includes("TOA app"));
+  const day = announcement.buildGatheringText({ date: "2027-02-08", place: "Dorm 7", start_time: "19:30", kultum: 0 }, { places });
+  assert.ok(day.includes("https://toa-rooms.pages.dev/app/#/room/room_111"));
+  assert.ok(!announcement.buildGatheringText({ date: "2027-02-08", place: "Plain Hall", start_time: "19:30" }, { places }).includes("TOA"));
+});

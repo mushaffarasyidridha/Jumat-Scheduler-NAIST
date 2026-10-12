@@ -331,6 +331,12 @@
       "name": "Ramadan evenings in the TOA app",
       "what": "Pick a place's TOA room by name on the Places card (the list is every TOA room the dedicated TOA account is admin of, refreshed by the daily job; no long ids to type). The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA.",
       "status": "live"
+    },
+    {
+      "audience": "Members",
+      "name": "Link to the TOA app",
+      "what": "When a place is linked to its TOA room, its announcement (Fridays and Ramadan evenings), the Google Calendar and calendar-feed event and the day's window carry a link to that room in the TOA web app, where the queue and any live broadcast can be followed.",
+      "status": "live"
     }
   ],
   "setup": [
