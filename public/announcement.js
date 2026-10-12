@@ -99,6 +99,16 @@
     return (places || []).find((p) => String(p.name).trim().toLowerCase() === key) || null;
   }
 
+  // The TOA app (a web app anyone can open) shows a room's queue and its live
+  // broadcast. A place linked to a TOA room gets this link in the announcement.
+  var TOA_APP_URL = "https://toa-rooms.pages.dev/app/#/room/";
+  function toaRoomUrl(roomId) {
+    return roomId ? TOA_APP_URL + encodeURIComponent(roomId) : "";
+  }
+  function toaLine(place) {
+    return place && place.toa_room_id ? `\nLive and queue in the TOA app: ${toaRoomUrl(place.toa_room_id)}` : "";
+  }
+
   function venueLine(friday, places) {
     const venue = (friday.venue || "").trim();
     if (!venue) return "Friday Prayer will be held in sha Allah (venue to be announced).";
@@ -117,7 +127,7 @@
     return `Assalamualaikum Warrahmatullah Wabarakatuh,
 Dear Brothers,
 
-${venueLine(friday, places)}${placeDetailLine(friday, places)}
+${venueLine(friday, places)}${placeDetailLine(friday, places)}${toaLine(findPlace(places, friday.venue))}
 Date: ${formatDateAnnouncement(friday.date)}
 Time: ${reminder.PRAYER_TIME}
 Khatib: ${khatibLine(friday)}
@@ -147,6 +157,7 @@ ${hadith.arabic}`;
       `Isha and Tarawih will be held in sha Allah ${where}.`,
     ];
     if (place && place.details) lines.push(`Place: ${place.details}`);
+    if (place && place.toa_room_id) lines.push(`Live and queue in the TOA app: ${toaRoomUrl(place.toa_room_id)}`);
     lines.push(`Date: ${formatDateAnnouncement(g.date)}`, `Time: ${g.start_time}`);
     if (g.kultum) lines.push(`Kultum (${minutes} minutes): ${g.speaker || "TBA"}`);
     if (g.info) lines.push("", `Note: ${g.info}`);
@@ -162,6 +173,7 @@ ${hadith.arabic}`;
     formatDateAnnouncement,
     khatibLine,
     venueLine,
+    toaRoomUrl,
     findPlace,
     buildAnnouncementText,
   };
