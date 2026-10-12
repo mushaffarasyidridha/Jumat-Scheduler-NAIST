@@ -12,7 +12,7 @@ name: Send Jumat reminders
 #   - google_check: pings the Google Calendar bridge and brings the calendar up to
 #     date (the way to fill it the first time, and to see why it is failing).
 #   - toa_check: adds the Ramadan evenings to the linked TOA app rooms right now
-#     (needs the TOA account secrets; the daily runs do it too).
+#     (needs the TOA key; the daily runs do it too).
 #   - test_email_to_sender: sends one test email to the community Gmail itself
 #     and stops (nothing to type, so no address ends up in a public run page).
 #   - test_email: sends one test email to the address typed in and stops.
@@ -35,7 +35,7 @@ on:
         type: boolean
         default: false
       toa_check:
-        description: "Add the Ramadan evenings to the linked TOA app rooms now (needs the TOA account secrets)"
+        description: "Add the Ramadan evenings to the linked TOA app rooms now (needs the TOA key)"
         type: boolean
         default: false
       test_email_to_sender:
@@ -94,9 +94,8 @@ jobs:
           GCAL_BRIDGE_URL: ${{ secrets.GCAL_BRIDGE_URL }}
           GCAL_BRIDGE_SECRET: ${{ secrets.GCAL_BRIDGE_SECRET }}
           GCAL_CHECK: ${{ github.event_name == 'workflow_dispatch' && inputs.google_check }}
-          # The TOA app account that writes the Ramadan evenings into TOA room queues
-          # (empty until set up: then the job skips TOA).
-          TOA_EMAIL: ${{ secrets.TOA_EMAIL }}
-          TOA_PASSWORD: ${{ secrets.TOA_PASSWORD }}
+          # The TOA app integration key (TOA app: Settings, Integration keys) that adds
+          # the Ramadan evenings to TOA room queues (empty until set up: then the job skips TOA).
+          TOA_API_KEY: ${{ secrets.TOA_API_KEY }}
           TOA_CHECK: ${{ github.event_name == 'workflow_dispatch' && inputs.toa_check }}
         run: node scripts/send-reminders.mjs

@@ -328,7 +328,7 @@
           "access": "access code"
         }
       ],
-      "note": "The admin reads the TOA app rooms the TOA account administers, to pick one by name on the Places card."
+      "note": "The admin reads the TOA app rooms the TOA key administers, to pick one by name on the Places card."
     }
   ],
   "tables": [
@@ -570,20 +570,12 @@
       "note": "The community access code (GitHub keeps it; the setup workflow copies it to the website as ACCESS_CODE)."
     },
     {
-      "name": "TOA_EMAIL",
+      "name": "TOA_API_KEY",
       "where": "GitHub secret",
       "usedIn": [
         "reminders.yml"
       ],
-      "note": "The email of the dedicated TOA app account that adds the Ramadan evenings to TOA room queues."
-    },
-    {
-      "name": "TOA_PASSWORD",
-      "where": "GitHub secret",
-      "usedIn": [
-        "reminders.yml"
-      ],
-      "note": "That TOA account's password. Only GitHub holds it."
+      "note": "The secret integration key made in the TOA app (Settings, Integration keys). It lets the daily job add the Ramadan evenings to the TOA rooms its owner administers."
     },
     {
       "name": "SITE_URL",

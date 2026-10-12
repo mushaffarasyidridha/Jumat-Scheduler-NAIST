@@ -1,6 +1,6 @@
 import { json, requireAccess } from "./_utils.js";
 
-// The TOA rooms the TOA account administers (kept fresh by the daily job), for the
+// The TOA rooms the TOA key administers (kept fresh by the daily job), for the
 // Places card's TOA room dropdown. Admin only.
 export async function onRequestGet({ request, env }) {
   const denied = requireAccess(request, env);

@@ -1,21 +1,24 @@
-// Pushes the Ramadan evenings (Isha + Tarawih, with the kultum speaker) into the
-// TOA app's room queue, so TOA's room board and phones show them.
+// Adds the Ramadan evenings (Isha + Tarawih, with the kultum speaker) to the TOA
+// app's room queues, so TOA's room board and phones show them.
 //
-// How it talks to TOA: TOA keeps its rooms in a Firebase Realtime Database that
-// anyone can read. Writing needs a signed-in account, so the job signs in as one
-// dedicated TOA account (email + password, kept as GitHub secrets) and writes
-// only entries it created itself (keys start with "sched_"). It never touches
-// the room, its admins, or other people's entries. Pure functions plus a small
-// REST client with an injectable fetch, so the whole thing is unit-tested.
+// How it talks to TOA: through TOA's own API for schedulers (/api/v1). A person
+// makes a secret key in the TOA app (Settings, Integration keys); the key acts as
+// that person on the rooms they administer, and nothing else. The job sends each
+// evening with an "externalId" of ours, so sending it again updates the same entry
+// instead of adding another, and with notify=false so the people nearby are not
+// told about every evening of Ramadan. Pure functions plus a small REST client
+// with an injectable fetch, so the whole thing is unit-tested.
 import { gatheringWindowUtc } from "./_ics.mjs";
 
-export const ENTRY_PREFIX = "sched_";
-export const DEFAULT_WEB_CONFIG_URL = "https://toa-rooms.pages.dev/api/web-config";
+export const API_URL = "https://toa-rooms.pages.dev/api/v1";
+export const EXTERNAL_PREFIX = "naist-ramadan-";
+// The first version wrote entries straight into TOA's database under keys like
+// "sched_2027-02-08_isha_tarawih". They are replaced by the API's entries.
+export const LEGACY_PREFIX = "sched_";
+const TARAWIH_LABEL = "Isha + Tarawih";
 
 // A TOA room id, typed bare ("room_1789796426461") or pasted as a link
 // (toa://room/ID or https://toa-rooms.pages.dev/r/ID). null when it is neither.
-const ROOM_ID = /^[A-Za-z0-9_-]{3,64}$/;
-
 export function parseToaRoomId(input) {
   const text = String(input ?? "").trim();
   if (!text) return "";
@@ -24,50 +27,53 @@ export function parseToaRoomId(input) {
   return /^[A-Za-z0-9_-]{3,64}$/.test(id) ? id : null;
 }
 
-export function toaEntryKey(date) {
-  return `${ENTRY_PREFIX}${date}_isha_tarawih`;
+export function toaExternalId(date) {
+  return `${EXTERNAL_PREFIX}${date}`;
 }
 
-// The queue entry for one evening. `custom` on purpose: a "prayer" entry would get
-// an iqomah countdown that means nothing for Tarawih. The speaker goes in
-// speakerName (the board shows that, not khatibName) and the topic stays empty
-// (a topic replaces the label on the board). Times are epoch milliseconds.
+// 2027-02-08T19:30:00+09:00 for a UTC millisecond value (Japan time, as TOA reads it).
+function jstIso(ms) {
+  return `${new Date(ms + 9 * 3600e3).toISOString().slice(0, 19)}+09:00`;
+}
+
+// What one evening should look like in TOA: the request to send and what the queue
+// should then show (to tell whether the entry already matches). `custom` on purpose:
+// a "prayer" entry would get an iqomah countdown that means nothing for Tarawih.
 export function desiredToaEntry(g, { settings = {} } = {}) {
   const { startMs, endMs } = gatheringWindowUtc(g, settings.event_minutes || 90);
   const minutes = g.kultum_minutes ?? settings.kultum_minutes ?? 7;
-  const speaker = g.kultum ? (g.speaker || "").trim() : "";
+  const speaker = g.kultum ? (g.speaker || "").trim().slice(0, 60) : "";
   const place = (g.place || "").trim();
+  const label = g.kultum ? `${TARAWIH_LABEL} · Kultum ${minutes} min` : TARAWIH_LABEL;
+  const note = place ? `Place: ${place}`.slice(0, 200) : "";
   return {
-    entryType: "custom",
-    customLabel: g.kultum ? `Isha + Tarawih · Kultum ${minutes} min` : "Isha + Tarawih",
-    speakerName: speaker,
-    khatibName: speaker,
-    durationMinutes: g.kultum ? Number(minutes) || 0 : 0,
-    scheduledTime: startMs,
-    endTime: endMs,
-    recurrence: "once",
-    notes: place ? `Place: ${place}` : "",
+    startMs,
+    body: {
+      type: "custom",
+      label,
+      time: jstIso(startMs),
+      end: jstIso(endMs),
+      speaker,
+      note,
+      repeat: "once",
+      notify: false,
+      externalId: toaExternalId(g.date),
+    },
+    expect: { label, leader: speaker, time: startMs, end: endMs, note },
   };
 }
 
-// Fields an update may change. Everything else (status, attendees, addedBy, ...)
-// belongs to TOA and the people using it, so an update never overwrites it.
-export const OWNED_FIELDS = ["entryType", "customLabel", "speakerName", "khatibName", "durationMinutes", "scheduledTime", "endTime", "recurrence", "notes"];
-
-export function changedFields(existing, wanted) {
-  const out = {};
-  for (const f of OWNED_FIELDS) {
-    const a = existing[f] ?? (typeof wanted[f] === "number" ? 0 : "");
-    if (a !== wanted[f]) out[f] = wanted[f];
-  }
-  return out;
+// Does a queue item (as the API lists it) already match what we want?
+export function matches(item, expect) {
+  return item.label === expect.label && (item.leader || "") === expect.leader && item.time === expect.time && item.end === expect.end && (item.note || "") === expect.note;
 }
 
-// gatherings (from the database) + places (with toa_room_id) -> what should exist.
-export function desiredByRoom({ gatherings, places, settings, today }) {
+// gatherings (from the database) + places (with toa_room_id) -> what should exist, per room.
+export function desiredByRoom({ gatherings, places, settings, today, nowMs }) {
   const roomOf = new Map(places.filter((p) => p.toa_room_id).map((p) => [String(p.name).trim().toLowerCase(), p.toa_room_id]));
   const rooms = new Map([...new Set(roomOf.values())].map((r) => [r, new Map()]));
   let withoutRoom = 0;
+  let past = 0;
   for (const g of gatherings) {
     if (g.date < today) continue;
     const room = roomOf.get(String(g.place || "").trim().toLowerCase());
@@ -75,142 +81,91 @@ export function desiredByRoom({ gatherings, places, settings, today }) {
       withoutRoom++;
       continue;
     }
-    rooms.get(room).set(toaEntryKey(g.date), desiredToaEntry(g, { settings }));
+    const want = desiredToaEntry(g, { settings });
+    // TOA refuses a one-off that began more than an hour ago: leave it as history.
+    if (want.startMs < nowMs - 50 * 60000) {
+      past++;
+      continue;
+    }
+    rooms.get(room).set(want.body.externalId, want);
   }
-  return { rooms, withoutRoom };
+  return { rooms, withoutRoom, past };
 }
 
-// What has to change in one room: create, update (only the fields that differ) or
-// remove (our own future entries that are no longer wanted).
-export function planRoom({ wanted, existing, uid, nowMs }) {
-  const plan = { create: [], update: [], remove: [], same: 0, foreign: 0 };
-  for (const [key, entry] of wanted) {
-    const have = existing[key];
-    if (!have) plan.create.push({ key, entry });
-    else if (have.addedBy !== uid) plan.foreign++;
-    else {
-      const diff = changedFields(have, entry);
-      if (Object.keys(diff).length) plan.update.push({ key, diff });
-      else plan.same++;
-    }
+// What has to change in one room: add, update, or remove our own future entries that
+// are no longer wanted (and the first version's entries, which the API's replace).
+export function planRoom({ wanted, queue, nowMs }) {
+  const plan = { create: [], update: [], remove: [], same: 0 };
+  const byExternal = new Map(queue.filter((q) => q.externalId).map((q) => [q.externalId, q]));
+  for (const [externalId, want] of wanted) {
+    const have = byExternal.get(externalId);
+    if (!have) plan.create.push(want);
+    else if (!matches(have, want.expect)) plan.update.push(want);
+    else plan.same++;
   }
-  for (const [key, have] of Object.entries(existing)) {
-    if (wanted.has(key) || !key.startsWith(ENTRY_PREFIX)) continue;
-    if (have.addedBy === uid && Number(have.scheduledTime) > nowMs) plan.remove.push({ key });
+  for (const item of queue) {
+    if (!(item.time > nowMs)) continue;
+    const ours = item.externalId && item.externalId.startsWith(EXTERNAL_PREFIX) && !wanted.has(item.externalId);
+    const legacy = !item.externalId && String(item.id).startsWith(LEGACY_PREFIX) && String(item.label).startsWith(TARAWIH_LABEL);
+    if (ours || legacy) plan.remove.push({ id: item.id });
   }
   return plan;
 }
 
 // ---------- the REST client ----------
 
-const redactSecrets = (text, secrets) => secrets.filter(Boolean).reduce((t, s) => t.split(s).join("***"), String(text));
-
-export function createToaClient({ email, password, webConfigUrl = DEFAULT_WEB_CONFIG_URL, apiKey, dbUrl, fetchImpl = fetch }) {
-  let session = null;
-  const fail = (what, res, body) => new Error(`TOA ${what} failed (HTTP ${res.status})${body?.error?.message ? `: ${redactSecrets(body.error.message, [email, password])}` : ""}`);
-
-  async function connect() {
-    if (session) return session;
-    let key = apiKey;
-    let db = dbUrl;
-    if (!key || !db) {
-      const res = await fetchImpl(webConfigUrl);
-      const cfg = await res.json().catch(() => null);
-      if (!res.ok || !cfg?.config?.apiKey) throw new Error("TOA web config has no apiKey (is the TOA site configured?)");
-      key = key || cfg.config.apiKey;
-      db = db || cfg.config.databaseURL;
-    }
-    const res = await fetchImpl(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(key)}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password, returnSecureToken: true }),
-    });
-    const body = await res.json().catch(() => null);
-    if (!res.ok || !body?.idToken) throw fail("sign-in", res, body);
-    session = { token: body.idToken, uid: body.localId, db: db.replace(/\/$/, "") };
-    return session;
-  }
-
-  async function call(method, path, payload, query = "") {
-    const s = await connect();
-    const res = await fetchImpl(`${s.db}/${path}.json?auth=${encodeURIComponent(s.token)}${query}`, {
+export function createToaClient({ key, baseUrl = API_URL, fetchImpl = fetch }) {
+  async function call(method, path, body) {
+    const res = await fetchImpl(`${baseUrl}${path}`, {
       method,
-      headers: { "content-type": "application/json" },
-      body: payload === undefined ? undefined : JSON.stringify(payload),
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json", "x-timezone": "Asia/Tokyo" },
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
-    const body = await res.json().catch(() => null);
-    if (!res.ok) throw fail(`${method} ${path.split("/")[0]}`, res, { error: { message: body?.error } });
-    return body;
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || data.ok === false) {
+      const why = data?.message ? `: ${String(data.message).split(key).join("***")}` : "";
+      throw new Error(`TOA ${method} ${path.replace(/\/rooms\/[^/]+/, "/rooms/...").replace(/\/queue\/.+/, "/queue/...")} failed (HTTP ${res.status})${why}`);
+    }
+    return data;
   }
-
+  const room = (id) => `/rooms/${encodeURIComponent(id)}`;
   return {
-    uid: async () => (await connect()).uid,
-    // Only the entries this job owns (keys starting with "sched_").
-    async listOwn(room) {
-      const q = `&orderBy=${encodeURIComponent('"$key"')}&startAt=${encodeURIComponent(`"${ENTRY_PREFIX}"`)}&endAt=${encodeURIComponent(`"${ENTRY_PREFIX}"`)}`;
-      return (await call("GET", `prayerRooms/${room}/prayerQueue`, undefined, q)) || {};
+    // The rooms the key's owner administers: [{ id, name, role, ... }]. Also proves the key works.
+    async rooms() {
+      return (await call("GET", "/rooms")).rooms || [];
     },
-    // The rooms this account is an admin of (the room's owner, or one of its admins):
-    // id and name, so the Places card can offer them by name. Rooms are readable by
-    // anyone; a room that cannot be read is skipped.
-    async listAdminRooms() {
-      const s = await connect();
-      const ids = Object.keys((await call("GET", "prayerRooms", undefined, "&shallow=true")) || {}).filter((id) => ROOM_ID.test(id));
-      const found = [];
-      for (let i = 0; i < ids.length; i += 6) {
-        const batch = await Promise.all(
-          ids.slice(i, i + 6).map(async (id) => {
-            try {
-              const [name, owner, flag] = await Promise.all([call("GET", `prayerRooms/${id}/name`), call("GET", `prayerRooms/${id}/admin`), call("GET", `prayerRooms/${id}/admins/${s.uid}`)]);
-              return owner === s.uid || flag === true ? { id, name: String(name || id).slice(0, 80) } : null;
-            } catch {
-              return null;
-            }
-          })
-        );
-        found.push(...batch.filter(Boolean));
-      }
-      return found.sort((a, b) => a.name.localeCompare(b.name));
+    async queue(roomId) {
+      return (await call("GET", `${room(roomId)}/queue`)).queue || [];
     },
-    async create(room, key, entry, uid, nowMs) {
-      await call("PUT", `prayerRooms/${room}/prayerQueue/${key}`, { ...entry, topic: "", status: "pending", addedBy: uid, addedAt: nowMs, attendeeCount: 0 });
-    },
-    async update(room, key, diff) {
-      await call("PATCH", `prayerRooms/${room}/prayerQueue/${key}`, diff);
-    },
-    async remove(room, key) {
-      await call("DELETE", `prayerRooms/${room}/prayerQueue/${key}`);
-    },
+    // Adds the entry, or updates the one with the same externalId.
+    add: (roomId, body) => call("POST", `${room(roomId)}/queue`, body),
+    remove: (roomId, id) => call("DELETE", `${room(roomId)}/queue/${encodeURIComponent(id)}`),
   };
 }
 
-// Brings every mapped room in step with the schedule. Counts only: nothing here
-// is meant to put names, rooms or addresses in a public log.
-export async function syncToa({ client, gatherings, places, settings, today, nowMs = Date.now(), dryRun = false }) {
-  const { rooms, withoutRoom } = desiredByRoom({ gatherings, places, settings, today });
-  const result = { rooms: rooms.size, created: 0, updated: 0, removed: 0, same: 0, foreign: 0, withoutRoom, failed: 0, errors: [] };
-  if (!rooms.size) return result;
-  const uid = await client.uid();
+// Brings every linked room in step with the schedule. Counts only: nothing here is
+// meant to put names, rooms or addresses in a public log.
+export async function syncToa({ client, gatherings, places, settings, today, nowMs = Date.now(), dryRun = false, adminRooms = null }) {
+  const { rooms, withoutRoom, past } = desiredByRoom({ gatherings, places, settings, today, nowMs });
+  const result = { rooms: rooms.size, created: 0, updated: 0, removed: 0, same: 0, notAdmin: 0, withoutRoom, past, failed: 0, errors: [] };
+  const allowed = adminRooms ? new Set(adminRooms.map((r) => r.id)) : null;
   for (const [room, wanted] of rooms) {
+    if (allowed && !allowed.has(room)) {
+      result.notAdmin++;
+      continue;
+    }
     try {
-      const plan = planRoom({ wanted, existing: await client.listOwn(room), uid, nowMs });
+      const plan = planRoom({ wanted, queue: await client.queue(room), nowMs });
       result.same += plan.same;
-      result.foreign += plan.foreign;
       if (dryRun) {
         result.created += plan.create.length;
         result.updated += plan.update.length;
         result.removed += plan.remove.length;
         continue;
       }
-      for (const { key, entry } of plan.create) {
-        await attempt(result, () => client.create(room, key, entry, uid, nowMs), "created");
-      }
-      for (const { key, diff } of plan.update) {
-        await attempt(result, () => client.update(room, key, diff), "updated");
-      }
-      for (const { key } of plan.remove) {
-        await attempt(result, () => client.remove(room, key), "removed");
-      }
+      for (const want of plan.create) await attempt(result, () => client.add(room, want.body), "created");
+      for (const want of plan.update) await attempt(result, () => client.add(room, want.body), "updated");
+      for (const { id } of plan.remove) await attempt(result, () => client.remove(room, id), "removed");
     } catch (e) {
       result.failed++;
       result.errors.push(e.message);
