@@ -318,6 +318,17 @@
         }
       ],
       "note": "The stop-these-reminders link at the bottom of every email."
+    },
+    {
+      "route": "/api/toa-rooms",
+      "file": "functions/api/toa-rooms.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin reads the TOA app rooms the TOA account administers, to pick one by name on the Places card."
     }
   ],
   "tables": [
@@ -372,6 +383,10 @@
     {
       "name": "gatherings",
       "migration": "0016_ramadan.sql"
+    },
+    {
+      "name": "toa_rooms",
+      "migration": "0018_toa_rooms.sql"
     }
   ],
   "migrations": [
@@ -442,6 +457,10 @@
     {
       "file": "0017_places_toa_room.sql",
       "note": "The TOA app room (its id) that a place corresponds to."
+    },
+    {
+      "file": "0018_toa_rooms.sql",
+      "note": "The TOA app rooms that the TOA account is an admin of (id and name)."
     }
   ],
   "workflows": [

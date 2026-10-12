@@ -14,6 +14,8 @@ export const DEFAULT_WEB_CONFIG_URL = "https://toa-rooms.pages.dev/api/web-confi
 
 // A TOA room id, typed bare ("room_1789796426461") or pasted as a link
 // (toa://room/ID or https://toa-rooms.pages.dev/r/ID). null when it is neither.
+const ROOM_ID = /^[A-Za-z0-9_-]{3,64}$/;
+
 export function parseToaRoomId(input) {
   const text = String(input ?? "").trim();
   if (!text) return "";
@@ -147,6 +149,28 @@ export function createToaClient({ email, password, webConfigUrl = DEFAULT_WEB_CO
     async listOwn(room) {
       const q = `&orderBy=${encodeURIComponent('"$key"')}&startAt=${encodeURIComponent(`"${ENTRY_PREFIX}"`)}&endAt=${encodeURIComponent(`"${ENTRY_PREFIX}"`)}`;
       return (await call("GET", `prayerRooms/${room}/prayerQueue`, undefined, q)) || {};
+    },
+    // The rooms this account is an admin of (the room's owner, or one of its admins):
+    // id and name, so the Places card can offer them by name. Rooms are readable by
+    // anyone; a room that cannot be read is skipped.
+    async listAdminRooms() {
+      const s = await connect();
+      const ids = Object.keys((await call("GET", "prayerRooms", undefined, "&shallow=true")) || {}).filter((id) => ROOM_ID.test(id));
+      const found = [];
+      for (let i = 0; i < ids.length; i += 6) {
+        const batch = await Promise.all(
+          ids.slice(i, i + 6).map(async (id) => {
+            try {
+              const [name, owner, flag] = await Promise.all([call("GET", `prayerRooms/${id}/name`), call("GET", `prayerRooms/${id}/admin`), call("GET", `prayerRooms/${id}/admins/${s.uid}`)]);
+              return owner === s.uid || flag === true ? { id, name: String(name || id).slice(0, 80) } : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        found.push(...batch.filter(Boolean));
+      }
+      return found.sort((a, b) => a.name.localeCompare(b.name));
     },
     async create(room, key, entry, uid, nowMs) {
       await call("PUT", `prayerRooms/${room}/prayerQueue/${key}`, { ...entry, topic: "", status: "pending", addedBy: uid, addedAt: nowMs, attendeeCount: 0 });

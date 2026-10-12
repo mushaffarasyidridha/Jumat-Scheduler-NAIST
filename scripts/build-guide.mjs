@@ -57,6 +57,7 @@ export const ROUTE_NOTES = {
   "/api/join-requests/:id": "The admin closes a request: added to the roster, or dismissed.",
   "/api/line/webhook": "Where LINE delivers messages to the bot. This is how a person links their LINE with the code.",
   "/api/places": "The places (dorm lounges, the Sentan assembly room ...) for the venue dropdown; the admin adds one.",
+  "/api/toa-rooms": "The admin reads the TOA app rooms the TOA account administers, to pick one by name on the Places card.",
   "/api/places/:id": "The admin edits or deletes one place (a rename follows onto the coming Fridays).",
   "/api/ramadan": "Ramadan: the dates, the weekly pattern and the days (anyone can read; the admin saves the settings).",
   "/api/ramadan/generate": "The admin makes the Ramadan days from the dates and the weekly pattern.",

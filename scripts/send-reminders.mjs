@@ -356,13 +356,29 @@ async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
 // the log: this repository is public.
 async function reconcileToa({ today, dryRun = DRY_RUN }) {
   if (!env.TOA_EMAIL || !env.TOA_PASSWORD) return { failed: 0 };
+  const client = createToaClient({ email: env.TOA_EMAIL, password: env.TOA_PASSWORD, webConfigUrl: env.TOA_WEB_CONFIG_URL || undefined });
+  await client.uid(); // signs in; a wrong password stops here with a clear message
+  if (TOA_CHECK) console.log("TOA account signed in OK.");
+
+  // The rooms this account administers, kept in the database for the Places card's dropdown.
+  try {
+    const rooms = await client.listAdminRooms();
+    if (!dryRun) {
+      try {
+        await d1("DELETE FROM toa_rooms");
+        for (const r of rooms) await d1("INSERT INTO toa_rooms (id, name) VALUES (?, ?)", [r.id, r.name]);
+      } catch {
+        console.log("TOA: the room list table is not ready yet, skipped.");
+      }
+    }
+    console.log(`TOA account is admin of ${rooms.length} room(s)${dryRun ? "" : "; the Places card can offer them by name"}.`);
+  } catch (e) {
+    console.error(`FAILED: TOA room list: ${redact(e.message)}`);
+  }
+
   const places = (await d1("SELECT name, toa_room_id FROM places WHERE toa_room_id IS NOT NULL")).filter((p) => p.toa_room_id);
   if (!places.length) {
-    // A hand-started toa_check still proves the account works, before any place is linked.
-    if (TOA_CHECK) {
-      await createToaClient({ email: env.TOA_EMAIL, password: env.TOA_PASSWORD, webConfigUrl: env.TOA_WEB_CONFIG_URL || undefined }).uid();
-      console.log("TOA account signed in OK. No place is linked to a TOA room yet (Places card, TOA room).");
-    }
+    if (TOA_CHECK) console.log("No place is linked to a TOA room yet (Places card, TOA room).");
     return { failed: 0 };
   }
   let gatherings = [];
@@ -378,7 +394,6 @@ async function reconcileToa({ today, dryRun = DRY_RUN }) {
     console.log("TOA: Ramadan tables not available yet, skipped.");
     return { failed: 0 };
   }
-  const client = createToaClient({ email: env.TOA_EMAIL, password: env.TOA_PASSWORD, webConfigUrl: env.TOA_WEB_CONFIG_URL || undefined });
   const r = await syncToa({ client, gatherings, places, settings, today, dryRun });
   const would = dryRun ? "would be " : "";
   console.log(
