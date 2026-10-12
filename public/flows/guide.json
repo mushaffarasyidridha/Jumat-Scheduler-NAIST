@@ -219,6 +219,12 @@
       "status": "live"
     },
     {
+      "audience": "Members",
+      "name": "Khutbah checklist for the khatib",
+      "what": "A khatib's reminders (email, LINE, and the Copy / WhatsApp text) carry the five rukun of the Friday khutbah in the Shafi'i madzhab: hamdalah, shalawat on the Prophet and wasiat taqwa in both khutbahs, a verse of the Qur'an in one of them, and du'a for the believers in the second; plus the main conditions (the rukun in Arabic, standing, sitting briefly between the two khutbahs, wudu, audible, within Zuhr time, no long break). A tick on each person in the roster (on by default) turns it off for someone who does not need it.",
+      "status": "live"
+    },
+    {
       "audience": "Scheduled people",
       "name": "Add to Google Calendar link",
       "what": "In every reminder: a ready-made calendar event with their role.",

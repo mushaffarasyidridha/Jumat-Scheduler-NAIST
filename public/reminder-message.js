@@ -73,6 +73,33 @@
       : null;
   }
 
+  // ---------- The khutbah checklist (Shafi'i school) ----------
+  // The five rukun (pillars) of the two Friday khutbahs: without any of them the khutbah,
+  // and so the Jumat, is not valid. Then the main conditions (syarat). Sources: the
+  // Shafi'i manuals (e.g. Minhaj al-Talibin; Reliance of the Traveller f18.9-11).
+  const KHUTBAH_RUKUN = [
+    "Hamdalah: praise Allah (with \"al-hamdu\" and \"Allah\"), in BOTH khutbahs",
+    "Shalawat upon the Prophet ﷺ (e.g. \"Allahumma shalli 'ala Muhammad\"), in BOTH khutbahs",
+    "Wasiat taqwa: urge the listeners to taqwa (fear Allah, obey Him), in BOTH khutbahs",
+    "Recite a complete verse of the Qur'an, in at least ONE khutbah (the first is better)",
+    "Du'a for the believers (al-mu'minin), in the SECOND khutbah",
+  ];
+  const KHUTBAH_SYARAT =
+    "Also: say the rukun in Arabic (the rest may be in English); stand while speaking; sit briefly between the two khutbahs; be in wudu, clean and covered; speak loud enough for the congregation to hear; within Zuhr time; keep the two khutbahs and the prayer close together (no long break).";
+
+  // Only for a khatib, and only when the admin left the roster tick on (the default).
+  function wantsKhutbahChecklist(person, roles) {
+    return person.khutbah_checklist !== false && person.khutbah_checklist !== 0 && roles.some((r) => /khatib/i.test(r));
+  }
+
+  function khutbahChecklistLines(numbered = true) {
+    return [
+      "📜 Khutbah checklist: the 5 rukun (Shafi'i madzhab); the khutbah is not valid without each one:",
+      ...KHUTBAH_RUKUN.map((r, i) => (numbered ? `${i + 1}. ${r}` : `- ${r}`)),
+      KHUTBAH_SYARAT,
+    ];
+  }
+
   // ---------- Google Calendar ----------
 
   function calendarStamp(ms) {
@@ -143,6 +170,7 @@
       `📍 ${venueOf(friday)}`,
       ...(calendar ? [`📆 Add to Google Calendar: ${calendar}`] : []),
       ...(standby ? ["", standby] : []),
+      ...(wantsKhutbahChecklist(person, roles) ? ["", ...khutbahChecklistLines()] : []),
       "",
       "Can't make it? Please tell the coordinator as soon as possible.",
     ].join("\n");
@@ -187,6 +215,9 @@
     rolesFromCodes,
     chatText,
     kultumChatText,
+    KHUTBAH_RUKUN,
+    wantsKhutbahChecklist,
+    khutbahChecklistLines,
     whatsappLink,
   };
 });

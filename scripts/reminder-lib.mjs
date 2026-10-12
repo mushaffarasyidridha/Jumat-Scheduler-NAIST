@@ -253,6 +253,7 @@ export function buildEmail({ friday, person, roles, days, siteUrl }) {
     ...(lineup.length ? ["Line-up that day:", ...lineup.map((l) => `  ${l}`), ""] : []),
     ...(standby ? [standby, ""] : []),
     ...(calendar ? [`Add it to your Google Calendar: ${calendar}`, ""] : []),
+    ...(shared.wantsKhutbahChecklist(person, roles) ? [...shared.khutbahChecklistLines(), ""] : []),
     "Can't make it? Please tell the coordinator as soon as possible (you can reply to this email) so a replacement can be found.",
     "",
     `Full schedule: ${siteUrl}`,

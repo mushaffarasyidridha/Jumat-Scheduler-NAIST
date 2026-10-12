@@ -14,7 +14,7 @@
 // written by hand: when behaviour changes, change them in the same commit.
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, statSync, existsSync } from "node:fs";
-import { join, relative, basename, dirname } from "node:path";
+import { join, basename, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -80,7 +80,7 @@ const read = (path) => readFileSync(join(ROOT, path), "utf8");
 function walk(dir) {
   const out = [];
   for (const name of readdirSync(join(ROOT, dir)).sort()) {
-    const path = join(dir, name);
+    const path = `${dir}/${name}`; // always "/", so routes come out the same on Windows
     if (statSync(join(ROOT, path)).isDirectory()) out.push(...walk(path));
     else out.push(path);
   }
@@ -96,7 +96,7 @@ const firstSentence = (text) => {
 // ---------- the API pages ----------
 
 function routeOf(file) {
-  const parts = relative("functions", file).replace(/\.(m?js)$/, "").split("/");
+  const parts = file.replace(/^functions\//, "").replace(/\.(m?js)$/, "").split("/");
   if (parts[parts.length - 1] === "index") parts.pop();
   return "/" + parts.map((p) => p.replace(/^\[(.+)\]$/, ":$1")).join("/");
 }
