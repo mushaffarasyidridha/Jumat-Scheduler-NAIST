@@ -8,7 +8,10 @@
 // instead of adding another, and with notify=false so the people nearby are not
 // told about every evening of Ramadan. Pure functions plus a small REST client
 // with an injectable fetch, so the whole thing is unit-tested.
+import shared from "../../public/reminder-message.js";
 import { gatheringWindowUtc } from "./_ics.mjs";
+
+const { prayerWindowUtc } = shared;
 
 export const API_URL = "https://toa-rooms.pages.dev/api/v1";
 export const EXTERNAL_PREFIX = "naist-ramadan-";
@@ -112,6 +115,69 @@ export function planRoom({ wanted, queue, nowMs }) {
   return plan;
 }
 
+// ---------- bookings (rooms that are open only when booked) ----------
+//
+// A TOA room set to "only open when booked" is closed to the public outside its
+// bookings. For a linked place whose room is like that, every Friday prayer and
+// Ramadan evening held there becomes a booking at exactly the scheduled time, kept
+// in step with the schedule (moved, changed or removed with it).
+
+export const BOOKING_PREFIX = "naist-";
+export const fridayExternalId = (date) => `naist-friday-${date}`;
+
+// fridays ({date, venue}) + gatherings + places -> the bookings that should exist, per room.
+export function desiredBookingsByRoom({ fridays, gatherings, places, settings, today, nowMs }) {
+  const roomOf = new Map(places.filter((p) => p.toa_room_id).map((p) => [String(p.name).trim().toLowerCase(), p.toa_room_id]));
+  const rooms = new Map([...new Set(roomOf.values())].map((r) => [r, new Map()]));
+  const add = (placeName, externalId, startMs, endMs, note) => {
+    const room = roomOf.get(String(placeName || "").trim().toLowerCase());
+    if (!room || endMs <= nowMs) return;
+    rooms.get(room).set(externalId, {
+      startMs,
+      endMs,
+      body: { start: jstIso(startMs), end: jstIso(endMs), note, externalId },
+    });
+  };
+  for (const f of fridays) {
+    if (f.date < today) continue;
+    const { startMs, endMs } = prayerWindowUtc(f.date);
+    add(f.venue, fridayExternalId(f.date), startMs, endMs, "Friday prayer");
+  }
+  for (const g of gatherings) {
+    if (g.date < today) continue;
+    const { startMs, endMs } = gatheringWindowUtc(g, settings.event_minutes || 90);
+    add(g.place, toaExternalId(g.date), startMs, endMs, TARAWIH_LABEL);
+  }
+  return rooms;
+}
+
+// What has to change in one room's bookings. `replaceOthers` (only when asked for by
+// hand) also removes someone else's one-off booking that overlaps one of ours, so a
+// hand-made booking for the same prayer is replaced by the scheduled one.
+export function planBookings({ wanted, bookings, nowMs, replaceOthers = false }) {
+  const plan = { create: [], update: [], remove: [], replace: [], same: 0, left: 0 };
+  const ours = (b) => b.externalId && b.externalId.startsWith(BOOKING_PREFIX);
+  const byExternal = new Map(bookings.filter(ours).map((b) => [b.externalId, b]));
+  for (const [externalId, want] of wanted) {
+    const have = byExternal.get(externalId);
+    if (!have) plan.create.push(want);
+    else if (have.start !== want.startMs || have.end !== want.endMs || (have.note || "") !== want.body.note) plan.update.push(want);
+    else plan.same++;
+  }
+  for (const b of bookings) {
+    if (!(b.end > nowMs)) continue;
+    if (ours(b)) {
+      if (!wanted.has(b.externalId)) plan.remove.push({ id: b.id });
+      continue;
+    }
+    const overlaps = [...wanted.values()].some((w) => b.start < w.endMs && b.end > w.startMs);
+    if (!overlaps) continue;
+    if (replaceOthers && b.repeat !== "weekly") plan.replace.push({ id: b.id });
+    else plan.left++;
+  }
+  return plan;
+}
+
 // ---------- the REST client ----------
 
 export function createToaClient({ key, baseUrl = API_URL, fetchImpl = fetch }) {
@@ -140,6 +206,9 @@ export function createToaClient({ key, baseUrl = API_URL, fetchImpl = fetch }) {
       delete data.ok;
       return data;
     },
+    // Bookings: one-off or weekly windows during which a book-only room is open.
+    addBooking: (roomId, body) => call("POST", `${room(roomId)}/bookings`, body),
+    removeBooking: (roomId, id) => call("DELETE", `${room(roomId)}/bookings/${encodeURIComponent(id)}`),
     async queue(roomId) {
       return (await call("GET", `${room(roomId)}/queue`)).queue || [];
     },
@@ -188,4 +257,44 @@ async function attempt(result, action, counter) {
     result.failed++;
     result.errors.push(e.message);
   }
+}
+
+// Brings the bookings of every linked book-only room in step with the schedule.
+// Rooms that are open all the time need no bookings and are skipped.
+export async function syncToaBookings({ client, fridays, gatherings, places, settings, today, nowMs = Date.now(), dryRun = false, adminRooms, replaceOthers = false }) {
+  const rooms = desiredBookingsByRoom({ fridays, gatherings, places, settings, today, nowMs });
+  const result = { rooms: 0, created: 0, updated: 0, removed: 0, replaced: 0, same: 0, left: 0, alwaysOpen: 0, notAdmin: 0, failed: 0, errors: [] };
+  const info = new Map(adminRooms.map((r) => [r.id, r]));
+  for (const [room, wanted] of rooms) {
+    const meta = info.get(room);
+    if (!meta) {
+      result.notAdmin++;
+      continue;
+    }
+    if (meta.availability !== "booked") {
+      result.alwaysOpen++;
+      continue;
+    }
+    result.rooms++;
+    try {
+      const data = await client.room(room);
+      const plan = planBookings({ wanted, bookings: data.bookings || [], nowMs, replaceOthers });
+      result.same += plan.same;
+      result.left += plan.left;
+      if (dryRun) {
+        result.created += plan.create.length;
+        result.updated += plan.update.length;
+        result.removed += plan.remove.length;
+        continue;
+      }
+      for (const want of plan.create) await attempt(result, () => client.addBooking(room, want.body), "created");
+      for (const want of plan.update) await attempt(result, () => client.addBooking(room, want.body), "updated");
+      for (const { id } of plan.remove) await attempt(result, () => client.removeBooking(room, id), "removed");
+      for (const { id } of plan.replace) await attempt(result, () => client.removeBooking(room, id), "replaced");
+    } catch (e) {
+      result.failed++;
+      result.errors.push(e.message);
+    }
+  }
+  return result;
 }

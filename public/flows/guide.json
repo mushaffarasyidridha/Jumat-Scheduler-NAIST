@@ -337,6 +337,12 @@
       "name": "Link to the TOA app",
       "what": "When a place is linked to its TOA room, its announcement (Fridays and Ramadan evenings), the Google Calendar and calendar-feed event and the day's window carry a link to that room in the TOA web app, where the queue and any live broadcast can be followed.",
       "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "TOA bookings for book-only rooms",
+      "what": "For a place linked to a TOA room that is open only when booked, every Friday prayer and Ramadan evening held there becomes a TOA booking at exactly the scheduled time (Friday 12:35 for 30 minutes; the evening's start for its length). The daily job (or toa_check in Actions) adds, moves and removes them with the schedule. A hand-made booking is kept; a hand-started toa_check with toa_replace_bookings also replaces a one-off hand-made booking that overlaps a scheduled prayer.",
+      "status": "live"
     }
   ],
   "setup": [

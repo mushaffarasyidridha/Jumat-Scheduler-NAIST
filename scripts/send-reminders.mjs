@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { ALERT_ROW_SELECT } from "../functions/api/_alertmail.mjs";
 import { joinRecipients, buildJoinEmail, JOIN_ROW_SELECT } from "../functions/api/_joinmail.mjs";
 import { createBridge, syncUpcoming } from "../functions/api/_gcal.mjs";
-import { createToaClient, syncToa } from "../functions/api/_toa.mjs";
+import { createToaClient, syncToa, syncToaBookings } from "../functions/api/_toa.mjs";
 import {
   DEFAULT_SITE_URL,
   todayInTokyo,
@@ -46,6 +46,8 @@ import {
 
 const env = process.env;
 const TOA_CHECK = /^(1|true|yes)$/i.test(env.TOA_CHECK || "");
+// Only with a hand-started toa_check: also replace a hand-made TOA booking that overlaps a scheduled prayer.
+const TOA_REPLACE_BOOKINGS = TOA_CHECK && /^(1|true|yes)$/i.test(env.TOA_REPLACE_BOOKINGS || "");
 const DRY_RUN = /^(1|true|yes)$/i.test(env.DRY_RUN || "") || process.argv.includes("--dry-run");
 const SITE_URL = (env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, "");
 const CF_API = env.CF_API_BASE || "https://api.cloudflare.com/client/v4";
@@ -409,6 +411,17 @@ async function reconcileToa({ today, dryRun = DRY_RUN }) {
     console.log("TOA: Ramadan tables not available yet, skipped.");
     return { failed: 0 };
   }
+
+  // Rooms that are open only when booked: every scheduled prayer at a linked place is a booking.
+  const fridays = await d1("SELECT date, venue FROM fridays WHERE is_history = 0 AND date >= ? AND venue IS NOT NULL AND trim(venue) <> ''", [today]);
+  const b = await syncToaBookings({ client, fridays, gatherings, places, settings, today, dryRun, adminRooms, replaceOthers: TOA_REPLACE_BOOKINGS });
+  const wouldB = dryRun ? "would be " : "";
+  console.log(
+    `TOA bookings: ${b.rooms} book-only room(s) linked; ${b.created} ${wouldB}added, ${b.updated} ${wouldB}updated, ${b.removed} ${wouldB}removed, ${b.replaced} hand-made replaced, ${b.same} already up to date` +
+      `${b.left ? `, ${b.left} hand-made booking(s) overlap a scheduled prayer and were left alone` : ""}${b.alwaysOpen ? `, ${b.alwaysOpen} linked room(s) are open all the time (no bookings needed)` : ""}${b.notAdmin ? `, ${b.notAdmin} not administered by the key's owner` : ""}${b.failed ? `, ${b.failed} FAILED` : ""}.`
+  );
+  for (const e of b.errors) console.error(`FAILED: ${redact(e)}`);
+
   const r = await syncToa({ client, gatherings, places, settings, today, dryRun, adminRooms });
   const would = dryRun ? "would be " : "";
   console.log(
@@ -416,7 +429,7 @@ async function reconcileToa({ today, dryRun = DRY_RUN }) {
       `${r.notAdmin ? `, ${r.notAdmin} room(s) skipped (the key's owner is not an admin there)` : ""}${r.withoutRoom ? `, ${r.withoutRoom} at a place with no TOA room` : ""}${r.past ? `, ${r.past} already started` : ""}${r.failed ? `, ${r.failed} FAILED` : ""}.`
   );
   for (const e of r.errors) console.error(`FAILED: ${redact(e)}`);
-  return { failed: r.failed };
+  return { failed: r.failed + b.failed };
 }
 
 async function main() {

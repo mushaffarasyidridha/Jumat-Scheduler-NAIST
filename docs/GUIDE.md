@@ -121,6 +121,7 @@ flowchart TD
 | Members | Ramadan days in the calendar | Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement. | ✅ live |
 | Admin | Ramadan evenings in the TOA app | Pick a place's TOA room by name on the Places card (the list is every TOA room the integration key's owner administers, refreshed by the daily job; no long ids to type). The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue through TOA's own API, with the kultum speaker, changes it when the day changes and removes it when the day is deleted, without notifying the people nearby for every evening. It needs the TOA integration key; until then nothing is sent to TOA. | ✅ live |
 | Members | Link to the TOA app | When a place is linked to its TOA room, its announcement (Fridays and Ramadan evenings), the Google Calendar and calendar-feed event and the day's window carry a link to that room in the TOA web app, where the queue and any live broadcast can be followed. | ✅ live |
+| Admin | TOA bookings for book-only rooms | For a place linked to a TOA room that is open only when booked, every Friday prayer and Ramadan evening held there becomes a TOA booking at exactly the scheduled time (Friday 12:35 for 30 minutes; the evening's start for its length). The daily job (or toa_check in Actions) adds, moves and removes them with the schedule. A hand-made booking is kept; a hand-started toa_check with toa_replace_bookings also replaces a one-off hand-made booking that overlaps a scheduled prayer. | ✅ live |
 
 ## For members
 
@@ -190,7 +191,7 @@ flowchart TD
   C -->|"no"| D
   C1 --> D["Look at the coming Fridays<br/>a warning mark means an empty slot or two turns too close"]
   D --> E["Pick the primary khatib, secondary khatib and imam<br/>people who are available come first in each list<br/>or type a guest who is not in the roster, e.g. Prof. Arai, and press Set"]
-  E --> E2["Venue: open Details and announcement<br/>pick the place from the dropdown (Places card: add, edit, delete, link its TOA room)"]
+  E --> E2["Venue: open Details and announcement<br/>pick the place from the dropdown (Places card: add, edit, delete, link its TOA room)<br/>a book-only TOA room gets a booking at the prayer time, moved or removed with the Friday"]
   E2 --> F["It is saved at once<br/>Google Calendar follows, once connected"]
   F --> G["The robot sends the reminders by itself<br/>7 days before and the day before"]
   G --> H{"Does the person have<br/>an email or LINE?"}
@@ -298,7 +299,7 @@ flowchart TD
   F -->|"no"| H["Nothing more for that day"]
   G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups<br/>it carries the TOA app link when the place has a TOA room"]
   G --> J["The robot reminds the kultum speaker<br/>3, 2 and 1 day before and on the day, by email or LINE<br/>untick Remind to send none, a guest is messaged by hand"]
-  G --> L["TOA app: if the place has a TOA room picked by name on the Places card (the rooms the TOA key administers)<br/>the evening is added to that room's TOA queue with the speaker, without alerting everyone nearby<br/>the robot does it at the next run, or press toa_check in Actions"]
+  G --> L["TOA app: if the place has a TOA room picked by name on the Places card (the rooms the TOA key administers)<br/>the evening is added to that room's TOA queue with the speaker, without alerting everyone nearby<br/>a room that is open only when booked also gets a booking at the scheduled time<br/>the robot does it at the next run, or press toa_check in Actions"]
   G --> K["Google Calendar: the evening appears with the speaker invited<br/>change or delete the day and the event follows"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
@@ -335,7 +336,7 @@ flowchart TD
     R2 --> R3["The admin to-do messages"]
     R3 --> R4["Alert emails that were not sent yet"]
     R4 --> R5["Google Calendar safety re-sync<br/>Fridays and Ramadan evenings"]
-    R5 --> R5b["TOA app: the rooms its key administers are listed for the Places card<br/>Ramadan evenings are added, changed or removed in the linked rooms<br/>once the TOA key is set up"]
+    R5 --> R5b["TOA app: the rooms its key administers are listed for the Places card<br/>Ramadan evenings are added, changed or removed in the linked rooms<br/>book-only rooms get a booking for every Friday prayer and evening<br/>once the TOA key is set up"]
     R5b --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
   end
 
@@ -435,7 +436,7 @@ flowchart TD
 | Job | When it runs |
 | --- | --- |
 | Deploy to Cloudflare Pages (`deploy.yml`) | every change on main; by hand |
-| Send Jumat reminders (`reminders.yml`) | on a timer: 23:23 UTC = 08:23 JST; on a timer: 05:23 UTC = 14:23 JST; by hand (options: dry_run, google_check, toa_check, test_email_to_sender, test_email) |
+| Send Jumat reminders (`reminders.yml`) | on a timer: 23:23 UTC = 08:23 JST; on a timer: 05:23 UTC = 14:23 JST; by hand (options: dry_run, google_check, toa_check, toa_replace_bookings, test_email_to_sender, test_email) |
 | One-time Cloudflare setup (`setup.yml`) | by hand |
 
 #### Settings and secrets
