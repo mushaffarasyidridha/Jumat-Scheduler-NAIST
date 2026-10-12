@@ -13,7 +13,8 @@ flowchart TD
     R2 --> R3["The admin to-do messages"]
     R3 --> R4["Alert emails that were not sent yet"]
     R4 --> R5["Google Calendar safety re-sync<br/>Fridays and Ramadan evenings"]
-    R5 --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
+    R5 --> R5b["TOA app: Ramadan evenings are added, changed or removed<br/>in the linked rooms, once the TOA account is set up"]
+    R5b --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
   end
 
   subgraph t3["🚀 When the code changes on GitHub"]
@@ -29,4 +30,4 @@ flowchart TD
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   class E1 admin
   class U1,J1 member
-  class E2,E3,U2,U3,J2,J3,R1,R2,R3,R4,R5,R6,D1,D2 robot
+  class E2,E3,U2,U3,J2,J3,R1,R2,R3,R4,R5,R5b,R6,D1,D2 robot

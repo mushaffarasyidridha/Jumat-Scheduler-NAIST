@@ -13,6 +13,7 @@ flowchart TD
     ICS["Calendar feed .ics<br/>Apple / Outlook"]
     GC["Google Calendar<br/>public calendar + invitations"]
     MSG["Gmail and LINE bot<br/>reminder emails and messages"]
+    TOA["TOA app room queues<br/>Ramadan evenings, once a place is linked"]
     WA["WhatsApp / Facebook groups<br/>the admin posts the announcement by hand"]
   end
 
@@ -26,6 +27,7 @@ flowchart TD
   SITE -.->|"admin copies the announcement"| WA
   JOB --> MSG
   JOB -->|"safety re-sync"| GC
+  JOB -->|"Ramadan evenings"| TOA
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
@@ -34,4 +36,4 @@ flowchart TD
   class M,S member
   class A admin
   class SITE,DEP,JOB robot
-  class MSG,GC,ICS,WA out
+  class MSG,GC,ICS,WA,TOA out

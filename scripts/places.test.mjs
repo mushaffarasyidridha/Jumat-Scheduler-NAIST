@@ -29,7 +29,7 @@ test("place: a patch only changes the fields it carries", () => {
   const p = parsePlace({ details: "new" }, { requireName: false });
   assert.deepEqual(Object.keys(p.given), ["details"]);
   assert.equal(parsePlace({ name: "" }, { requireName: false }).error !== undefined, true, "a present but empty name is refused");
-  assert.deepEqual(shapePlace({ id: 1, name: "R", details: null, maps_url: null, kultum_usual: 1, sort_order: 2 }), { id: 1, name: "R", details: "", maps_url: "", kultum_usual: true, sort_order: 2 });
+  assert.deepEqual(shapePlace({ id: 1, name: "R", details: null, maps_url: null, kultum_usual: 1, sort_order: 2 }), { id: 1, name: "R", details: "", maps_url: "", kultum_usual: true, toa_room_id: "", sort_order: 2 });
 });
 
 test("place lookup ignores case and spaces", () => {

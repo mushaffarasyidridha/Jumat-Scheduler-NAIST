@@ -16,7 +16,7 @@ export async function onRequestPatch({ request, env, params, waitUntil }) {
 
   const fields = [];
   const values = [];
-  for (const key of ["name", "details", "maps_url", "kultum_usual"]) {
+  for (const key of ["name", "details", "maps_url", "kultum_usual", "toa_room_id"]) {
     if (key in place.given) {
       fields.push(`${key} = ?`);
       values.push(place[key]);

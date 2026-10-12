@@ -325,6 +325,12 @@
       "name": "Ramadan days in the calendar",
       "what": "Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement.",
       "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Ramadan evenings in the TOA app",
+      "what": "Link a place to its TOA room on the Places card. The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA.",
+      "status": "live"
     }
   ],
   "setup": [
@@ -357,6 +363,11 @@
       "name": "An admin marked in the roster",
       "status": "todo",
       "detail": "Edit your own entry and tick Admin this period (needs an email or LINE link)."
+    },
+    {
+      "name": "TOA app account",
+      "status": "todo",
+      "detail": "Add the TOA account's email and password as GitHub secrets TOA_EMAIL and TOA_PASSWORD (Settings, Secrets and variables, Actions), link each place to its TOA room on the Places card, then run Actions: Send Jumat reminders with toa_check."
     },
     {
       "name": "GitHub default branch set to main",

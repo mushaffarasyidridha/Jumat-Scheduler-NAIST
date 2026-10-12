@@ -840,7 +840,7 @@
   function placesHtml() {
     const items = state.places
       .map((p) => {
-        const bits = [p.details, p.maps_url && "map link saved", p.kultum_usual && "kultum usual"].filter(Boolean);
+        const bits = [p.details, p.maps_url && "map link saved", p.toa_room_id && "TOA room linked", p.kultum_usual && "kultum usual"].filter(Boolean);
         return `<li class="planner-place-item">
           <span><strong>${escapeHtml(p.name)}</strong><span class="muted small">${escapeHtml(bits.join(" · "))}</span></span>
           <span class="planner-alert-actions">
@@ -1903,6 +1903,7 @@
     $("#place-name").value = place ? place.name : "";
     $("#place-details").value = place ? place.details : "";
     $("#place-maps").value = place ? place.maps_url : "";
+    $("#place-toa").value = place ? place.toa_room_id : "";
     $("#place-kultum").checked = place ? place.kultum_usual : false;
     $("#place-error").classList.add("hidden");
     $("#place-modal").classList.remove("hidden");
@@ -1914,6 +1915,7 @@
       name: $("#place-name").value,
       details: $("#place-details").value,
       maps_url: $("#place-maps").value,
+      toa_room_id: $("#place-toa").value,
       kultum_usual: $("#place-kultum").checked,
     };
     try {

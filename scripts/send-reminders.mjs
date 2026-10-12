@@ -18,6 +18,7 @@ import { readFileSync } from "node:fs";
 import { ALERT_ROW_SELECT } from "../functions/api/_alertmail.mjs";
 import { joinRecipients, buildJoinEmail, JOIN_ROW_SELECT } from "../functions/api/_joinmail.mjs";
 import { createBridge, syncUpcoming } from "../functions/api/_gcal.mjs";
+import { createToaClient, syncToa } from "../functions/api/_toa.mjs";
 import {
   DEFAULT_SITE_URL,
   todayInTokyo,
@@ -44,6 +45,7 @@ import {
 } from "./reminder-lib.mjs";
 
 const env = process.env;
+const TOA_CHECK = /^(1|true|yes)$/i.test(env.TOA_CHECK || "");
 const DRY_RUN = /^(1|true|yes)$/i.test(env.DRY_RUN || "") || process.argv.includes("--dry-run");
 const SITE_URL = (env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, "");
 const CF_API = env.CF_API_BASE || "https://api.cloudflare.com/client/v4";
@@ -349,6 +351,37 @@ async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
   return { synced: result.synced, failed: result.failed };
 }
 
+// Add the Ramadan evenings to the TOA app's room queues (rooms linked on the
+// Places card). Switched off until the TOA account secrets exist. Counts only in
+// the log: this repository is public.
+async function reconcileToa({ today, dryRun = DRY_RUN }) {
+  if (!env.TOA_EMAIL || !env.TOA_PASSWORD) return { failed: 0 };
+  const places = (await d1("SELECT name, toa_room_id FROM places WHERE toa_room_id IS NOT NULL")).filter((p) => p.toa_room_id);
+  if (!places.length) return { failed: 0 };
+  let gatherings = [];
+  let settings = {};
+  try {
+    gatherings = await d1(
+      `SELECT g.id, g.date, g.place, g.start_time, g.kultum, g.kultum_minutes, COALESCE(p.name, g.speaker_name) AS speaker
+       FROM gatherings g LEFT JOIN people p ON p.id = g.speaker_id WHERE g.date >= ? ORDER BY g.date ASC`,
+      [today]
+    );
+    settings = (await d1("SELECT kultum_minutes, event_minutes FROM ramadan_settings WHERE id = 1"))[0] || {};
+  } catch {
+    console.log("TOA: Ramadan tables not available yet, skipped.");
+    return { failed: 0 };
+  }
+  const client = createToaClient({ email: env.TOA_EMAIL, password: env.TOA_PASSWORD, webConfigUrl: env.TOA_WEB_CONFIG_URL || undefined });
+  const r = await syncToa({ client, gatherings, places, settings, today, dryRun });
+  const would = dryRun ? "would be " : "";
+  console.log(
+    `TOA queue: ${r.rooms} linked room(s); ${r.created} evening(s) ${would}added, ${r.updated} ${would}updated, ${r.removed} ${would}removed, ${r.same} already up to date` +
+      `${r.foreign ? `, ${r.foreign} left alone (not created by this account)` : ""}${r.withoutRoom ? `, ${r.withoutRoom} at a place with no TOA room` : ""}${r.failed ? `, ${r.failed} FAILED` : ""}.`
+  );
+  for (const e of r.errors) console.error(`FAILED: ${redact(e)}`);
+  return { failed: r.failed };
+}
+
 async function main() {
   // Test mode: one email, then stop; touches neither the database nor LINE.
   // TEST_EMAIL_TO_SENDER sends it to the Gmail account itself, so nobody has to
@@ -369,6 +402,12 @@ async function main() {
     if (!BRIDGE) throw new Error("Missing required setting(s): GCAL_BRIDGE_URL, GCAL_BRIDGE_SECRET");
     // A check is a real run: the dry-run switch (on by default) does not apply.
     const { failed } = await reconcileGoogle({ today, forcePing: true, dryRun: false });
+    return failed ? 1 : 0;
+  }
+  // "Add the Ramadan evenings to TOA now": a real run of just that part.
+  if (TOA_CHECK) {
+    if (!env.TOA_EMAIL || !env.TOA_PASSWORD) throw new Error("Missing required setting(s): TOA_EMAIL, TOA_PASSWORD");
+    const { failed } = await reconcileToa({ today, dryRun: false });
     return failed ? 1 : 0;
   }
   console.log(`${DRY_RUN ? "DRY RUN - nothing is sent or recorded. " : ""}Today in Japan: ${today}`);
@@ -464,6 +503,11 @@ async function main() {
 
   const google = await reconcileGoogle({ today });
   failed += google.failed;
+  const toa = await reconcileToa({ today }).catch((e) => {
+    console.error(`FAILED: TOA: ${redact(e.message)}`);
+    return { failed: 1 };
+  });
+  failed += toa.failed;
 
   if (DRY_RUN) {
     printSamples(due);
