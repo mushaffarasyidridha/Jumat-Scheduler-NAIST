@@ -8,7 +8,7 @@ flowchart TD
   F -->|"no"| H["Nothing more for that day"]
   G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups<br/>it carries the TOA app link when the place has a TOA room"]
   G --> J["The robot reminds the kultum speaker<br/>3, 2 and 1 day before and on the day, by email or LINE<br/>untick Remind to send none, a guest is messaged by hand"]
-  G --> L["TOA app: if the place has a TOA room picked by name on the Places card (the rooms the TOA key administers)<br/>the evening is added to that room's TOA queue with the speaker, without alerting everyone nearby<br/>the robot does it at the next run, or press toa_check in Actions"]
+  G --> L["TOA app: if the place has a TOA room picked by name on the Places card (the rooms the TOA key administers)<br/>the evening is added to that room's TOA queue with the speaker, without alerting everyone nearby<br/>a room that is open only when booked also gets a booking at the scheduled time<br/>the robot does it at the next run, or press toa_check in Actions"]
   G --> K["Google Calendar: the evening appears with the speaker invited<br/>change or delete the day and the event follows"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d

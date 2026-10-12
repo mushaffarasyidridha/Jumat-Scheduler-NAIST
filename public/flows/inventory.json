@@ -478,7 +478,7 @@
       "when": [
         "on a timer: 23:23 UTC = 08:23 JST",
         "on a timer: 05:23 UTC = 14:23 JST",
-        "by hand (options: dry_run, google_check, toa_check, test_email_to_sender, test_email)"
+        "by hand (options: dry_run, google_check, toa_check, toa_replace_bookings, test_email_to_sender, test_email)"
       ]
     },
     {

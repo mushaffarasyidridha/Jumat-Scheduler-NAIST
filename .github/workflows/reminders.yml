@@ -13,6 +13,8 @@ name: Send Jumat reminders
 #     date (the way to fill it the first time, and to see why it is failing).
 #   - toa_check: adds the Ramadan evenings to the linked TOA app rooms right now
 #     (needs the TOA key; the daily runs do it too).
+#   - toa_replace_bookings: with toa_check, also replaces a hand-made TOA booking
+#     that overlaps a scheduled prayer by the scheduled booking.
 #   - test_email_to_sender: sends one test email to the community Gmail itself
 #     and stops (nothing to type, so no address ends up in a public run page).
 #   - test_email: sends one test email to the address typed in and stops.
@@ -36,6 +38,10 @@ on:
         default: false
       toa_check:
         description: "Add the Ramadan evenings to the linked TOA app rooms now (needs the TOA key)"
+        type: boolean
+        default: false
+      toa_replace_bookings:
+        description: "With toa_check: also replace a hand-made TOA booking that overlaps a scheduled prayer (leave off to keep them)"
         type: boolean
         default: false
       test_email_to_sender:
@@ -98,4 +104,5 @@ jobs:
           # the Ramadan evenings to TOA room queues (empty until set up: then the job skips TOA).
           TOA_API_KEY: ${{ secrets.TOA_API_KEY }}
           TOA_CHECK: ${{ github.event_name == 'workflow_dispatch' && inputs.toa_check }}
+          TOA_REPLACE_BOOKINGS: ${{ github.event_name == 'workflow_dispatch' && inputs.toa_replace_bookings }}
         run: node scripts/send-reminders.mjs

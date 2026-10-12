@@ -257,6 +257,13 @@ rooms they administer and nothing else, and can be revoked in the same screen. E
 people nearby are not told about every evening of Ramadan. Entries of other people are never touched. Until the key exists,
 nothing is sent. The log prints counts only.
 
+**TOA bookings.** A TOA room can be set to "only open when booked". For a place linked to such a room, every Friday prayer
+and Ramadan evening held there becomes a TOA booking at exactly the scheduled time (Friday 12:35 for 30 minutes; an evening
+from its start for the event length), added, moved and removed by the same job as the schedule changes (each booking has its
+own id, `naist-friday-<date>` or `naist-ramadan-<date>`). A booking made by hand in TOA is never touched, except: a
+hand-started `toa_check` with **toa_replace_bookings** also replaces a one-off hand-made booking that overlaps a scheduled
+prayer (a weekly one is only reported). Rooms open all the time need no bookings and are skipped.
+
 A place with a TOA room also puts a link to that room in the **TOA web app** (`https://toa-rooms.pages.dev/app/#/room/<id>`: its
 queue and any live broadcast) into its announcements (Friday and Ramadan), the Google Calendar and feed events, and the day's
 window. The TOA app cannot be embedded in a page (it forbids framing), so this is a link, not a frame.

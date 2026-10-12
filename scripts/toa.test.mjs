@@ -1,14 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseToaRoomId, toaExternalId, desiredToaEntry, planRoom, syncToa, createToaClient, matches } from "../functions/api/_toa.mjs";
+import { parseToaRoomId, toaExternalId, desiredToaEntry, planRoom, syncToa, createToaClient, matches, syncToaBookings, planBookings, desiredBookingsByRoom } from "../functions/api/_toa.mjs";
 import { parsePlace } from "../functions/api/_places.mjs";
 
 const NOW = Date.UTC(2027, 1, 1);
 const KEY = "toa_" + "k".repeat(40);
 
 // A tiny TOA: GET /rooms, GET/POST/DELETE /rooms/{room}/queue, answering like TOA's /api/v1.
-function fakeToa({ adminOf = ["room_A", "room_B"], names = { room_A: "Musholla BS", room_B: "Dorm 7" }, failRooms = [], key = KEY } = {}) {
+function fakeToa({ adminOf = ["room_A", "room_B"], names = { room_A: "Musholla BS", room_B: "Dorm 7" }, availability = { room_A: "booked", room_B: "booked" }, failRooms = [], key = KEY } = {}) {
   const queues = {};
+  const bookings = {};
   const calls = [];
   let nextId = 1;
   const fetchImpl = async (url, init = {}) => {
@@ -18,10 +19,32 @@ function fakeToa({ adminOf = ["room_A", "room_B"], names = { room_A: "Musholla B
     calls.push({ method, path: u.pathname, body: init.body ? JSON.parse(init.body) : undefined, auth: init.headers?.authorization });
     if (init.headers?.authorization !== `Bearer ${key}`) return reply(401, { ok: false, error: "invalid_key", message: `The key ${init.headers?.authorization} is not valid.` });
     const parts = u.pathname.replace(/^\/api\/v1/, "").split("/").filter(Boolean);
-    if (parts[0] === "rooms" && parts.length === 1) return reply(200, { ok: true, rooms: adminOf.map((id) => ({ id, name: names[id] || id, role: "admin" })) });
+    if (parts[0] === "rooms" && parts.length === 1) return reply(200, { ok: true, rooms: adminOf.map((id) => ({ id, name: names[id] || id, role: "admin", availability: availability[id] || "always" })) });
     const [, room, kind, id] = parts;
     if (!adminOf.includes(room)) return reply(403, { ok: false, error: "not_an_admin", message: "not an admin" });
     if (failRooms.includes(room)) return reply(502, { ok: false, error: "upstream_failed", message: "Could not reach the database." });
+    if (parts.length === 2) return reply(200, { ok: true, id: room, availability: availability[room] || "always", bookings: bookings[room] ??= [] });
+    if (kind === "bookings") {
+      const list = (bookings[room] ??= []);
+      if (method === "DELETE") {
+        const i = list.findIndex((x) => x.id === id);
+        if (i < 0) return reply(404, { ok: false, error: "not_found" });
+        list.splice(i, 1);
+        return reply(200, { ok: true, removed: id });
+      }
+      if (method === "POST") {
+        const b = JSON.parse(init.body);
+        const item = { start: Date.parse(b.start), end: Date.parse(b.end), note: b.note || "", repeat: "once", externalId: b.externalId || "" };
+        const have = b.externalId && list.find((x) => x.externalId === b.externalId);
+        if (have) {
+          Object.assign(have, item);
+          return reply(200, { ok: true, id: have.id, created: false, updated: true });
+        }
+        list.push({ id: `-B${nextId++}`, ...item });
+        return reply(200, { ok: true, id: list.at(-1).id, created: true });
+      }
+      return reply(200, { ok: true, bookings: list });
+    }
     const queue = (queues[room] ??= []);
     if (method === "GET") return reply(200, { ok: true, queue });
     if (method === "DELETE") {
@@ -46,7 +69,7 @@ function fakeToa({ adminOf = ["room_A", "room_B"], names = { room_A: "Musholla B
     }
     return reply(404, { ok: false, error: "not_found" });
   };
-  return { fetchImpl, queues, calls };
+  return { fetchImpl, queues, bookings, calls };
 }
 
 const places = [
@@ -210,4 +233,101 @@ test("planRoom: add, update, same and removal", () => {
   const have = { id: "x", externalId: a.body.externalId, ...{ label: a.expect.label, leader: a.expect.leader, time: a.expect.time, end: a.expect.end, note: a.expect.note } };
   assert.equal(planRoom({ wanted, queue: [have], nowMs: NOW }).same, 1);
   assert.equal(planRoom({ wanted, queue: [{ ...have, leader: "Old" }], nowMs: NOW }).update.length, 1);
+});
+
+// ---------- bookings ----------
+
+const friday = (over = {}) => ({ date: "2027-02-12", venue: "Assembly Room - SENTAN", ...over });
+const syncBookings = (fake, over = {}) =>
+  syncToaBookings({
+    client: client(fake),
+    fridays: [friday()],
+    gatherings: [],
+    places,
+    settings,
+    today: "2027-02-01",
+    nowMs: NOW,
+    adminRooms: [
+      { id: "room_A", availability: "booked" },
+      { id: "room_B", availability: "booked" },
+    ],
+    ...over,
+  });
+
+test("a Friday prayer at a book-only room becomes a booking at exactly the scheduled time", async () => {
+  const fake = fakeToa();
+  const r = await syncBookings(fake);
+  assert.equal(r.created, 1);
+  const b = fake.bookings.room_A[0];
+  assert.equal(b.externalId, "naist-friday-2027-02-12");
+  assert.equal(b.start, Date.UTC(2027, 1, 12, 3, 35)); // 12:35 Japan time
+  assert.equal(b.end - b.start, 30 * 60000);
+  assert.equal(b.note, "Friday prayer");
+  const again = await syncBookings(fake);
+  assert.equal(again.created + again.updated + again.removed, 0);
+  assert.equal(again.same, 1);
+});
+
+test("a Ramadan evening is booked for its start time and the event length", async () => {
+  const fake = fakeToa();
+  const r = await syncBookings(fake, { fridays: [], gatherings: [day({ place: "Lounge Dorm 1" })] });
+  assert.equal(r.created, 1);
+  const b = fake.bookings.room_B[0];
+  assert.equal(b.externalId, "naist-ramadan-2027-02-08");
+  assert.equal(b.start, Date.UTC(2027, 1, 8, 10, 30));
+  assert.equal(b.end - b.start, 90 * 60000);
+});
+
+test("moving a Friday to another place moves its booking; deleting the day removes it", async () => {
+  const fake = fakeToa();
+  await syncBookings(fake);
+  const moved = await syncBookings(fake, { fridays: [friday({ venue: "Lounge Dorm 1" })] });
+  assert.equal(moved.created, 1);
+  assert.equal(moved.removed, 1);
+  assert.equal(fake.bookings.room_A.length, 0);
+  assert.equal(fake.bookings.room_B.length, 1);
+  const gone = await syncBookings(fake, { fridays: [] });
+  assert.equal(gone.removed, 1);
+  assert.equal(fake.bookings.room_B.length, 0);
+});
+
+test("a changed time updates the same booking", async () => {
+  const fake = fakeToa();
+  await syncBookings(fake, { fridays: [], gatherings: [day()] });
+  const r = await syncBookings(fake, { fridays: [], gatherings: [day({ start_time: "20:00" })] });
+  assert.equal(r.updated, 1);
+  assert.equal(fake.bookings.room_A.length, 1);
+  assert.equal(fake.bookings.room_A[0].start, Date.UTC(2027, 1, 8, 11, 0));
+});
+
+test("a hand-made booking is kept unless replacing was asked for, and only when it overlaps", async () => {
+  const fake = fakeToa();
+  const handMade = { id: "-hand", start: Date.UTC(2027, 1, 12, 3, 0), end: Date.UTC(2027, 1, 12, 4, 30), note: "x", repeat: "once", externalId: "" };
+  const elsewhere = { id: "-other", start: Date.UTC(2027, 1, 15, 3, 0), end: Date.UTC(2027, 1, 15, 4, 30), note: "y", repeat: "once", externalId: "" };
+  const weekly = { id: "-weekly", start: Date.UTC(2027, 1, 12, 3, 0), end: Date.UTC(2027, 1, 12, 4, 0), note: "z", repeat: "weekly", externalId: "" };
+  fake.bookings.room_A = [handMade, elsewhere, weekly];
+  const kept = await syncBookings(fake);
+  assert.equal(kept.left, 2, "the overlapping one-off and weekly are reported, not touched");
+  assert.equal(fake.bookings.room_A.length, 4);
+  const replaced = await syncBookings(fake, { replaceOthers: true });
+  assert.equal(replaced.replaced, 1);
+  assert.deepEqual(fake.bookings.room_A.map((x) => x.id).filter((i) => !i.startsWith("-B")), ["-other", "-weekly"]);
+});
+
+test("a room that is open all the time needs no bookings", async () => {
+  const fake = fakeToa({ availability: { room_A: "always", room_B: "booked" } });
+  const r = await syncBookings(fake, { adminRooms: [{ id: "room_A", availability: "always" }, { id: "room_B", availability: "booked" }] });
+  assert.equal(r.alwaysOpen, 1);
+  assert.equal(r.created, 0);
+  assert.ok(!fake.calls.some((c) => c.path.includes("room_A")));
+});
+
+test("bookings: a dry run writes nothing, and past or unlinked days are ignored", async () => {
+  const fake = fakeToa();
+  const r = await syncBookings(fake, { dryRun: true });
+  assert.equal(r.created, 1);
+  assert.equal(fake.calls.filter((c) => c.method !== "GET").length, 0);
+  const none = desiredBookingsByRoom({ fridays: [friday({ date: "2027-01-08" }), friday({ venue: "Elsewhere" })], gatherings: [], places, settings, today: "2027-02-01", nowMs: NOW });
+  assert.equal([...none.values()].reduce((n, m) => n + m.size, 0), 0);
+  assert.equal(planBookings({ wanted: new Map(), bookings: [], nowMs: NOW }).same, 0);
 });
