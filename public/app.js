@@ -1896,6 +1896,23 @@
   // ---------- Places (admin) ----------
 
   let editingPlaceId = null;
+  // The TOA rooms the TOA account administers (the daily job keeps the list), as a dropdown.
+  async function fillToaPick(current) {
+    const pick = $("#place-toa-pick");
+    if (!state.toaRooms) state.toaRooms = await api("/api/toa-rooms").catch(() => []);
+    pick.classList.toggle("hidden", !state.toaRooms.length);
+    pick.innerHTML =
+      `<option value="">(no TOA room)</option>` +
+      state.toaRooms.map((r) => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)}</option>`).join("") +
+      `<option value="__other">Another room (type its id or link)</option>`;
+    pick.value = state.toaRooms.some((r) => r.id === current) ? current : current ? "__other" : "";
+    $("#place-toa").classList.toggle("hidden", !state.toaRooms.length || pick.value !== "__other");
+  }
+  $("#place-toa-pick").addEventListener("change", (e) => {
+    const v = e.target.value;
+    $("#place-toa").classList.toggle("hidden", v !== "__other");
+    $("#place-toa").value = v === "__other" ? "" : v;
+  });
   function openPlaceModal(place) {
     editingPlaceId = place ? place.id : null;
     $("#place-modal-title").textContent = place ? "Edit place" : "Add a place";
@@ -1904,6 +1921,7 @@
     $("#place-details").value = place ? place.details : "";
     $("#place-maps").value = place ? place.maps_url : "";
     $("#place-toa").value = place ? place.toa_room_id : "";
+    fillToaPick(place ? place.toa_room_id : "");
     $("#place-kultum").checked = place ? place.kultum_usual : false;
     $("#place-error").classList.add("hidden");
     $("#place-modal").classList.remove("hidden");

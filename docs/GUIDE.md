@@ -119,7 +119,7 @@ flowchart TD
 | Admin | Places | A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event. | ✅ live |
 | Admin | Ramadan days | First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. The kultum speaker is reminded by email or LINE 3, 2 and 1 day before and on the day (a guest is not), and each evening appears in Google Calendar and the public calendar feed with the speaker invited. | ✅ live |
 | Members | Ramadan days in the calendar | Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement. | ✅ live |
-| Admin | Ramadan evenings in the TOA app | Link a place to its TOA room on the Places card. The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA. | ✅ live |
+| Admin | Ramadan evenings in the TOA app | Pick a place's TOA room by name on the Places card (the list is every TOA room the dedicated TOA account is admin of, refreshed by the daily job; no long ids to type). The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA. | ✅ live |
 
 ## For members
 
@@ -297,7 +297,7 @@ flowchart TD
   F -->|"no"| H["Nothing more for that day"]
   G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups"]
   G --> J["The robot reminds the kultum speaker<br/>3, 2 and 1 day before and on the day, by email or LINE<br/>untick Remind to send none, a guest is messaged by hand"]
-  G --> L["TOA app: if the place has a TOA room linked on the Places card<br/>the evening is added to that room's TOA queue with the speaker<br/>the robot does it at the next run, or press toa_check in Actions"]
+  G --> L["TOA app: if the place has a TOA room picked by name on the Places card (the rooms the TOA account administers)<br/>the evening is added to that room's TOA queue with the speaker<br/>the robot does it at the next run, or press toa_check in Actions"]
   G --> K["Google Calendar: the evening appears with the speaker invited<br/>change or delete the day and the event follows"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
@@ -334,7 +334,7 @@ flowchart TD
     R2 --> R3["The admin to-do messages"]
     R3 --> R4["Alert emails that were not sent yet"]
     R4 --> R5["Google Calendar safety re-sync<br/>Fridays and Ramadan evenings"]
-    R5 --> R5b["TOA app: Ramadan evenings are added, changed or removed<br/>in the linked rooms, once the TOA account is set up"]
+    R5 --> R5b["TOA app: the rooms its account administers are listed for the Places card<br/>Ramadan evenings are added, changed or removed in the linked rooms<br/>once the TOA account is set up"]
     R5b --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
   end
 
@@ -385,6 +385,7 @@ flowchart TD
 | `/api/ramadan/generate` | The admin makes the Ramadan days from the dates and the weekly pattern. | POST: access code |
 | `/api/reminders/status` | What the planner shows about the reminder job, the admin and Google Calendar. | GET: access code |
 | `/api/reminders/unsubscribe` | The stop-these-reminders link at the bottom of every email. | GET: private link; POST: private link |
+| `/api/toa-rooms` | The admin reads the TOA app rooms the TOA account administers, to pick one by name on the Places card. | GET: access code |
 
 #### Database tables
 
@@ -403,6 +404,7 @@ flowchart TD
 | `ramadan_settings` | `0016_ramadan.sql` |
 | `ramadan_pattern` | `0016_ramadan.sql` |
 | `gatherings` | `0016_ramadan.sql` |
+| `toa_rooms` | `0018_toa_rooms.sql` |
 
 #### Database changes, in order
 
@@ -425,6 +427,7 @@ flowchart TD
 | `0015_places.sql` | Places (dorm lounges, the Sentan assembly room, ...) the admin can add, edit and |
 | `0016_ramadan.sql` | Ramadan: the dates, a weekly pattern, and one "gathering" (Isha + Tarawih, with a |
 | `0017_places_toa_room.sql` | The TOA app room (its id) that a place corresponds to. |
+| `0018_toa_rooms.sql` | The TOA app rooms that the TOA account is an admin of (id and name). |
 
 #### Robot jobs (GitHub Actions)
 
@@ -575,7 +578,7 @@ flowchart TD
 | LINE reminders | ✅ done | Bot connected. Each person links with a code from the roster. |
 | Google Calendar connection | ✅ done | Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window. |
 | An admin marked in the roster | ☐ to do | Edit your own entry and tick Admin this period (needs an email or LINE link). |
-| TOA app account | ☐ to do | Add the TOA account's email and password as GitHub secrets TOA_EMAIL and TOA_PASSWORD (Settings, Secrets and variables, Actions), link each place to its TOA room on the Places card, then run Actions: Send Jumat reminders with toa_check. |
+| TOA app account | ✅ done | Connected and checked: the TOA account signs in and an evening was added to a TOA room queue. To add a room later, make the account admin of it (scan its account QR), run Actions: Send Jumat reminders with toa_check, then pick the room by name on the Places card. |
 | GitHub default branch set to main | ✅ done | main is the default branch, so new pull requests and the schedule use it. |
 
 ## Help

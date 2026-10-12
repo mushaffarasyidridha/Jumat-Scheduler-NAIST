@@ -172,3 +172,27 @@ test("past days and an empty set of linked rooms do nothing at all", async () =>
   const past = await syncToa({ client: client(fb), gatherings: [day({ date: "2027-01-20" })], places, settings, today: "2027-02-01", nowMs: NOW });
   assert.equal(past.created, 0);
 });
+
+test("the rooms the account administers are listed by name, and no others", async () => {
+  const meta = {
+    room_owned: { name: "Musholla BS", admin: "robot-uid" },
+    room_added: { name: "Dorm 7", admin: "someone", admins: { "robot-uid": true } },
+    room_other: { name: "Not ours", admin: "someone", admins: { x: true } },
+    room_noperm: { name: "Locked", admin: "robot-uid" },
+    "bad id": { name: "Ignored", admin: "robot-uid" },
+  };
+  const fetchImpl = async (url, init = {}) => {
+    const u = new URL(url);
+    const reply = (status, body) => ({ ok: status < 400, status, json: async () => body });
+    if (u.hostname === "toa-rooms.pages.dev") return reply(200, { config: { apiKey: "k", databaseURL: DB } });
+    if (u.hostname === "identitytoolkit.googleapis.com") return reply(200, { idToken: "tok", localId: "robot-uid" });
+    const parts = u.pathname.replace(/^\//, "").replace(/\.json$/, "").split("/");
+    if (parts.length === 1) return reply(200, u.searchParams.get("shallow") === "true" ? Object.fromEntries(Object.keys(meta).map((k) => [k, true])) : meta);
+    const [, id, field, sub] = parts;
+    if (id === "room_noperm") return reply(401, { error: "Permission denied" });
+    const room = meta[id] || {};
+    return reply(200, sub ? room[field]?.[sub] ?? null : room[field] ?? null);
+  };
+  const rooms = await createToaClient({ email: "robot@example.org", password: "pw", fetchImpl }).listAdminRooms();
+  assert.deepEqual(rooms, [{ id: "room_added", name: "Dorm 7" }, { id: "room_owned", name: "Musholla BS" }]);
+});

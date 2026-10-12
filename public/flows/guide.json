@@ -329,7 +329,7 @@
     {
       "audience": "Admin",
       "name": "Ramadan evenings in the TOA app",
-      "what": "Link a place to its TOA room on the Places card. The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA.",
+      "what": "Pick a place's TOA room by name on the Places card (the list is every TOA room the dedicated TOA account is admin of, refreshed by the daily job; no long ids to type). The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA.",
       "status": "live"
     }
   ],
@@ -366,8 +366,8 @@
     },
     {
       "name": "TOA app account",
-      "status": "todo",
-      "detail": "Add the TOA account's email and password as GitHub secrets TOA_EMAIL and TOA_PASSWORD (Settings, Secrets and variables, Actions), link each place to its TOA room on the Places card, then run Actions: Send Jumat reminders with toa_check."
+      "status": "done",
+      "detail": "Connected and checked: the TOA account signs in and an evening was added to a TOA room queue. To add a room later, make the account admin of it (scan its account QR), run Actions: Send Jumat reminders with toa_check, then pick the room by name on the Places card."
     },
     {
       "name": "GitHub default branch set to main",
