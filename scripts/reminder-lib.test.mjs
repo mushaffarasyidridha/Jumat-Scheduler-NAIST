@@ -197,7 +197,10 @@ test("LINE text is short and has the essentials", () => {
   assert.match(text, /Primary khatib \+ Imam/);
   assert.match(text, /Friday, 16 October 2026/);
   assert.ok(text.includes(PRAYER_TIME));
-  assert.ok(text.length < 600);
+  // The khutbah checklist makes a khatib's message longer, still far below LINE's 5000 characters.
+  assert.ok(text.length < 1600);
+  const plain = buildLineText({ friday: friday(), person: person({ khutbah_checklist: false }), roles: ["Primary khatib", "Imam"], days: 7 });
+  assert.ok(plain.length < 600, "without the checklist it stays short");
   assert.ok(!text.includes("unsubscribe")); // LINE users stop by blocking the bot
 });
 
@@ -399,7 +402,7 @@ test("chat text carries a short calendar link only when it has a site and a save
   const args = { friday: friday(), person: person(), roles: ["Primary khatib"], days: 3 };
   const withLink = shared.chatText({ ...args, siteUrl: "https://x.test" });
   assert.match(withLink, /📆 Add to Google Calendar: https:\/\/x\.test\/api\/calendar\/add\?friday=10&roles=p\n/);
-  assert.ok(withLink.length < 600, "still short enough for a chat message");
+  assert.ok(withLink.length < 1600, "still fine for a chat message, with the khutbah checklist");
   assert.ok(!shared.chatText(args).includes("Google Calendar"));
   assert.ok(!shared.chatText({ ...args, friday: friday({ id: undefined }), siteUrl: "https://x.test" }).includes("Google Calendar"));
 });
@@ -609,4 +612,24 @@ test("kultum: the email and the chat text carry the date with its weekday, the t
   assert.match(chat, /start at 19:45; the kultum is a short talk of about 7 minutes/);
   assert.ok(!/undefined|null/.test(text + chat));
   assert.match(buildKultumLineText({ ...args, gathering: gathering({ place: null }) }), /📍 to be announced/);
+});
+
+test("khutbah checklist: a khatib gets the 5 Shafi'i rukun unless the roster tick is off; an imam never", () => {
+  const fr = friday();
+  const khatibEmail = buildEmail({ friday: fr, person: person(), roles: ["Primary khatib"], days: 3, siteUrl: "https://x.test" }).text;
+  const khatibLine = buildLineText({ friday: fr, person: person(), roles: ["Primary khatib"], days: 3 });
+  for (const text of [khatibEmail, khatibLine]) {
+    assert.match(text, /Khutbah checklist: the 5 rukun \(Shafi'i madzhab\)/);
+    for (const word of ["Hamdalah", "Shalawat", "Wasiat taqwa", "verse of the Qur'an", "Du'a for the believers"]) assert.ok(text.includes(word), word);
+    assert.match(text, /sit briefly between the two khutbahs/);
+  }
+  assert.equal(shared.KHUTBAH_RUKUN.length, 5);
+  for (const off of [false, 0]) {
+    const t = buildEmail({ friday: fr, person: person({ khutbah_checklist: off }), roles: ["Primary khatib"], days: 3, siteUrl: "https://x.test" }).text;
+    assert.ok(!t.includes("Khutbah checklist"), `tick off (${off}) leaves it out`);
+  }
+  const imam = buildLineText({ friday: fr, person: person(), roles: ["Imam"], days: 3 });
+  assert.ok(!imam.includes("Khutbah checklist"), "an imam does not get it");
+  const both = buildLineText({ friday: fr, person: person({ khutbah_checklist: 1 }), roles: ["Primary khatib", "Imam"], days: 3 });
+  assert.ok(both.includes("Khutbah checklist"));
 });

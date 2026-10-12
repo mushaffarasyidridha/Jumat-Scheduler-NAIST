@@ -106,6 +106,10 @@ export async function onRequestPatch({ request, env, params, waitUntil }) {
     fields.push("is_admin = ?");
     values.push(body.is_admin ? 1 : 0);
   }
+  if (typeof body.khutbah_checklist === "boolean") {
+    fields.push("khutbah_checklist = ?");
+    values.push(body.khutbah_checklist ? 1 : 0);
+  }
 
   if (fields.length === 0) return badRequest("nothing to update");
 

@@ -464,7 +464,7 @@ async function main() {
 
   const fridays = await d1(FRIDAYS_SQL, [today, addDays(today, WINDOW_DAYS)]);
   const people = await d1(
-    "SELECT id, name, status, is_admin, email, reminders, line_user_id, reminder_token FROM people WHERE email IS NOT NULL OR line_user_id IS NOT NULL"
+    "SELECT id, name, status, is_admin, email, reminders, khutbah_checklist, line_user_id, reminder_token FROM people WHERE email IS NOT NULL OR line_user_id IS NOT NULL"
   );
   // Ramadan: days with a kultum and a named speaker in the next week (none outside Ramadan).
   let gatherings = [];

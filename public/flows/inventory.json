@@ -532,6 +532,10 @@
     {
       "file": "0019_device_locks.sql",
       "note": "The name lock, remembered on the server: each browser that has chosen a name is one"
+    },
+    {
+      "file": "0020_khutbah_checklist.sql",
+      "note": "The khutbah checklist: when ticked (the default), a khatib's reminders carry the five"
     }
   ],
   "workflows": [

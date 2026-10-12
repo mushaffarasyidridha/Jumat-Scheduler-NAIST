@@ -1422,6 +1422,7 @@
           ${p.reminders && (p.calendar_email || p.email) ? `<div class="roster-meta">📆 calendar invites to ${escapeHtml(p.calendar_email || p.email)}</div>` : ""}
           ${reminderReach(p) ? `<div class="roster-meta">${escapeHtml(reminderReach(p).text)}</div>` : ""}
           ${p.is_admin ? '<div class="roster-meta">🛠 Admin this period: gets the to-do reminders</div>' : ""}
+          ${p.khutbah_checklist && p.role !== "imam" ? '<div class="roster-meta">📜 Khutbah checklist (5 rukun) in the reminders</div>' : ""}
         </div>
         ${
           unlocked
@@ -1493,6 +1494,12 @@
   let editingPersonId = null;
   let pendingJoinId = null; // set while the Add person form was opened from a "my name isn't listed" request
 
+  // The khutbah checklist tick only matters for someone who can be khatib.
+  function showKhutbahRow() {
+    $("#person-khutbah-row").classList.toggle("hidden", $("#person-role").value === "imam");
+  }
+  $("#person-role").addEventListener("change", showKhutbahRow);
+
   function openPersonModal(person) {
     editingPersonId = person ? person.id : null;
     $("#person-modal-title").textContent = person ? "Edit person" : "Add a person";
@@ -1510,6 +1517,8 @@
     $("#person-calendar-email").value = person && "calendar_email" in person ? person.calendar_email || "" : "";
     $("#person-reminders").checked = person && "reminders" in person ? !!person.reminders : true;
     $("#person-admin").checked = person && "is_admin" in person ? !!person.is_admin : false;
+    $("#person-khutbah").checked = person && "khutbah_checklist" in person ? !!person.khutbah_checklist : true;
+    showKhutbahRow();
     renderPersonLineBox(person);
     renderPersonDevices(person);
     $("#person-error").classList.add("hidden");
@@ -1526,6 +1535,7 @@
     $("#person-affiliation").value = r.affiliation || "naist_student";
     $("#person-country").value = r.country || "";
     $("#person-role").value = r.role || "khatib";
+    showKhutbahRow();
     $("#person-email").value = r.email || "";
     $("#person-whatsapp").value = r.whatsapp || "";
     $("#person-note").value = r.note || "";
@@ -1683,6 +1693,7 @@
       payload.calendar_email = $("#person-calendar-email").value.trim();
       payload.reminders = $("#person-reminders").checked;
       payload.is_admin = $("#person-admin").checked;
+      payload.khutbah_checklist = $("#person-khutbah").checked;
     }
     if (!name) {
       $("#person-error").textContent = "Name is required";

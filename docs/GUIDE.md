@@ -101,6 +101,7 @@ flowchart TD
 | Members | Public Google Calendar | A shared Google Calendar the website keeps up to date within a minute. | ✅ live |
 | Scheduled people | Reminder emails | 7 days before and the day before, to people whose email is on the roster. | ✅ live |
 | Scheduled people | Reminder LINE messages | The same reminders on LINE, for people who linked the bot. | ✅ live |
+| Members | Khutbah checklist for the khatib | A khatib's reminders (email, LINE, and the Copy / WhatsApp text) carry the five rukun of the Friday khutbah in the Shafi'i madzhab: hamdalah, shalawat on the Prophet and wasiat taqwa in both khutbahs, a verse of the Qur'an in one of them, and du'a for the believers in the second; plus the main conditions (the rukun in Arabic, standing, sitting briefly between the two khutbahs, wudu, audible, within Zuhr time, no long break). A tick on each person in the roster (on by default) turns it off for someone who does not need it. | ✅ live |
 | Scheduled people | Add to Google Calendar link | In every reminder: a ready-made calendar event with their role. | ✅ live |
 | Scheduled people | Google Calendar invitation | Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off. | ✅ live |
 | Admin | Access code | Unlocks editing. Members never need it. | ✅ live |
@@ -158,7 +159,8 @@ How you are told, and what to do if you cannot come.
 flowchart TD
   A["The admin picks you for a Friday"] --> B["You are told in the way the admin can reach you:<br/>Email, if your email is on the roster<br/>LINE, if you linked LINE<br/>a WhatsApp or Facebook message from the admin, if neither<br/>a Google Calendar invitation, to the same email"]
   B --> C["Reminders: 7 days before and the day before<br/>for the primary khatib and the imam; the secondary khatib (standby, usually next week's khatib) gets none"]
-  C --> D{"Can you still come?"}
+  C --> K["Khatib: the reminder carries the khutbah checklist<br/>the 5 rukun in the Shafi'i madzhab: hamdalah, shalawat and wasiat taqwa in both khutbahs,<br/>a Qur'an verse in one, du'a for the believers in the second<br/>plus the main conditions (rukun in Arabic, standing, sitting between the two)<br/>unless the admin unticked it on the roster"]
+  K --> D{"Can you still come?"}
   D -->|"yes"| E["Jumat prayer starts at 12:35<br/>the calendar event runs 12:35 to 13:05"]
   D -->|"no"| F["Open the Can't make it link<br/>in the reminder or in the calendar event"]
   F --> G["Choose your name, then<br/>I can't make it"]
@@ -170,7 +172,7 @@ flowchart TD
   classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
   class A,H,I admin
-  class C,D,E member
+  class C,D,E,K member
   class B out
   class F,G warn
 ```
@@ -219,7 +221,8 @@ The more ways a person can be reached, the less you do by hand.
 flowchart TD
   A["Roster: + Add person<br/>or Edit on an existing person"] --> B["Name, role (khatib, imam or both),<br/>affiliation, country, note"]
   B --> C["How can this person be reached? Fill in any of these:<br/>Email: automatic reminder emails and the Google Calendar invitation, keep the reminders box ticked<br/>LINE: press Get LINE link code, the person sends the code to the bot<br/>WhatsApp number like +81 90 1234 5678: a one-tap button in the planner<br/>Different address for Google Calendar: only if the Google account is another address<br/>Nothing yet: you copy the reminder and send it by hand"]
-  C --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
+  C --> K["Khutbah checklist box (khatib, ticked by default)<br/>their reminders carry the 5 rukun of the khutbah (Shafi'i) and its main conditions<br/>untick it for someone who does not need it"]
+  K --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
   D --> H["Devices with the name locked (Edit person)<br/>see each device and when it was last opened<br/>Reset one, or Reset all: it can choose a name again at its next visit"]
   H --> G{"Later, if something changes"}
   G -->|"left NAIST"| E["Mark left NAIST<br/>the person stays in the history but is no longer offered"]
@@ -229,7 +232,7 @@ flowchart TD
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,B,D,E,G,H,I admin
+  class A,B,D,E,G,H,I,K admin
   class C out
   class F warn
 ```
@@ -439,6 +442,7 @@ flowchart TD
 | `0017_places_toa_room.sql` | The TOA app room (its id) that a place corresponds to. |
 | `0018_toa_rooms.sql` | The TOA app rooms that the TOA account is an admin of (id and name). |
 | `0019_device_locks.sql` | The name lock, remembered on the server: each browser that has chosen a name is one |
+| `0020_khutbah_checklist.sql` | The khutbah checklist: when ticked (the default), a khatib's reminders carry the five |
 
 #### Robot jobs (GitHub Actions)
 
