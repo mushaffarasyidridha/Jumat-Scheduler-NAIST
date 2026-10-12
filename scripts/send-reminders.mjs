@@ -123,7 +123,7 @@ function chatFor(item) {
 async function deliverEmail({ to, subject, text, unsubscribeUrl }) {
   const mailer = await getTransporter();
   await mailer.sendMail({
-    from: { name: "NAIST Jumat Scheduler", address: env.GMAIL_USER },
+    from: { name: "NAIST Muslim Community", address: env.GMAIL_USER },
     to,
     subject,
     text,
@@ -140,9 +140,9 @@ async function sendTestEmail(to) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw new Error("test_email is not a valid address");
   const mailer = await getTransporter();
   await mailer.sendMail({
-    from: { name: "NAIST Jumat Scheduler", address: env.GMAIL_USER },
+    from: { name: "NAIST Muslim Community", address: env.GMAIL_USER },
     to,
-    subject: "Jumat Scheduler: test email",
+    subject: "NAIST Muslim Community Scheduler: test email",
     text: "If you can read this, the Gmail settings for the Jumat reminders work.\n\n(Sent by the Send Jumat reminders workflow.)",
   });
   console.log("Test email sent. Check that inbox (and its spam folder).");

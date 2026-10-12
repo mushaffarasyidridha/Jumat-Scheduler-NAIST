@@ -2050,7 +2050,7 @@
       $("#subscribe-google-calendar-actions").classList.remove("hidden");
       $("#subscribe-google").classList.add("hidden"); // the live calendar replaces the slower feed button
       $("#subscribe-intro").textContent =
-        "The khatib and imam of every Friday are on the shared Jumat calendar, each event with the weekly announcement. Add it to Google Calendar once and it follows the schedule.";
+        "The khatib and imam of every Friday (and the Ramadan Isha + Tarawih evenings) are on the shared community calendar, each event with its announcement. Add it to Google Calendar once and it follows the schedule.";
       $("#subscribe-note").textContent =
         "Changes made on this website reach that calendar within a minute or so. If you are scheduled and your email is on the roster, you also get an invitation. Apple / Outlook: use the buttons above. No Google account? Use this page, or the announcement posted in the WhatsApp / Facebook groups.";
     } catch {
