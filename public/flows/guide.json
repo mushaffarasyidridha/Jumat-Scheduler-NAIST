@@ -329,7 +329,7 @@
     {
       "audience": "Admin",
       "name": "Ramadan evenings in the TOA app",
-      "what": "Pick a place's TOA room by name on the Places card (the list is every TOA room the dedicated TOA account is admin of, refreshed by the daily job; no long ids to type). The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA.",
+      "what": "Pick a place's TOA room by name on the Places card (the list is every TOA room the integration key's owner administers, refreshed by the daily job; no long ids to type). The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue through TOA's own API, with the kultum speaker, changes it when the day changes and removes it when the day is deleted, without notifying the people nearby for every evening. It needs the TOA integration key; until then nothing is sent to TOA.",
       "status": "live"
     },
     {
@@ -371,9 +371,9 @@
       "detail": "Edit your own entry and tick Admin this period (needs an email or LINE link)."
     },
     {
-      "name": "TOA app account",
-      "status": "done",
-      "detail": "Connected and checked: the TOA account signs in and an evening was added to a TOA room queue. To add a room later, make the account admin of it (scan its account QR), run Actions: Send Jumat reminders with toa_check, then pick the room by name on the Places card."
+      "name": "TOA integration key",
+      "status": "todo",
+      "detail": "TOA now has its own API for schedulers. In the TOA app go to Settings, Integration keys, New key (name it NAIST scheduler), copy the key once into the GitHub secret TOA_API_KEY, then run Actions: Send Jumat reminders with toa_check. The old TOA_EMAIL and TOA_PASSWORD secrets are no longer used and can be deleted."
     },
     {
       "name": "GitHub default branch set to main",

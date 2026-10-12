@@ -352,29 +352,25 @@ async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
 }
 
 // Add the Ramadan evenings to the TOA app's room queues (rooms linked on the
-// Places card). Switched off until the TOA account secrets exist. Counts only in
-// the log: this repository is public.
+// Places card), through TOA's API for schedulers. Switched off until the TOA key
+// exists. Counts only in the log: this repository is public.
 async function reconcileToa({ today, dryRun = DRY_RUN }) {
-  if (!env.TOA_EMAIL || !env.TOA_PASSWORD) return { failed: 0 };
-  const client = createToaClient({ email: env.TOA_EMAIL, password: env.TOA_PASSWORD, webConfigUrl: env.TOA_WEB_CONFIG_URL || undefined });
-  await client.uid(); // signs in; a wrong password stops here with a clear message
-  if (TOA_CHECK) console.log("TOA account signed in OK.");
+  if (!env.TOA_API_KEY) return { failed: 0 };
+  const client = createToaClient({ key: env.TOA_API_KEY });
+  // The rooms the key's owner administers; a wrong or revoked key stops here with a clear message.
+  const adminRooms = await client.rooms();
+  if (TOA_CHECK) console.log("TOA key OK.");
 
-  // The rooms this account administers, kept in the database for the Places card's dropdown.
-  try {
-    const rooms = await client.listAdminRooms();
-    if (!dryRun) {
-      try {
-        await d1("DELETE FROM toa_rooms");
-        for (const r of rooms) await d1("INSERT INTO toa_rooms (id, name) VALUES (?, ?)", [r.id, r.name]);
-      } catch {
-        console.log("TOA: the room list table is not ready yet, skipped.");
-      }
+  // Kept in the database for the Places card's dropdown.
+  if (!dryRun) {
+    try {
+      await d1("DELETE FROM toa_rooms");
+      for (const r of adminRooms) await d1("INSERT INTO toa_rooms (id, name) VALUES (?, ?)", [r.id, r.name]);
+    } catch {
+      console.log("TOA: the room list table is not ready yet, skipped.");
     }
-    console.log(`TOA account is admin of ${rooms.length} room(s)${dryRun ? "" : "; the Places card can offer them by name"}.`);
-  } catch (e) {
-    console.error(`FAILED: TOA room list: ${redact(e.message)}`);
   }
+  console.log(`TOA key is admin of ${adminRooms.length} room(s)${dryRun ? "" : "; the Places card can offer them by name"}.`);
 
   const places = (await d1("SELECT name, toa_room_id FROM places WHERE toa_room_id IS NOT NULL")).filter((p) => p.toa_room_id);
   if (!places.length) {
@@ -394,11 +390,11 @@ async function reconcileToa({ today, dryRun = DRY_RUN }) {
     console.log("TOA: Ramadan tables not available yet, skipped.");
     return { failed: 0 };
   }
-  const r = await syncToa({ client, gatherings, places, settings, today, dryRun });
+  const r = await syncToa({ client, gatherings, places, settings, today, dryRun, adminRooms });
   const would = dryRun ? "would be " : "";
   console.log(
     `TOA queue: ${r.rooms} linked room(s); ${r.created} evening(s) ${would}added, ${r.updated} ${would}updated, ${r.removed} ${would}removed, ${r.same} already up to date` +
-      `${r.foreign ? `, ${r.foreign} left alone (not created by this account)` : ""}${r.withoutRoom ? `, ${r.withoutRoom} at a place with no TOA room` : ""}${r.failed ? `, ${r.failed} FAILED` : ""}.`
+      `${r.notAdmin ? `, ${r.notAdmin} room(s) skipped (the key's owner is not an admin there)` : ""}${r.withoutRoom ? `, ${r.withoutRoom} at a place with no TOA room` : ""}${r.past ? `, ${r.past} already started` : ""}${r.failed ? `, ${r.failed} FAILED` : ""}.`
   );
   for (const e of r.errors) console.error(`FAILED: ${redact(e)}`);
   return { failed: r.failed };
@@ -428,7 +424,7 @@ async function main() {
   }
   // "Add the Ramadan evenings to TOA now": a real run of just that part.
   if (TOA_CHECK) {
-    if (!env.TOA_EMAIL || !env.TOA_PASSWORD) throw new Error("Missing required setting(s): TOA_EMAIL, TOA_PASSWORD");
+    if (!env.TOA_API_KEY) throw new Error("Missing required setting(s): TOA_API_KEY");
     const { failed } = await reconcileToa({ today, dryRun: false });
     return failed ? 1 : 0;
   }

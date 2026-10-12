@@ -33,8 +33,7 @@ export const SETTING_NOTES = {
   LINE_CHANNEL_ACCESS_TOKEN: "LINE bot: lets the website and the job send LINE messages.",
   GCAL_BRIDGE_URL: "Address of the Google Apps Script that edits the shared Google Calendar.",
   GCAL_BRIDGE_SECRET: "The shared secret that the website and the Apps Script both must know.",
-  TOA_EMAIL: "The email of the dedicated TOA app account that adds the Ramadan evenings to TOA room queues.",
-  TOA_PASSWORD: "That TOA account's password. Only GitHub holds it.",
+  TOA_API_KEY: "The secret integration key made in the TOA app (Settings, Integration keys). It lets the daily job add the Ramadan evenings to the TOA rooms its owner administers.",
   SITE_URL: "Optional: the website address used inside calendar events and emails, if the site gets its own domain.",
 };
 
@@ -57,7 +56,7 @@ export const ROUTE_NOTES = {
   "/api/join-requests/:id": "The admin closes a request: added to the roster, or dismissed.",
   "/api/line/webhook": "Where LINE delivers messages to the bot. This is how a person links their LINE with the code.",
   "/api/places": "The places (dorm lounges, the Sentan assembly room ...) for the venue dropdown; the admin adds one.",
-  "/api/toa-rooms": "The admin reads the TOA app rooms the TOA account administers, to pick one by name on the Places card.",
+  "/api/toa-rooms": "The admin reads the TOA app rooms the TOA key administers, to pick one by name on the Places card.",
   "/api/places/:id": "The admin edits or deletes one place (a rename follows onto the coming Fridays).",
   "/api/ramadan": "Ramadan: the dates, the weekly pattern and the days (anyone can read; the admin saves the settings).",
   "/api/ramadan/generate": "The admin makes the Ramadan days from the dates and the weekly pattern.",

@@ -1,41 +1,52 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseToaRoomId, toaEntryKey, desiredToaEntry, planRoom, syncToa, createToaClient, changedFields } from "../functions/api/_toa.mjs";
+import { parseToaRoomId, toaExternalId, desiredToaEntry, planRoom, syncToa, createToaClient, matches } from "../functions/api/_toa.mjs";
 import { parsePlace } from "../functions/api/_places.mjs";
 
-const DB = "https://toa.test";
 const NOW = Date.UTC(2027, 1, 1);
+const KEY = "toa_" + "k".repeat(40);
 
-// A tiny Firebase: sign-in, web config and the Realtime Database REST calls.
-function fakeFirebase({ password = "pw-secret", failRooms = [] } = {}) {
-  const rooms = {};
+// A tiny TOA: GET /rooms, GET/POST/DELETE /rooms/{room}/queue, answering like TOA's /api/v1.
+function fakeToa({ adminOf = ["room_A", "room_B"], names = { room_A: "Musholla BS", room_B: "Dorm 7" }, failRooms = [], key = KEY } = {}) {
+  const queues = {};
   const calls = [];
+  let nextId = 1;
   const fetchImpl = async (url, init = {}) => {
     const u = new URL(url);
-    const reply = (status, body) => ({ ok: status < 400, status, json: async () => body });
-    if (u.hostname === "toa-rooms.pages.dev") return reply(200, { config: { apiKey: "public-key", databaseURL: DB } });
-    if (u.hostname === "identitytoolkit.googleapis.com") {
-      const b = JSON.parse(init.body);
-      return b.password === password ? reply(200, { idToken: "tok", localId: "robot-uid" }) : reply(400, { error: { message: `INVALID_PASSWORD for ${b.email}` } });
-    }
-    const path = u.pathname.replace(/^\//, "").replace(/\.json$/, "");
-    const m = path.match(/^prayerRooms\/([^/]+)\/prayerQueue(?:\/([^/]+))?$/);
-    calls.push(`${init.method || "GET"} ${path}`);
-    if (!m) return reply(404, null);
-    if (failRooms.includes(m[1])) return reply(401, { error: "Permission denied" });
-    const queue = (rooms[m[1]] ??= {});
-    const entryKey = m[2];
     const method = init.method || "GET";
-    if (method === "GET") {
-      const start = JSON.parse(u.searchParams.get("startAt") || '""');
-      return reply(200, Object.fromEntries(Object.entries(queue).filter(([k]) => k.startsWith(start))));
+    const reply = (status, body) => ({ ok: status < 400, status, json: async () => body });
+    calls.push({ method, path: u.pathname, body: init.body ? JSON.parse(init.body) : undefined, auth: init.headers?.authorization });
+    if (init.headers?.authorization !== `Bearer ${key}`) return reply(401, { ok: false, error: "invalid_key", message: `The key ${init.headers?.authorization} is not valid.` });
+    const parts = u.pathname.replace(/^\/api\/v1/, "").split("/").filter(Boolean);
+    if (parts[0] === "rooms" && parts.length === 1) return reply(200, { ok: true, rooms: adminOf.map((id) => ({ id, name: names[id] || id, role: "admin" })) });
+    const [, room, kind, id] = parts;
+    if (!adminOf.includes(room)) return reply(403, { ok: false, error: "not_an_admin", message: "not an admin" });
+    if (failRooms.includes(room)) return reply(502, { ok: false, error: "upstream_failed", message: "Could not reach the database." });
+    const queue = (queues[room] ??= []);
+    if (method === "GET") return reply(200, { ok: true, queue });
+    if (method === "DELETE") {
+      const i = queue.findIndex((q) => q.id === id);
+      if (i < 0) return reply(404, { ok: false, error: "not_found", message: "No such entry" });
+      queue.splice(i, 1);
+      return reply(200, { ok: true, removed: id });
     }
-    if (method === "PUT") queue[entryKey] = JSON.parse(init.body);
-    if (method === "PATCH") queue[entryKey] = { ...queue[entryKey], ...JSON.parse(init.body) };
-    if (method === "DELETE") delete queue[entryKey];
-    return reply(200, null);
+    if (method === "POST") {
+      const b = JSON.parse(init.body);
+      const item = {
+        type: b.type, prayer: "", label: b.label, time: Date.parse(b.time), end: Date.parse(b.end),
+        leader: b.speaker || "", topic: "", repeat: b.repeat, note: b.note || "", status: "pending", externalId: b.externalId || "",
+      };
+      const have = b.externalId && queue.find((q) => q.externalId === b.externalId);
+      if (have) {
+        Object.assign(have, item);
+        return reply(200, { ok: true, id: have.id, created: false, updated: true });
+      }
+      queue.push({ id: `-N${nextId++}`, ...item });
+      return reply(200, { ok: true, id: queue.at(-1).id, created: true, notified: b.notify !== false });
+    }
+    return reply(404, { ok: false, error: "not_found" });
   };
-  return { fetchImpl, rooms, calls };
+  return { fetchImpl, queues, calls };
 }
 
 const places = [
@@ -45,7 +56,9 @@ const places = [
 ];
 const settings = { kultum_minutes: 7, event_minutes: 90 };
 const day = (over = {}) => ({ id: 1, date: "2027-02-08", place: "Assembly Room - SENTAN", start_time: "19:30", kultum: 1, kultum_minutes: null, speaker: "Ali", ...over });
-const client = (fb) => createToaClient({ email: "robot@example.org", password: "pw-secret", fetchImpl: fb.fetchImpl });
+const client = (fake, key = KEY) => createToaClient({ key, fetchImpl: fake.fetchImpl, baseUrl: "https://toa.test/api/v1" });
+const run = (fake, over = {}) => syncToa({ client: client(fake), gatherings: [day()], places, settings, today: "2027-02-01", nowMs: NOW, ...over });
+const writes = (fake) => fake.calls.filter((c) => c.method !== "GET");
 
 test("a room id is taken from a bare id or from a TOA link", () => {
   assert.equal(parseToaRoomId("room_1789796426461"), "room_1789796426461");
@@ -63,136 +76,138 @@ test("a place saves a cleaned TOA room id and rejects nonsense", () => {
   assert.match(parsePlace({ toa_room_id: "a b" }, { requireName: false }).error, /TOA room id/);
 });
 
-test("an evening becomes a custom entry with the speaker where the board shows it", () => {
-  const e = desiredToaEntry(day(), { settings });
-  assert.equal(e.entryType, "custom");
-  assert.equal(e.customLabel, "Isha + Tarawih · Kultum 7 min");
-  assert.equal(e.speakerName, "Ali");
-  assert.equal(e.khatibName, "Ali");
-  assert.equal(e.recurrence, "once");
-  assert.equal(e.scheduledTime, Date.UTC(2027, 1, 8, 10, 30)); // 19:30 Japan time
-  assert.equal(e.endTime - e.scheduledTime, 90 * 60000);
-  assert.equal(e.notes, "Place: Assembly Room - SENTAN");
-  assert.equal(toaEntryKey("2027-02-08"), "sched_2027-02-08_isha_tarawih");
+test("an evening is a custom entry with the speaker, Japan time, our own id and no notification", () => {
+  const { body, expect, startMs } = desiredToaEntry(day(), { settings });
+  assert.deepEqual(body, {
+    type: "custom",
+    label: "Isha + Tarawih · Kultum 7 min",
+    time: "2027-02-08T19:30:00+09:00",
+    end: "2027-02-08T21:00:00+09:00",
+    speaker: "Ali",
+    note: "Place: Assembly Room - SENTAN",
+    repeat: "once",
+    notify: false,
+    externalId: "naist-ramadan-2027-02-08",
+  });
+  assert.equal(startMs, Date.UTC(2027, 1, 8, 10, 30));
+  assert.equal(expect.end - expect.time, 90 * 60000);
+  assert.equal(toaExternalId("2027-02-08"), "naist-ramadan-2027-02-08");
 });
 
 test("a day without kultum has no speaker and no talk in its label; the day's own minutes win", () => {
-  const plain = desiredToaEntry(day({ kultum: 0 }), { settings });
-  assert.equal(plain.customLabel, "Isha + Tarawih");
-  assert.equal(plain.speakerName, "");
-  assert.equal(plain.durationMinutes, 0);
-  assert.equal(desiredToaEntry(day({ kultum_minutes: 10 }), { settings }).customLabel, "Isha + Tarawih · Kultum 10 min");
-  assert.equal(desiredToaEntry(day({ speaker: null }), { settings }).speakerName, "");
+  assert.equal(desiredToaEntry(day({ kultum: 0 }), { settings }).body.label, "Isha + Tarawih");
+  assert.equal(desiredToaEntry(day({ kultum: 0 }), { settings }).body.speaker, "");
+  assert.equal(desiredToaEntry(day({ kultum_minutes: 10 }), { settings }).body.label, "Isha + Tarawih · Kultum 10 min");
+  assert.equal(desiredToaEntry(day({ speaker: null }), { settings }).body.speaker, "");
 });
 
-test("an update changes only the fields it owns", () => {
-  const wanted = desiredToaEntry(day(), { settings });
-  assert.deepEqual(changedFields({ ...wanted, status: "done", attendeeCount: 5 }, wanted), {});
-  assert.deepEqual(changedFields({ ...wanted, speakerName: "Old" }, wanted), { speakerName: "Ali" });
+test("the key proves itself by listing the rooms, and a wrong key is refused without printing it", async () => {
+  const fake = fakeToa();
+  assert.deepEqual((await client(fake).rooms()).map((r) => r.name), ["Musholla BS", "Dorm 7"]);
+  const wrong = "toa_" + "x".repeat(40);
+  await assert.rejects(
+    () => client(fake, wrong).rooms(),
+    (e) => /HTTP 401/.test(e.message) && !e.message.includes(wrong)
+  );
 });
 
-test("sync creates the evenings in the linked rooms, once, and skips places without a room", async () => {
-  const fb = fakeFirebase();
+test("sync adds the evenings to the linked rooms, once, and skips places without a room", async () => {
+  const fake = fakeToa();
   const gatherings = [day(), day({ id: 2, date: "2027-02-10", place: "Lounge Dorm 1", kultum: 0 }), day({ id: 3, date: "2027-02-12", place: "Elsewhere" })];
-  const r = await syncToa({ client: client(fb), gatherings, places, settings, today: "2027-02-01", nowMs: NOW });
+  const r = await run(fake, { gatherings });
   assert.equal(r.created, 2);
   assert.equal(r.withoutRoom, 1);
-  assert.deepEqual(Object.keys(fb.rooms.room_A), ["sched_2027-02-08_isha_tarawih"]);
-  assert.deepEqual(Object.keys(fb.rooms.room_B), ["sched_2027-02-10_isha_tarawih"]);
-  const made = fb.rooms.room_A["sched_2027-02-08_isha_tarawih"];
-  assert.equal(made.addedBy, "robot-uid");
-  assert.equal(made.status, "pending");
-  assert.equal(made.topic, "");
-  const again = await syncToa({ client: client(fb), gatherings, places, settings, today: "2027-02-01", nowMs: NOW });
+  assert.equal(fake.queues.room_A.length, 1);
+  assert.equal(fake.queues.room_B.length, 1);
+  assert.ok(writes(fake).every((c) => c.body.notify === false), "no write tells the people nearby");
+  assert.ok(fake.calls.every((c) => c.auth === `Bearer ${KEY}`));
+  const again = await run(fake, { gatherings });
   assert.equal(again.created + again.updated + again.removed, 0);
   assert.equal(again.same, 2);
 });
 
-test("a changed speaker updates the entry without touching attendees or status", async () => {
-  const fb = fakeFirebase();
-  await syncToa({ client: client(fb), gatherings: [day()], places, settings, today: "2027-02-01", nowMs: NOW });
-  const key = "sched_2027-02-08_isha_tarawih";
-  fb.rooms.room_A[key].attendees = { u1: { displayName: "Zed", joinedAt: 1 } };
-  fb.rooms.room_A[key].status = "done";
-  const r = await syncToa({ client: client(fb), gatherings: [day({ speaker: "Omar" })], places, settings, today: "2027-02-01", nowMs: NOW });
+test("a changed speaker or time updates the same entry rather than adding another", async () => {
+  const fake = fakeToa();
+  await run(fake);
+  const r = await run(fake, { gatherings: [day({ speaker: "Omar", start_time: "20:00" })] });
   assert.equal(r.updated, 1);
-  assert.equal(fb.rooms.room_A[key].speakerName, "Omar");
-  assert.equal(fb.rooms.room_A[key].status, "done");
-  assert.equal(fb.rooms.room_A[key].attendees.u1.displayName, "Zed");
+  assert.equal(fake.queues.room_A.length, 1);
+  assert.equal(fake.queues.room_A[0].leader, "Omar");
+  assert.equal(fake.queues.room_A[0].time, Date.UTC(2027, 1, 8, 11, 0));
 });
 
-test("a deleted day removes its own future entry only", async () => {
-  const fb = fakeFirebase();
-  await syncToa({ client: client(fb), gatherings: [day(), day({ id: 2, date: "2027-02-09" })], places, settings, today: "2027-02-01", nowMs: NOW });
-  fb.rooms.room_A.someone_elses = { addedBy: "other", scheduledTime: Date.UTC(2027, 1, 20) };
-  fb.rooms.room_A["sched_2027-01-01_isha_tarawih"] = { addedBy: "robot-uid", scheduledTime: Date.UTC(2027, 0, 1) }; // already past
-  const r = await syncToa({ client: client(fb), gatherings: [day()], places, settings, today: "2027-02-01", nowMs: NOW });
+test("a deleted day removes its own future entry, and nobody else's", async () => {
+  const fake = fakeToa();
+  await run(fake, { gatherings: [day(), day({ id: 2, date: "2027-02-09" })] });
+  fake.queues.room_A.push({ id: "-others", label: "Kajian", externalId: "", time: Date.UTC(2027, 1, 20), end: 0 });
+  fake.queues.room_A.push({ id: "-ext", label: "Class", externalId: "someone-else-1", time: Date.UTC(2027, 1, 21), end: 0 });
+  fake.queues.room_A.push({ id: "-past", label: "Isha + Tarawih", externalId: "naist-ramadan-2027-01-01", time: Date.UTC(2027, 0, 1), end: 0 });
+  const r = await run(fake);
   assert.equal(r.removed, 1);
-  assert.ok(!fb.rooms.room_A["sched_2027-02-09_isha_tarawih"]);
-  assert.ok(fb.rooms.room_A.someone_elses);
-  assert.ok(fb.rooms.room_A["sched_2027-01-01_isha_tarawih"], "past entries are history, never deleted");
+  assert.deepEqual(fake.queues.room_A.map((q) => q.id).filter((id) => id.startsWith("-") && !id.startsWith("-N")), ["-others", "-ext", "-past"]);
+  assert.equal(fake.queues.room_A.filter((q) => q.externalId === "naist-ramadan-2027-02-09").length, 0);
 });
 
-test("an entry with our key made by someone else is left alone", () => {
-  const wanted = new Map([["sched_x", desiredToaEntry(day(), { settings })]]);
-  const plan = planRoom({ wanted, existing: { sched_x: { addedBy: "intruder" } }, uid: "robot-uid", nowMs: NOW });
-  assert.equal(plan.foreign, 1);
-  assert.equal(plan.create.length + plan.update.length + plan.remove.length, 0);
+test("the first version's database-written entries are replaced by the API's, not doubled", async () => {
+  const fake = fakeToa();
+  fake.queues.room_A = [
+    { id: "sched_2027-02-08_isha_tarawih", label: "Isha + Tarawih · Kultum 7 min", externalId: "", time: Date.UTC(2027, 1, 8, 10, 30), end: Date.UTC(2027, 1, 8, 12, 0) },
+    { id: "sched_2027-01-05_isha_tarawih", label: "Isha + Tarawih", externalId: "", time: Date.UTC(2027, 0, 5), end: 0 },
+  ];
+  const r = await run(fake);
+  assert.equal(r.created, 1);
+  assert.equal(r.removed, 1, "only the future legacy entry goes");
+  assert.deepEqual(fake.queues.room_A.map((q) => q.id).sort(), ["-N1", "sched_2027-01-05_isha_tarawih"]);
+});
+
+test("an evening that began over an hour ago is left alone as history", async () => {
+  const fake = fakeToa();
+  const r = await run(fake, { gatherings: [day({ date: "2027-02-01", start_time: "00:30" })], nowMs: Date.UTC(2027, 1, 1, 15, 31) });
+  assert.equal(r.past, 1);
+  assert.equal(r.created, 0);
+  assert.equal(writes(fake).length, 0);
 });
 
 test("a dry run reads but never writes", async () => {
-  const fb = fakeFirebase();
-  const r = await syncToa({ client: client(fb), gatherings: [day()], places, settings, today: "2027-02-01", nowMs: NOW, dryRun: true });
+  const fake = fakeToa();
+  const r = await run(fake, { dryRun: true });
   assert.equal(r.created, 1);
-  assert.ok(!fb.calls.some((c) => /^(PUT|PATCH|DELETE)/.test(c)));
-  assert.deepEqual(fb.rooms.room_A, {});
+  assert.equal(writes(fake).length, 0);
 });
 
-test("one room failing does not stop the others, and the error carries no password", async () => {
-  const fb = fakeFirebase({ failRooms: ["room_A"] });
-  const r = await syncToa({ client: client(fb), gatherings: [day(), day({ id: 2, date: "2027-02-10", place: "Lounge Dorm 1" })], places, settings, today: "2027-02-01", nowMs: NOW });
+test("a room the key's owner does not administer is skipped, and one failing room does not stop the others", async () => {
+  const fake = fakeToa({ adminOf: ["room_A", "room_B"], failRooms: ["room_A"] });
+  const gatherings = [day(), day({ id: 2, date: "2027-02-10", place: "Lounge Dorm 1" })];
+  const r = await run(fake, { gatherings });
   assert.equal(r.failed, 1);
   assert.equal(r.created, 1);
-  assert.ok(!JSON.stringify(r).includes("pw-secret"));
+  assert.ok(!JSON.stringify(r).includes(KEY));
+  const other = await run(fakeToa({ adminOf: ["room_B"] }), { gatherings, adminRooms: [{ id: "room_B" }] });
+  assert.equal(other.notAdmin, 1);
+  assert.equal(other.created, 1);
 });
 
-test("a wrong password fails clearly without printing it or the email", async () => {
-  const fb = fakeFirebase({ password: "other" });
-  await assert.rejects(
-    () => syncToa({ client: client(fb), gatherings: [day()], places, settings, today: "2027-02-01", nowMs: NOW }),
-    (e) => /sign-in failed/.test(e.message) && !e.message.includes("pw-secret") && !e.message.includes("robot@example.org")
-  );
+test("an existing entry is recognised as matching only when everything shown is the same", () => {
+  const { expect } = desiredToaEntry(day(), { settings });
+  const item = { label: expect.label, leader: "Ali", time: expect.time, end: expect.end, note: expect.note };
+  assert.equal(matches(item, expect), true);
+  assert.equal(matches({ ...item, leader: "Omar" }, expect), false);
+  assert.equal(matches({ ...item, note: "" }, expect), false);
 });
 
-test("past days and an empty set of linked rooms do nothing at all", async () => {
-  const fb = fakeFirebase();
-  const none = await syncToa({ client: client(fb), gatherings: [day()], places: [{ name: "x", toa_room_id: null }], settings, today: "2027-02-01", nowMs: NOW });
-  assert.equal(none.rooms, 0);
-  assert.equal(fb.calls.length, 0);
-  const past = await syncToa({ client: client(fb), gatherings: [day({ date: "2027-01-20" })], places, settings, today: "2027-02-01", nowMs: NOW });
-  assert.equal(past.created, 0);
+test("no linked rooms means nothing is read or written", async () => {
+  const fake = fakeToa();
+  const r = await run(fake, { places: [{ name: "x", toa_room_id: null }] });
+  assert.equal(r.rooms, 0);
+  assert.equal(fake.calls.length, 0);
 });
 
-test("the rooms the account administers are listed by name, and no others", async () => {
-  const meta = {
-    room_owned: { name: "Musholla BS", admin: "robot-uid" },
-    room_added: { name: "Dorm 7", admin: "someone", admins: { "robot-uid": true } },
-    room_other: { name: "Not ours", admin: "someone", admins: { x: true } },
-    room_noperm: { name: "Locked", admin: "robot-uid" },
-    "bad id": { name: "Ignored", admin: "robot-uid" },
-  };
-  const fetchImpl = async (url, init = {}) => {
-    const u = new URL(url);
-    const reply = (status, body) => ({ ok: status < 400, status, json: async () => body });
-    if (u.hostname === "toa-rooms.pages.dev") return reply(200, { config: { apiKey: "k", databaseURL: DB } });
-    if (u.hostname === "identitytoolkit.googleapis.com") return reply(200, { idToken: "tok", localId: "robot-uid" });
-    const parts = u.pathname.replace(/^\//, "").replace(/\.json$/, "").split("/");
-    if (parts.length === 1) return reply(200, u.searchParams.get("shallow") === "true" ? Object.fromEntries(Object.keys(meta).map((k) => [k, true])) : meta);
-    const [, id, field, sub] = parts;
-    if (id === "room_noperm") return reply(401, { error: "Permission denied" });
-    const room = meta[id] || {};
-    return reply(200, sub ? room[field]?.[sub] ?? null : room[field] ?? null);
-  };
-  const rooms = await createToaClient({ email: "robot@example.org", password: "pw", fetchImpl }).listAdminRooms();
-  assert.deepEqual(rooms, [{ id: "room_added", name: "Dorm 7" }, { id: "room_owned", name: "Musholla BS" }]);
+test("planRoom: add, update, same and removal", () => {
+  const a = desiredToaEntry(day(), { settings });
+  const wanted = new Map([[a.body.externalId, a]]);
+  const plan = planRoom({ wanted, queue: [], nowMs: NOW });
+  assert.equal(plan.create.length, 1);
+  const have = { id: "x", externalId: a.body.externalId, ...{ label: a.expect.label, leader: a.expect.leader, time: a.expect.time, end: a.expect.end, note: a.expect.note } };
+  assert.equal(planRoom({ wanted, queue: [have], nowMs: NOW }).same, 1);
+  assert.equal(planRoom({ wanted, queue: [{ ...have, leader: "Old" }], nowMs: NOW }).update.length, 1);
 });

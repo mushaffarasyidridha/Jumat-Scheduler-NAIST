@@ -1906,7 +1906,7 @@
   // ---------- Places (admin) ----------
 
   let editingPlaceId = null;
-  // The TOA rooms the TOA account administers (the daily job keeps the list), as a dropdown.
+  // The TOA rooms the TOA key administers (the daily job keeps the list), as a dropdown.
   async function fillToaPick(current) {
     const pick = $("#place-toa-pick");
     if (!state.toaRooms) state.toaRooms = await api("/api/toa-rooms").catch(() => []);
