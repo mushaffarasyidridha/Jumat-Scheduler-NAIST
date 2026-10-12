@@ -19,8 +19,8 @@ export async function onRequestPost({ request, env }) {
   const same = await env.DB.prepare("SELECT id FROM places WHERE name = ? COLLATE NOCASE").bind(place.name).first();
   if (same) return json({ error: "a place with that name already exists" }, { status: 409 });
 
-  const result = await env.DB.prepare("INSERT INTO places (name, details, maps_url, kultum_usual, sort_order) VALUES (?, ?, ?, ?, ?)")
-    .bind(place.name, place.details, place.maps_url, place.kultum_usual, 3)
+  const result = await env.DB.prepare("INSERT INTO places (name, details, maps_url, kultum_usual, toa_room_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(place.name, place.details, place.maps_url, place.kultum_usual, place.toa_room_id, 3)
     .run();
   const row = await env.DB.prepare(`SELECT ${PLACE_COLUMNS} FROM places WHERE id = ?`).bind(result.meta.last_row_id).first();
   return json(shapePlace(row), { status: 201 });

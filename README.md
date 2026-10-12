@@ -243,6 +243,13 @@ to send none. The day itself is skipped from two hours before the start. Each ev
 ("Isha + Tarawih - Kultum: name") with the speaker invited under the same rules and test mode as Fridays, and appears in the
 public calendar feed. Changing the speaker moves the invitation; deleting a day removes the event. No Apps Script change is needed.
 
+**TOA app.** On the Places card, give a place its **TOA room** (the room id or link from the TOA app). The daily job, or
+Actions → *Send Jumat reminders* with **toa_check**, then adds each Isha + Tarawih evening held at that place to the room's
+TOA queue as a custom entry ("Isha + Tarawih · Kultum 7 min", the speaker, the time), changes it when the day changes and
+removes it when the day is deleted. It signs in as one dedicated TOA account (GitHub secrets `TOA_EMAIL`, `TOA_PASSWORD`) and
+only ever touches entries it created itself (keys `sched_<date>_isha_tarawih`); admins' own entries, attendees and status are
+never overwritten. Until the secrets exist, nothing is sent. The log prints counts only.
+
 Members see the days in the calendar as a moon chip with the time (a microphone when there is a kultum); tapping one shows
 the place, time and speaker and offers the announcement text for the WhatsApp / Facebook groups.
 

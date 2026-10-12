@@ -1,8 +1,10 @@
 // Places: parsing what the admin typed, and the shape sent to the page.
-export const PLACE_COLUMNS = "id, name, details, maps_url, kultum_usual, sort_order";
+import { parseToaRoomId } from "./_toa.mjs";
+
+export const PLACE_COLUMNS = "id, name, details, maps_url, kultum_usual, toa_room_id, sort_order";
 
 export function shapePlace(row) {
-  return { id: row.id, name: row.name, details: row.details || "", maps_url: row.maps_url || "", kultum_usual: !!row.kultum_usual, sort_order: row.sort_order };
+  return { id: row.id, name: row.name, details: row.details || "", maps_url: row.maps_url || "", kultum_usual: !!row.kultum_usual, toa_room_id: row.toa_room_id || "", sort_order: row.sort_order };
 }
 
 const clean = (value, max) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -33,7 +35,14 @@ export function parsePlace(body, { requireName }) {
     out.kultum_usual = body.kultum_usual === true || body.kultum_usual === 1 ? 1 : 0;
     given.kultum_usual = true;
   }
+  if ("toa_room_id" in body) {
+    const id = parseToaRoomId(body.toa_room_id);
+    if (id === null) return { error: "the TOA room id looks wrong: paste the room id (room_...) or the room link from the TOA app" };
+    out.toa_room_id = id || null;
+    given.toa_room_id = true;
+  }
   if (requireName) {
+    out.toa_room_id ??= null;
     out.details ??= null;
     out.maps_url ??= null;
     out.kultum_usual ??= 0;

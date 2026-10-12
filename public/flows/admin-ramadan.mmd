@@ -8,11 +8,14 @@ flowchart TD
   F -->|"no"| H["Nothing more for that day"]
   G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups"]
   G --> J["The robot reminds the kultum speaker<br/>3, 2 and 1 day before and on the day, by email or LINE<br/>untick Remind to send none, a guest is messaged by hand"]
+  G --> L["TOA app: if the place has a TOA room linked on the Places card<br/>the evening is added to that room's TOA queue with the speaker<br/>the robot does it at the next run, or press toa_check in Actions"]
   G --> K["Google Calendar: the evening appears with the speaker invited<br/>change or delete the day and the event follows"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
   class A,B,C,E,F,G,H,I admin
   class J,K robot
+  class L out
   class D member

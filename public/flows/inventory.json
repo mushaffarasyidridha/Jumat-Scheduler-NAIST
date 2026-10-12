@@ -438,6 +438,10 @@
     {
       "file": "0016_ramadan.sql",
       "note": "Ramadan: the dates, a weekly pattern, and one \"gathering\" (Isha + Tarawih, with a"
+    },
+    {
+      "file": "0017_places_toa_room.sql",
+      "note": "The TOA app room (its id) that a place corresponds to."
     }
   ],
   "workflows": [
@@ -455,7 +459,7 @@
       "when": [
         "on a timer: 23:23 UTC = 08:23 JST",
         "on a timer: 05:23 UTC = 14:23 JST",
-        "by hand (options: dry_run, google_check, test_email_to_sender, test_email)"
+        "by hand (options: dry_run, google_check, toa_check, test_email_to_sender, test_email)"
       ]
     },
     {
@@ -545,6 +549,22 @@
         "setup.yml"
       ],
       "note": "The community access code (GitHub keeps it; the setup workflow copies it to the website as ACCESS_CODE)."
+    },
+    {
+      "name": "TOA_EMAIL",
+      "where": "GitHub secret",
+      "usedIn": [
+        "reminders.yml"
+      ],
+      "note": "The email of the dedicated TOA app account that adds the Ramadan evenings to TOA room queues."
+    },
+    {
+      "name": "TOA_PASSWORD",
+      "where": "GitHub secret",
+      "usedIn": [
+        "reminders.yml"
+      ],
+      "note": "That TOA account's password. Only GitHub holds it."
     },
     {
       "name": "SITE_URL",

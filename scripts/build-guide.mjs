@@ -33,6 +33,8 @@ export const SETTING_NOTES = {
   LINE_CHANNEL_ACCESS_TOKEN: "LINE bot: lets the website and the job send LINE messages.",
   GCAL_BRIDGE_URL: "Address of the Google Apps Script that edits the shared Google Calendar.",
   GCAL_BRIDGE_SECRET: "The shared secret that the website and the Apps Script both must know.",
+  TOA_EMAIL: "The email of the dedicated TOA app account that adds the Ramadan evenings to TOA room queues.",
+  TOA_PASSWORD: "That TOA account's password. Only GitHub holds it.",
   SITE_URL: "Optional: the website address used inside calendar events and emails, if the site gets its own domain.",
 };
 

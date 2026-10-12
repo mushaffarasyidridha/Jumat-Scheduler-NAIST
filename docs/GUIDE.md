@@ -34,6 +34,7 @@ flowchart TD
     ICS["Calendar feed .ics<br/>Apple / Outlook"]
     GC["Google Calendar<br/>public calendar + invitations"]
     MSG["Gmail and LINE bot<br/>reminder emails and messages"]
+    TOA["TOA app room queues<br/>Ramadan evenings, once a place is linked"]
     WA["WhatsApp / Facebook groups<br/>the admin posts the announcement by hand"]
   end
 
@@ -47,6 +48,7 @@ flowchart TD
   SITE -.->|"admin copies the announcement"| WA
   JOB --> MSG
   JOB -->|"safety re-sync"| GC
+  JOB -->|"Ramadan evenings"| TOA
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
@@ -55,7 +57,7 @@ flowchart TD
   class M,S member
   class A admin
   class SITE,DEP,JOB robot
-  class MSG,GC,ICS,WA out
+  class MSG,GC,ICS,WA,TOA out
 ```
 
 ### A normal week
@@ -117,6 +119,7 @@ flowchart TD
 | Admin | Places | A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link; the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event. | ✅ live |
 | Admin | Ramadan days | First and last day of Ramadan, a weekly pattern (which weekdays, which place, what time, kultum or not) and one editable day each, with the kultum speaker (roster or guest) and an announcement. The kultum speaker is reminded by email or LINE 3, 2 and 1 day before and on the day (a guest is not), and each evening appears in Google Calendar and the public calendar feed with the speaker invited. | ✅ live |
 | Members | Ramadan days in the calendar | Isha + Tarawih days show as a moon chip with the time (and a microphone when there is a kultum); tap one for the place, time, speaker and the announcement. | ✅ live |
+| Admin | Ramadan evenings in the TOA app | Link a place to its TOA room on the Places card. The daily job (or the toa_check option in Actions) then adds each Isha + Tarawih evening held there to that room's TOA queue, with the kultum speaker, changes it when the day changes and removes it when the day is deleted. It needs the dedicated TOA account secrets; until then nothing is sent to TOA. | ✅ live |
 
 ## For members
 
@@ -294,13 +297,16 @@ flowchart TD
   F -->|"no"| H["Nothing more for that day"]
   G --> I["Generate announcement<br/>copy it to the WhatsApp / Facebook groups"]
   G --> J["The robot reminds the kultum speaker<br/>3, 2 and 1 day before and on the day, by email or LINE<br/>untick Remind to send none, a guest is messaged by hand"]
+  G --> L["TOA app: if the place has a TOA room linked on the Places card<br/>the evening is added to that room's TOA queue with the speaker<br/>the robot does it at the next run, or press toa_check in Actions"]
   G --> K["Google Calendar: the evening appears with the speaker invited<br/>change or delete the day and the event follows"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
+  classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
   class A,B,C,E,F,G,H,I admin
   class J,K robot
+  class L out
   class D member
 ```
 
@@ -328,7 +334,8 @@ flowchart TD
     R2 --> R3["The admin to-do messages"]
     R3 --> R4["Alert emails that were not sent yet"]
     R4 --> R5["Google Calendar safety re-sync<br/>Fridays and Ramadan evenings"]
-    R5 --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
+    R5 --> R5b["TOA app: Ramadan evenings are added, changed or removed<br/>in the linked rooms, once the TOA account is set up"]
+    R5b --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
   end
 
   subgraph t3["🚀 When the code changes on GitHub"]
@@ -344,7 +351,7 @@ flowchart TD
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   class E1 admin
   class U1,J1 member
-  class E2,E3,U2,U3,J2,J3,R1,R2,R3,R4,R5,R6,D1,D2 robot
+  class E2,E3,U2,U3,J2,J3,R1,R2,R3,R4,R5,R5b,R6,D1,D2 robot
 ```
 
 ### The exact list, from the code
@@ -417,13 +424,14 @@ flowchart TD
 | `0014_join_requests.sql` | "My name isn't listed": someone who is not on the roster types their name and |
 | `0015_places.sql` | Places (dorm lounges, the Sentan assembly room, ...) the admin can add, edit and |
 | `0016_ramadan.sql` | Ramadan: the dates, a weekly pattern, and one "gathering" (Isha + Tarawih, with a |
+| `0017_places_toa_room.sql` | The TOA app room (its id) that a place corresponds to. |
 
 #### Robot jobs (GitHub Actions)
 
 | Job | When it runs |
 | --- | --- |
 | Deploy to Cloudflare Pages (`deploy.yml`) | every change on main; by hand |
-| Send Jumat reminders (`reminders.yml`) | on a timer: 23:23 UTC = 08:23 JST; on a timer: 05:23 UTC = 14:23 JST; by hand (options: dry_run, google_check, test_email_to_sender, test_email) |
+| Send Jumat reminders (`reminders.yml`) | on a timer: 23:23 UTC = 08:23 JST; on a timer: 05:23 UTC = 14:23 JST; by hand (options: dry_run, google_check, toa_check, test_email_to_sender, test_email) |
 | One-time Cloudflare setup (`setup.yml`) | by hand |
 
 #### Settings and secrets
@@ -439,6 +447,8 @@ flowchart TD
 | `LINE_CHANNEL_ACCESS_TOKEN` | GitHub secret | LINE bot: lets the website and the job send LINE messages. |
 | `LINE_CHANNEL_SECRET` | GitHub secret | LINE bot: lets the website check that a message really comes from LINE. |
 | `SCHEDULER_ACCESS_CODE` | GitHub secret | The community access code (GitHub keeps it; the setup workflow copies it to the website as ACCESS_CODE). |
+| `TOA_EMAIL` | GitHub secret | The email of the dedicated TOA app account that adds the Ramadan evenings to TOA room queues. |
+| `TOA_PASSWORD` | GitHub secret | That TOA account's password. Only GitHub holds it. |
 | `SITE_URL` | GitHub variable | Optional: the website address used inside calendar events and emails, if the site gets its own domain. |
 | `ACCESS_CODE` | Website setting | The community access code, as the website sees it. Anyone who knows it can edit the schedule and roster. |
 | `GCAL_BRIDGE_SECRET` | Website setting | The shared secret that the website and the Apps Script both must know. |
@@ -487,16 +497,18 @@ flowchart LR
   B --> D4["☁️ The Cloudflare account<br/>Remove them under Members and create a new API token<br/>then update the GitHub secret CLOUDFLARE_API_TOKEN"]
   B --> D5["💬 The LINE Official Account<br/>In LINE Official Account Manager remove their role<br/>issue a new channel access token if needed<br/>update the GitHub secret LINE_CHANNEL_ACCESS_TOKEN<br/>then run One-time Cloudflare setup and Deploy"]
 
+  B --> D6["📱 The TOA app account<br/>a dedicated account writes the Ramadan evenings into TOA rooms<br/>it stays: nothing to move<br/>to change it, update the GitHub secrets TOA_EMAIL and TOA_PASSWORD<br/>the new admin may need to add it as admin of rooms' queues"]
   D1 --> E["Check everything:<br/>Actions: Send Jumat reminders,<br/>a dry run, a test email<br/>and google_check"]
   D2 --> E
   D3 --> E
   D4 --> E
   D5 --> E
+  D6 --> E
 
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
   class B warn
-  class D1,D2,D3,D4,D5,E admin
+  class D1,D2,D3,D4,D5,D6,E admin
 ```
 
 ### 3. Moving everything to the new owner's own accounts (rare)
@@ -511,7 +523,7 @@ flowchart TD
   D --> E["4. Keep a copy of the old data<br/>a developer exports the database with wrangler d1 export"]
   E --> F["5. Actions: One-time Cloudflare setup<br/>then Deploy to Cloudflare Pages<br/>this creates the new database and website"]
   F --> G["6. Put the old data into the new database<br/>a developer imports the copy"]
-  G --> H["7. Redo only what belonged to a person<br/>the community Gmail, its Google Calendar and its script stay as they are:<br/>just copy GMAIL_USER, GMAIL_APP_PASSWORD, GCAL_BRIDGE_URL and GCAL_BRIDGE_SECRET<br/>into the new GitHub secrets (the system owner can help). Redo the LINE bot only if it was in a personal account"]
+  G --> H["7. Redo only what belonged to a person<br/>the community Gmail, its Google Calendar, its script and the TOA app account stay as they are:<br/>just copy GMAIL_USER, GMAIL_APP_PASSWORD, GCAL_BRIDGE_URL, GCAL_BRIDGE_SECRET, TOA_EMAIL and TOA_PASSWORD<br/>into the new GitHub secrets (the system owner can help). Redo the LINE bot only if it was in a personal account"]
   H --> I["8. If the website address changed<br/>set SITE_URL and tell every member the new link"]
   I --> J["9. Check<br/>open the site, a dry run, a test email, google_check"]
 
@@ -563,6 +575,7 @@ flowchart TD
 | LINE reminders | ✅ done | Bot connected. Each person links with a code from the roster. |
 | Google Calendar connection | ✅ done | Connected and checked: the Google script answered and the Fridays were written to the NAIST Jumat calendar. Last step of the chart: look at the public calendar in a private window. |
 | An admin marked in the roster | ☐ to do | Edit your own entry and tick Admin this period (needs an email or LINE link). |
+| TOA app account | ☐ to do | Add the TOA account's email and password as GitHub secrets TOA_EMAIL and TOA_PASSWORD (Settings, Secrets and variables, Actions), link each place to its TOA room on the Places card, then run Actions: Send Jumat reminders with toa_check. |
 | GitHub default branch set to main | ✅ done | main is the default branch, so new pull requests and the schedule use it. |
 
 ## Help
