@@ -853,6 +853,7 @@
     return `<details class="small planner-notes planner-places" data-card="places" ${state.openCards.places ? "open" : ""}><summary>📍 Places (${state.places.length}): the venue dropdown</summary>
       <ul>${items || '<li class="muted">No places yet.</li>'}</ul>
       <button class="btn btn-sm" data-place-add type="button">+ Add place</button>
+      <button class="btn btn-sm" data-place-from-toa type="button">+ Add from TOA rooms</button>
     </details>`;
   }
 
@@ -1184,6 +1185,7 @@
     list.querySelectorAll("details[data-card]").forEach((d) => d.addEventListener("toggle", () => (state.openCards[d.dataset.card] = d.open)));
     wireRamadanCard(list);
     list.querySelector("[data-place-add]")?.addEventListener("click", () => openPlaceModal(null));
+    list.querySelector("[data-place-from-toa]")?.addEventListener("click", openToaPlacesModal);
     list.querySelectorAll("[data-place-edit]").forEach((btn) => {
       btn.addEventListener("click", () => openPlaceModal(state.places.find((p) => p.id === Number(btn.dataset.placeEdit))));
     });
@@ -1923,6 +1925,47 @@
     const v = e.target.value;
     $("#place-toa").classList.toggle("hidden", v !== "__other");
     $("#place-toa").value = v === "__other" ? "" : v;
+  });
+  // "Add from TOA rooms": list every TOA room, the admin ticks the venues.
+  async function openToaPlacesModal() {
+    const box = $("#place-toa-list");
+    $("#place-toa-error").classList.add("hidden");
+    $("#place-toa-add-btn").disabled = true;
+    box.textContent = "Loading the TOA rooms...";
+    $("#place-toa-modal").classList.remove("hidden");
+    state.toaRooms = await api("/api/toa-rooms").catch(() => []);
+    if (!state.toaRooms.length) {
+      box.innerHTML = '<p class="muted small">No TOA rooms yet. Run "Send Jumat reminders" in Actions with toa_check ticked (it reads the rooms), then try again.</p>';
+      return;
+    }
+    const linked = new Map(state.places.filter((p) => p.toa_room_id).map((p) => [p.toa_room_id, p.name]));
+    const names = new Set(state.places.map((p) => p.name.toLowerCase()));
+    box.innerHTML = state.toaRooms
+      .map((r) => {
+        const why = linked.has(r.id) ? `already the place "${linked.get(r.id)}"` : names.has(r.name.toLowerCase()) ? "a place with this name exists: edit it and pick the room" : "";
+        return `<label class="check-row"><input type="checkbox" data-toa-room="${escapeHtml(r.id)}" ${why ? "disabled" : ""} /><span>${escapeHtml(r.name)}${why ? ` <span class="muted small">(${escapeHtml(why)})</span>` : ""}</span></label>`;
+      })
+      .join("");
+    $("#place-toa-add-btn").disabled = false;
+  }
+  $("#place-toa-cancel-btn").addEventListener("click", () => $("#place-toa-modal").classList.add("hidden"));
+  $("#place-toa-add-btn").addEventListener("click", async () => {
+    const ids = [...document.querySelectorAll("#place-toa-list [data-toa-room]:checked")].map((c) => c.dataset.toaRoom);
+    const error = (m) => {
+      $("#place-toa-error").textContent = m;
+      $("#place-toa-error").classList.remove("hidden");
+    };
+    if (!ids.length) return error("Tick at least one room.");
+    try {
+      const r = await api("/api/places/from-toa", { method: "POST", body: JSON.stringify({ room_ids: ids }) });
+      state.places = r.places;
+      $("#place-toa-modal").classList.add("hidden");
+      renderPlanner();
+      renderCalendar();
+      toast(`${r.created} place(s) added` + (r.skipped.length ? `, ${r.skipped.length} skipped` : ""), !r.created);
+    } catch (e) {
+      error(e.message);
+    }
   });
   function openPlaceModal(place) {
     editingPlaceId = place ? place.id : null;

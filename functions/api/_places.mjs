@@ -55,3 +55,34 @@ export function placeLookup(places) {
   const map = new Map((places || []).map((p) => [String(p.name).trim().toLowerCase(), p]));
   return (venue) => map.get(String(venue || "").trim().toLowerCase()) || null;
 }
+
+// "Add from TOA rooms": which of the ticked TOA rooms become places. A room already
+// linked to a place, one whose name another place already has, and rooms beyond the
+// 30-place limit are skipped with the reason, never overwritten.
+export const PLACE_LIMIT = 30;
+export function planPlacesFromRooms({ rooms, places, ids, limit = PLACE_LIMIT }) {
+  const known = new Map((rooms || []).map((r) => [r.id, r]));
+  const linked = new Set((places || []).map((p) => p.toa_room_id).filter(Boolean));
+  const names = new Set((places || []).map((p) => String(p.name).trim().toLowerCase()));
+  const create = [];
+  const skipped = [];
+  let room = (places || []).length;
+  for (const id of new Set(ids || [])) {
+    const r = known.get(id);
+    if (!r) {
+      skipped.push({ id, name: id, why: "not in the TOA room list" });
+      continue;
+    }
+    const name = clean(r.name, 60);
+    if (linked.has(id)) skipped.push({ id, name, why: "already a place" });
+    else if (name.length < 2) skipped.push({ id, name, why: "the room name is too short" });
+    else if (names.has(name.toLowerCase())) skipped.push({ id, name, why: "a place with that name exists: edit it and pick the room" });
+    else if (room >= limit) skipped.push({ id, name, why: `the ${limit}-place limit is reached` });
+    else {
+      create.push({ id, name });
+      names.add(name.toLowerCase());
+      room += 1;
+    }
+  }
+  return { create, skipped };
+}
