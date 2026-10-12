@@ -108,6 +108,47 @@
       "note": "The planner's invitation test mode: invite only the addresses typed there until it is turned off."
     },
     {
+      "route": "/api/devices",
+      "file": "functions/api/devices/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "access code"
+        },
+        {
+          "method": "POST",
+          "access": "public"
+        },
+        {
+          "method": "DELETE",
+          "access": "access code"
+        }
+      ],
+      "note": "A browser that has chosen a name registers itself (the website keeps only a hash of its secret); the admin lists a person's devices and resets all of them."
+    },
+    {
+      "route": "/api/devices/:id",
+      "file": "functions/api/devices/[id].js",
+      "methods": [
+        {
+          "method": "DELETE",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin resets one device's name lock."
+    },
+    {
+      "route": "/api/devices/me",
+      "file": "functions/api/devices/me.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        }
+      ],
+      "note": "On opening, a browser asks whether its name lock still stands; after an admin reset it can choose a name again."
+    },
+    {
       "route": "/api/fridays",
       "file": "functions/api/fridays/index.js",
       "methods": [
@@ -409,6 +450,10 @@
     {
       "name": "toa_rooms",
       "migration": "0018_toa_rooms.sql"
+    },
+    {
+      "name": "device_locks",
+      "migration": "0019_device_locks.sql"
     }
   ],
   "migrations": [
@@ -483,6 +528,10 @@
     {
       "file": "0018_toa_rooms.sql",
       "note": "The TOA app rooms that the TOA account is an admin of (id and name)."
+    },
+    {
+      "file": "0019_device_locks.sql",
+      "note": "The name lock, remembered on the server: each browser that has chosen a name is one"
     }
   ],
   "workflows": [

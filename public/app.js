@@ -3,6 +3,8 @@
 
   const LS_WHOAMI = "jumat_whoami_id";
   const LS_ACCESS = "jumat_access_code";
+  const LS_DEVICE = "jumat_device_token"; // this browser's name-lock token (the server keeps its hash)
+  const LS_OPEN = "jumat_open_device"; // set by the admin: a shared device, never locked
 
   const state = {
     people: [],
@@ -89,6 +91,8 @@
   function clearPrivateDom() {
     $("#planner-list").innerHTML = "";
     $("#person-line").innerHTML = "";
+    $("#person-devices").innerHTML = "";
+    $("#person-devices").classList.add("hidden");
     for (const field of ["contact", "email", "whatsapp", "calendar-email"]) $(`#person-${field}`).value = "";
   }
 
@@ -101,6 +105,7 @@
     updateUnlockUI();
     // Reload without the code so contact info and everyone's availability,
     // which were only sent because of it, don't linger on the page.
+    await syncDeviceLock();
     await loadAll();
     toast("Editing locked");
   });
@@ -224,8 +229,12 @@
   // switch to another name (which would let them mark - or look at - somebody else's
   // availability). Whoever holds the access code (the admin) can still change it.
   // This is a guard in the page, not a login: the site has no accounts.
+  function isOpenDevice() {
+    return localStorage.getItem(LS_OPEN) === "1";
+  }
+
   function nameLocked() {
-    if (hasAccessCode()) return false;
+    if (hasAccessCode() || isOpenDevice()) return false;
     const current = localStorage.getItem(LS_WHOAMI);
     return !!current && state.people.some((p) => p.status === "active" && String(p.id) === current);
   }
@@ -245,7 +254,52 @@
       ? "🔒 Your name is set on this device. Wrong name? Ask the admin."
       : hasAccessCode()
       ? "Admin: you can switch names while editing is unlocked."
+      : isOpenDevice()
+      ? "Shared device: choose your name; you can switch it any time."
       : "Pick your name once: it cannot be changed afterwards without the admin.";
+    // Only the admin (with the code entered) can make this browser a shared device or end that.
+    $("#open-device-row").classList.toggle("hidden", !hasAccessCode());
+    $("#open-device").checked = isOpenDevice();
+  }
+  $("#open-device").addEventListener("change", async (e) => {
+    if (e.target.checked) localStorage.setItem(LS_OPEN, "1");
+    else localStorage.removeItem(LS_OPEN);
+    renderWhoami();
+    toast(e.target.checked ? "Shared device: anyone can choose their name here" : "This device will lock a name again once one is chosen");
+    if (!e.target.checked) await syncDeviceLock(); // a name already chosen here is registered, so it can be reset
+  });
+
+  // ---------- The name lock, remembered on the server ----------
+  // Each browser that has locked a name holds a secret token; the server keeps its hash, so
+  // the admin can see a person's devices and reset any of them (the person edit form).
+  // A reset is noticed when the page opens: that device forgets its name and can choose again.
+  // Without the server (offline) the lock simply stays as it is.
+  async function syncDeviceLock() {
+    if (hasAccessCode() || isOpenDevice()) return;
+    const whoami = localStorage.getItem(LS_WHOAMI);
+    if (!whoami) return localStorage.removeItem(LS_DEVICE);
+    const token = localStorage.getItem(LS_DEVICE);
+    try {
+      if (token) {
+        const res = await fetch("/api/devices/me", { headers: { "x-device-token": token } });
+        if (!res.ok) return;
+        const me = await res.json();
+        if (me.valid && String(me.person_id) === whoami) return;
+        localStorage.removeItem(LS_DEVICE);
+        if (!me.valid) {
+          // Reset by the admin: this device can choose its name again.
+          localStorage.removeItem(LS_WHOAMI);
+          toast("The admin reset this device: choose your name again");
+          return;
+        }
+      }
+      // A device that locked its name before the server kept track, or whose token no longer
+      // matches the name: register it now so the admin can reset it later.
+      const res = await fetch("/api/devices", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ person_id: Number(whoami) }) });
+      if (res.ok) localStorage.setItem(LS_DEVICE, (await res.json()).token);
+    } catch {
+      // Offline: try again next time the page opens.
+    }
   }
   $("#whoami-select").addEventListener("change", async (e) => {
     if (nameLocked()) return renderWhoami(); // a disabled select should not get here; belt and braces
@@ -259,7 +313,9 @@
       }
     }
     localStorage.setItem(LS_WHOAMI, value);
+    localStorage.removeItem(LS_DEVICE); // a token belongs to one name; a new pick gets its own
     renderWhoami();
+    await syncDeviceLock(); // locks this browser to the name on the server (not for the admin or a shared device)
     // Without the access code, availability is fetched scoped to whoever is
     // selected - re-fetch so switching names shows the right person's marks.
     if (!hasAccessCode()) await loadAll();
@@ -1455,6 +1511,7 @@
     $("#person-reminders").checked = person && "reminders" in person ? !!person.reminders : true;
     $("#person-admin").checked = person && "is_admin" in person ? !!person.is_admin : false;
     renderPersonLineBox(person);
+    renderPersonDevices(person);
     $("#person-error").classList.add("hidden");
     $("#person-modal").classList.remove("hidden");
     $("#person-name").focus();
@@ -1472,6 +1529,52 @@
     $("#person-email").value = r.email || "";
     $("#person-whatsapp").value = r.whatsapp || "";
     $("#person-note").value = r.note || "";
+  }
+
+  // The devices that have locked this person's name: reset one (or all) so it can choose again.
+  async function renderPersonDevices(person) {
+    const box = $("#person-devices");
+    if (!person || !hasAccessCode()) {
+      box.classList.add("hidden");
+      return;
+    }
+    box.classList.remove("hidden");
+    box.innerHTML = '<p class="muted small">Devices with this name locked: loading...</p>';
+    let devices;
+    try {
+      devices = await api(`/api/devices?person_id=${person.id}`);
+    } catch (e) {
+      box.innerHTML = `<p class="muted small">Devices: ${escapeHtml(e.message)}</p>`;
+      return;
+    }
+    if (editingPersonId !== person.id) return; // the form moved on to someone else
+    const when = (iso) => (iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Tokyo", dateStyle: "medium", timeStyle: "short" }) : "?");
+    box.innerHTML = devices.length
+      ? `<p class="small"><strong>Devices with ${escapeHtml(person.name)} locked</strong> <span class="muted">(last opened, Japan time). Reset one and that device can choose a name again the next time it opens the page.</span></p>
+         <ul class="small">${devices.map((d) => `<li>${escapeHtml(d.label)} <span class="muted">· ${escapeHtml(when(d.last_seen_at))}</span> <button class="btn btn-sm btn-ghost" data-device-reset="${d.id}" type="button">Reset</button></li>`).join("")}</ul>
+         ${devices.length > 1 ? '<button class="btn btn-sm btn-ghost" data-device-reset-all type="button">Reset all devices</button>' : ""}`
+      : '<p class="muted small">No device has this name locked.</p>';
+    box.querySelectorAll("[data-device-reset]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        try {
+          await api(`/api/devices/${btn.dataset.deviceReset}`, { method: "DELETE" });
+          toast("Device reset");
+          renderPersonDevices(person);
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }),
+    );
+    box.querySelector("[data-device-reset-all]")?.addEventListener("click", async () => {
+      if (!confirm(`Reset every device of ${person.name}?`)) return;
+      try {
+        await api(`/api/devices?person_id=${person.id}`, { method: "DELETE" });
+        toast("All devices reset");
+        renderPersonDevices(person);
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
   }
 
   // LINE can only message people who added the bot, so linking is a handshake:
@@ -2117,5 +2220,8 @@
 
   setupSubscribe();
   showGoogleCalendar();
-  loadAll().then(openCantMakeItFromUrl).catch((e) => toast(e.message, true));
+  syncDeviceLock()
+    .then(() => loadAll())
+    .then(openCantMakeItFromUrl)
+    .catch((e) => toast(e.message, true));
 })();

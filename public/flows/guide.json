@@ -179,7 +179,7 @@
     {
       "audience": "Members",
       "name": "Name locked on the device",
-      "what": "After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). The admin, who holds the access code, can still change it. It is a guard in the page, not a login.",
+      "what": "After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). A person can use several devices: each one is remembered by the website, and the admin sees them under Edit person (with the device type and when it was last opened) and can reset one or all, after which that device can choose a name again the next time it opens the page. The admin can also tick Shared device on a device (with the access code entered): that device is never locked, so many people can choose their name on it. It is a guard in the page, not a login.",
       "status": "live"
     },
     {
