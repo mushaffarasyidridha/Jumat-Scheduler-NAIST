@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseToaRoomId, toaExternalId, desiredToaEntry, planRoom, syncToa, createToaClient, matches, syncToaBookings, planBookings, desiredBookingsByRoom } from "../functions/api/_toa.mjs";
+import { parseToaRoomId, toaExternalId, desiredToaEntry, planRoom, syncToa, createToaClient, matches, syncToaBookings, planBookings, desiredBookingsByRoom, mapsUrlFromView, fetchRoomLocation } from "../functions/api/_toa.mjs";
 import { parsePlace } from "../functions/api/_places.mjs";
 
 const NOW = Date.UTC(2027, 1, 1);
@@ -330,4 +330,29 @@ test("bookings: a dry run writes nothing, and past or unlinked days are ignored"
   const none = desiredBookingsByRoom({ fridays: [friday({ date: "2027-01-08" }), friday({ venue: "Elsewhere" })], gatherings: [], places, settings, today: "2027-02-01", nowMs: NOW });
   assert.equal([...none.values()].reduce((n, m) => n + m.size, 0), 0);
   assert.equal(planBookings({ wanted: new Map(), bookings: [], nowMs: NOW }).same, 0);
+});
+
+test("location: the pin becomes a Maps link, else the address, else nothing", () => {
+  assert.equal(mapsUrlFromView({ latitude: 34.7326, longitude: 135.7345, address: "x" }), "https://www.google.com/maps/search/?api=1&query=34.7326,135.7345");
+  assert.equal(mapsUrlFromView({ address: " NAIST  Dorm 7, Ikoma " }), "https://www.google.com/maps/search/?api=1&query=NAIST%20Dorm%207%2C%20Ikoma");
+  assert.equal(mapsUrlFromView({ latitude: 0, longitude: 0 }), "", "0,0 is no pin");
+  assert.equal(mapsUrlFromView({ latitude: 95, longitude: 10 }), "", "an impossible pin is ignored");
+  assert.equal(mapsUrlFromView({ gated: true, name: "Members room" }), "");
+});
+
+test("location: a room's public view is read without a key; not found and outages are told apart", async () => {
+  const seen = [];
+  const fetchImpl = async (url) => {
+    seen.push(url);
+    if (url.endsWith("/room_ok")) return Response.json({ latitude: 34.7, longitude: 135.7, address: "Ikoma" });
+    if (url.endsWith("/room_none")) return Response.json({ name: "No pin" });
+    if (url.endsWith("/room_gone")) return new Response("{}", { status: 404 });
+    return new Response("boom", { status: 502 });
+  };
+  assert.deepEqual(await fetchRoomLocation("room_ok", { fetchImpl, baseUrl: "https://t.example" }), { maps_url: "https://www.google.com/maps/search/?api=1&query=34.7,135.7", address: "Ikoma" });
+  assert.deepEqual(await fetchRoomLocation("room_none", { fetchImpl, baseUrl: "https://t.example" }), { maps_url: "", address: "" });
+  assert.deepEqual(await fetchRoomLocation("room_gone", { fetchImpl, baseUrl: "https://t.example" }), { maps_url: "", address: "" });
+  assert.equal(await fetchRoomLocation("room_down", { fetchImpl, baseUrl: "https://t.example" }), null);
+  assert.equal(await fetchRoomLocation("room_x", { fetchImpl: async () => { throw new Error("net"); } }), null);
+  assert.equal(seen[0], "https://t.example/api/room/room_ok");
 });

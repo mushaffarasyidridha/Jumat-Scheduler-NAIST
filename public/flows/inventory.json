@@ -268,6 +268,17 @@
       "note": "The admin edits or deletes one place (a rename follows onto the coming Fridays)."
     },
     {
+      "route": "/api/places/fill-maps",
+      "file": "functions/api/places/fill-maps.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "access code"
+        }
+      ],
+      "note": "The admin fills the empty map links of places linked to a TOA room from the room's location in TOA (a link typed by hand is kept)."
+    },
+    {
       "route": "/api/places/from-toa",
       "file": "functions/api/places/from-toa.js",
       "methods": [
@@ -645,6 +656,15 @@
         "functions/api/_site.mjs"
       ],
       "note": "Optional: the website address used inside calendar events and emails, if the site gets its own domain."
+    },
+    {
+      "name": "TOA_WEB_URL",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/places/fill-maps.js",
+        "functions/api/places/from-toa.js"
+      ],
+      "note": "Optional, for testing only: another address for the TOA web app when reading a room's location (normally left empty)."
     }
   ]
 }
