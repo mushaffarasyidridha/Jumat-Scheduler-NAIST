@@ -1,4 +1,4 @@
-# Working on the NAIST Jumat Scheduler
+# Working on the NAIST Muslim Community Scheduler
 
 The community uses the guide at `/guide` (`public/guide.html`) to understand the system, to
 run it as admin and to hand it over. It must always match what the system does.

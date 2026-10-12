@@ -1,7 +1,8 @@
-# Jumat Scheduler — NAIST
+# NAIST Muslim Community Scheduler
 
-A small, always-on, free website for scheduling the Friday prayer (Jumat) khatib
-and imam at NAIST. Anyone with the link can view the schedule; anyone with the
+A small, always-on, free website for the NAIST Muslim community's schedules: the
+Friday prayer (Jumat) khatib and imam, and Isha + Tarawih with the kultum in
+Ramadan. Anyone with the link can view the schedule; anyone with the
 community access code can mark their availability, assign themselves or a
 friend as khatib for an open slot, and manage the roster — from anywhere, not
 just on campus.

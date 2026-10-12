@@ -1,6 +1,6 @@
 {
-  "title": "How the NAIST Jumat Scheduler works",
-  "intro": "Flowcharts of the whole system: what a member sees, what the admin does, what runs by itself, and what to do when the admin changes. This page is part of the website and is updated whenever the system changes.",
+  "title": "How the NAIST Muslim Community Scheduler works",
+  "intro": "The NAIST Muslim Community Scheduler plans the community's schedules: the Friday prayer (Jumat) khatib and imam, and Isha + Tarawih with the kultum in Ramadan. Flowcharts of the whole system: what a member sees, what the admin does, what runs by itself, and what to do when the admin changes. This page is part of the website and is updated whenever the system changes.",
   "owner": {
     "role": "Mushaffa Rasyid Ridha (the system owner)",
     "whatsapp": "+62 82217078820",

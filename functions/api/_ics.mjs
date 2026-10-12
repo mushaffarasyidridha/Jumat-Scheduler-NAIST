@@ -139,11 +139,11 @@ export function buildCalendar({ fridays, siteUrl, nowMs = Date.now(), places = [
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//NAIST Jumat Scheduler//Friday prayer//EN",
+    "PRODID:-//NAIST Muslim Community Scheduler//Friday prayer and Ramadan//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:NAIST Jumat prayer",
-    "X-WR-CALDESC:Khatib and imam for the NAIST Friday prayer",
+    "X-WR-CALNAME:NAIST Muslim Community",
+    "X-WR-CALDESC:Friday prayer (khatib and imam) and Ramadan Isha + Tarawih at NAIST",
     "X-WR-TIMEZONE:Asia/Tokyo",
     // Hints for calendar apps; Google decides for itself (every few hours).
     "REFRESH-INTERVAL;VALUE=DURATION:PT6H",

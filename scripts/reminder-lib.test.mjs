@@ -446,7 +446,7 @@ test("ics: a valid VCALENDAR with CRLF line ends, one VEVENT per Friday, unique 
   assert.ok(!/(^|[^\r])\n/.test(ics), "no bare LF");
   assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 2);
   assert.equal((ics.match(/END:VEVENT/g) || []).length, 2);
-  assert.match(ics, /X-WR-CALNAME:NAIST Jumat prayer/);
+  assert.match(ics, /X-WR-CALNAME:NAIST Muslim Community/);
   assert.match(ics, /X-WR-TIMEZONE:Asia\/Tokyo/);
   const uids = [...unfold(ics).matchAll(/^UID:(.+)$/gm)].map((m) => m[1]);
   assert.deepEqual(uids, ["jumat-friday-7@jumat-scheduler-naist", "jumat-friday-8@jumat-scheduler-naist"]);
