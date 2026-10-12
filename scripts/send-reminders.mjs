@@ -357,7 +357,14 @@ async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
 async function reconcileToa({ today, dryRun = DRY_RUN }) {
   if (!env.TOA_EMAIL || !env.TOA_PASSWORD) return { failed: 0 };
   const places = (await d1("SELECT name, toa_room_id FROM places WHERE toa_room_id IS NOT NULL")).filter((p) => p.toa_room_id);
-  if (!places.length) return { failed: 0 };
+  if (!places.length) {
+    // A hand-started toa_check still proves the account works, before any place is linked.
+    if (TOA_CHECK) {
+      await createToaClient({ email: env.TOA_EMAIL, password: env.TOA_PASSWORD, webConfigUrl: env.TOA_WEB_CONFIG_URL || undefined }).uid();
+      console.log("TOA account signed in OK. No place is linked to a TOA room yet (Places card, TOA room).");
+    }
+    return { failed: 0 };
+  }
   let gatherings = [];
   let settings = {};
   try {
