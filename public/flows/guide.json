@@ -311,7 +311,7 @@
     {
       "audience": "Admin",
       "name": "Places",
-      "what": "A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link (or tick TOA rooms from a list to add them as places already linked to their room); the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event.",
+      "what": "A card in the planner to add, edit and delete places (dorm lounges, the Sentan assembly room) with details and a map link (or tick TOA rooms from a list to add them as places already linked to their room, with the map link taken from the room's location in TOA); the Friday venue becomes a dropdown, and the details and link go into the announcement and the calendar event.",
       "status": "live"
     },
     {

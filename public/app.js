@@ -854,6 +854,7 @@
       <ul>${items || '<li class="muted">No places yet.</li>'}</ul>
       <button class="btn btn-sm" data-place-add type="button">+ Add place</button>
       <button class="btn btn-sm" data-place-from-toa type="button">+ Add from TOA rooms</button>
+      ${state.places.some((p) => p.toa_room_id && !p.maps_url) ? '<button class="btn btn-sm" data-place-fill-maps type="button">Fill map links from TOA</button>' : ""}
     </details>`;
   }
 
@@ -1186,6 +1187,19 @@
     wireRamadanCard(list);
     list.querySelector("[data-place-add]")?.addEventListener("click", () => openPlaceModal(null));
     list.querySelector("[data-place-from-toa]")?.addEventListener("click", openToaPlacesModal);
+    list.querySelector("[data-place-fill-maps]")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try {
+        const r = await api("/api/places/fill-maps", { method: "POST", body: "{}" });
+        state.places = r.places;
+        renderPlanner();
+        const left = [r.noLocation && `${r.noLocation} room(s) have no location set in TOA`, r.unreachable && `${r.unreachable} could not be reached`].filter(Boolean);
+        toast(`${r.filled} map link(s) filled` + (left.length ? `; ${left.join(", ")}` : ""), !r.filled);
+      } catch (err) {
+        toast(err.message, true);
+        e.target.disabled = false;
+      }
+    });
     list.querySelectorAll("[data-place-edit]").forEach((btn) => {
       btn.addEventListener("click", () => openPlaceModal(state.places.find((p) => p.id === Number(btn.dataset.placeEdit))));
     });
@@ -1962,7 +1976,7 @@
       $("#place-toa-modal").classList.add("hidden");
       renderPlanner();
       renderCalendar();
-      toast(`${r.created} place(s) added` + (r.skipped.length ? `, ${r.skipped.length} skipped` : ""), !r.created);
+      toast(`${r.created} place(s) added` + (r.created ? `, ${r.withMap} with a map link from TOA` : "") + (r.skipped.length ? `, ${r.skipped.length} skipped` : ""), !r.created);
     } catch (e) {
       error(e.message);
     }

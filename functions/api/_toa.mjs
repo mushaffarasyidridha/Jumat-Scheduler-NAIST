@@ -298,3 +298,33 @@ export async function syncToaBookings({ client, fridays, gatherings, places, set
   }
   return result;
 }
+
+// ---- a room's location, as a Google Maps link ----
+// TOA shows each room's public view (name, address, the pin the room's admin dropped)
+// without a key, at /api/room/{id}. A members-only room, or one with no pin or address,
+// has no location there. The pin wins over the address: it is exact.
+export const WEB_URL = "https://toa-rooms.pages.dev";
+
+export function mapsUrlFromView(view) {
+  const lat = Number(view?.latitude);
+  const lng = Number(view?.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0)) {
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  }
+  const address = String(view?.address ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+  return address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : "";
+}
+
+// { maps_url, address } for one room; maps_url is "" when TOA has no location for it,
+// and null when TOA could not be reached (so the caller can tell the two apart).
+export async function fetchRoomLocation(roomId, { fetchImpl = fetch, baseUrl = WEB_URL } = {}) {
+  try {
+    const res = await fetchImpl(`${baseUrl}/api/room/${encodeURIComponent(roomId)}`, { signal: AbortSignal.timeout(6000) });
+    if (res.status === 404) return { maps_url: "", address: "" };
+    if (!res.ok) return null;
+    const view = await res.json();
+    return { maps_url: mapsUrlFromView(view), address: String(view?.address ?? "").replace(/\s+/g, " ").trim().slice(0, 300) };
+  } catch {
+    return null;
+  }
+}

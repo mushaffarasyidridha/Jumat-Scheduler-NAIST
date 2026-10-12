@@ -34,6 +34,7 @@ export const SETTING_NOTES = {
   GCAL_BRIDGE_URL: "Address of the Google Apps Script that edits the shared Google Calendar.",
   GCAL_BRIDGE_SECRET: "The shared secret that the website and the Apps Script both must know.",
   TOA_API_KEY: "The secret integration key made in the TOA app (Settings, Integration keys). It lets the daily job add the Ramadan evenings to the TOA rooms its owner administers.",
+  TOA_WEB_URL: "Optional, for testing only: another address for the TOA web app when reading a room's location (normally left empty).",
   SITE_URL: "Optional: the website address used inside calendar events and emails, if the site gets its own domain.",
 };
 
@@ -58,6 +59,7 @@ export const ROUTE_NOTES = {
   "/api/places": "The places (dorm lounges, the Sentan assembly room ...) for the venue dropdown; the admin adds one.",
   "/api/toa-rooms": "The admin reads the TOA app rooms the TOA key administers, to pick one by name on the Places card.",
   "/api/places/from-toa": "The admin ticks TOA rooms and each becomes a place already linked to its room (a room that is already a place, or whose name is taken, is skipped).",
+  "/api/places/fill-maps": "The admin fills the empty map links of places linked to a TOA room from the room's location in TOA (a link typed by hand is kept).",
   "/api/places/:id": "The admin edits or deletes one place (a rename follows onto the coming Fridays).",
   "/api/ramadan": "Ramadan: the dates, the weekly pattern and the days (anyone can read; the admin saves the settings).",
   "/api/ramadan/generate": "The admin makes the Ramadan days from the dates and the weekly pattern.",
