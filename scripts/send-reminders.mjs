@@ -351,6 +351,24 @@ async function reconcileGoogle({ today, forcePing = false, dryRun = DRY_RUN }) {
   return { synced: result.synced, failed: result.failed };
 }
 
+// A hand-started toa_check lists the rooms the key administers: their names, whether
+// they are open only when booked, and their bookings and queue (times and kinds, no
+// notes or names). TOA's rooms and queues are public in the TOA app anyway.
+async function describeToaRooms(client, adminRooms) {
+  for (const r of adminRooms) {
+    try {
+      const room = await client.room(r.id);
+      const queue = await client.queue(r.id);
+      const kind = (q) => (q.externalId && q.externalId.startsWith("naist-") ? "ours" : String(q.id).startsWith("sched_") ? "first-version" : "other");
+      console.log(`TOA room ${r.id} "${r.name}": ${room.availability}, ${room.suspended ? "suspended, " : ""}${room.bookings.length} booking(s), ${queue.length} queue entr(ies).`);
+      for (const b of room.bookings) console.log(`  booking ${b.startLocal} -> ${b.endLocal} ${b.repeat}${b.weeks !== undefined ? ` x${b.weeks}` : ""} ${b.externalId ? "(ours)" : "(other)"}`);
+      for (const q of queue.filter((x) => x.time > Date.now() - 86400000).slice(0, 12)) console.log(`  queue ${q.timeLocal} ${q.type} [${kind(q)}]`);
+    } catch (e) {
+      console.log(`TOA room ${r.id}: could not be read (${redact(e.message)}).`);
+    }
+  }
+}
+
 // Add the Ramadan evenings to the TOA app's room queues (rooms linked on the
 // Places card), through TOA's API for schedulers. Switched off until the TOA key
 // exists. Counts only in the log: this repository is public.
@@ -371,6 +389,7 @@ async function reconcileToa({ today, dryRun = DRY_RUN }) {
     }
   }
   console.log(`TOA key is admin of ${adminRooms.length} room(s)${dryRun ? "" : "; the Places card can offer them by name"}.`);
+  if (TOA_CHECK) await describeToaRooms(client, adminRooms);
 
   const places = (await d1("SELECT name, toa_room_id FROM places WHERE toa_room_id IS NOT NULL")).filter((p) => p.toa_room_id);
   if (!places.length) {

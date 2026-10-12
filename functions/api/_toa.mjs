@@ -134,6 +134,12 @@ export function createToaClient({ key, baseUrl = API_URL, fetchImpl = fetch }) {
     async rooms() {
       return (await call("GET", "/rooms")).rooms || [];
     },
+    // One room's settings and bookings (availability, bookings with local times, queue size).
+    async room(roomId) {
+      const data = await call("GET", room(roomId));
+      delete data.ok;
+      return data;
+    },
     async queue(roomId) {
       return (await call("GET", `${room(roomId)}/queue`)).queue || [];
     },
