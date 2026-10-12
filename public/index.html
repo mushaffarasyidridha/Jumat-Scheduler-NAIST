@@ -17,6 +17,7 @@
         <label for="whoami-select">You are</label>
         <select id="whoami-select"></select>
         <small id="whoami-note" class="muted"></small>
+        <label id="open-device-row" class="check-row small hidden"><input id="open-device" type="checkbox" /> <span>Shared device: anyone can choose their name here (not locked)</span></label>
         <button id="join-open-btn" class="linklike" type="button">My name isn't listed</button>
       </div>
     </div>
@@ -174,6 +175,7 @@
         <input id="person-whatsapp" type="tel" placeholder="+81 90 1234 5678" autocomplete="off" />
       </label>
       <div id="person-line" class="line-box hidden"></div>
+      <div id="person-devices" class="line-box hidden"></div>
       <div class="modal-actions">
         <button id="person-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
         <button id="person-save-btn" class="btn btn-primary" type="button">Add</button>

@@ -94,7 +94,7 @@ flowchart TD
 | Members | My name isn't listed | Someone not on the roster types their name and details; the admin is told and adds them. Nothing is added automatically. | ✅ live |
 | Members | See the schedule | A calendar of the Fridays with khatib, imam and venue. | ✅ live |
 | Members | Friday details and announcement | Tap a Friday to read it and copy the weekly announcement. | ✅ live |
-| Members | Name locked on the device | After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). The admin, who holds the access code, can still change it. It is a guard in the page, not a login. | ✅ live |
+| Members | Name locked on the device | After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). A person can use several devices: each one is remembered by the website, and the admin sees them under Edit person (with the device type and when it was last opened) and can reset one or all, after which that device can choose a name again the next time it opens the page. The admin can also tick Shared device on a device (with the access code entered): that device is never locked, so many people can choose their name on it. It is a guard in the page, not a login. | ✅ live |
 | Members | Say when you can or cannot come | Choose your name, then I'm available or I'm unavailable. No password. | ✅ live |
 | Members | Can't make it link | In every reminder and calendar event: one button that tells the admin you cannot come. | ✅ live |
 | Members | Calendar feed | A feed for Apple, Outlook or Google (From URL): 12:35 to 13:05 each Friday with the announcement text. | ✅ live |
@@ -140,7 +140,7 @@ flowchart TD
   C --> E["Put the schedule in your own calendar<br/>Google Calendar: Add the Jumat calendar<br/>Apple or Outlook: use the calendar feed link"]
   C --> N["Cannot find your name?<br/>press My name isn't listed, type your name and details<br/>the admin is told and adds you, then pick your name under You are"]
   C --> F["Say when you can or cannot come"]
-  F --> F1["Choose your name at the top, You are<br/>once: it is then fixed on this device<br/>the admin can change it"]
+  F --> F1["Choose your name at the top, You are<br/>once: it is then fixed on this device<br/>use as many devices as you like (pick your name on each)<br/>wrong name or a lost phone: the admin resets that device"]
   F1 --> F2["Tap a Friday, then<br/>I'm available · I'm unavailable · Clear my mark"]
   F2 --> F3["The admin sees it when choosing<br/>who will be khatib or imam"]
 
@@ -220,14 +220,16 @@ flowchart TD
   A["Roster: + Add person<br/>or Edit on an existing person"] --> B["Name, role (khatib, imam or both),<br/>affiliation, country, note"]
   B --> C["How can this person be reached? Fill in any of these:<br/>Email: automatic reminder emails and the Google Calendar invitation, keep the reminders box ticked<br/>LINE: press Get LINE link code, the person sends the code to the bot<br/>WhatsApp number like +81 90 1234 5678: a one-tap button in the planner<br/>Different address for Google Calendar: only if the Google account is another address<br/>Nothing yet: you copy the reminder and send it by hand"]
   C --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
-  D --> G{"Later, if something changes"}
+  D --> H["Devices with the name locked (Edit person)<br/>see each device and when it was last opened<br/>Reset one, or Reset all: it can choose a name again at its next visit"]
+  H --> G{"Later, if something changes"}
   G -->|"left NAIST"| E["Mark left NAIST<br/>the person stays in the history but is no longer offered"]
+  G -->|"a device to hand around"| I["With the access code entered, tick Shared device under You are<br/>that device is never locked, so many people can choose their name on it<br/>untick it to lock names there again"]
   G -->|"added by mistake"| F["Delete<br/>only for a mistake or a duplicate"]
 
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,B,D,E,G admin
+  class A,B,D,E,G,H,I admin
   class C out
   class F warn
 ```
@@ -371,6 +373,9 @@ flowchart TD
 | `/api/calendar/jumat.ics` | The calendar feed for Apple, Outlook or Google (From URL). | GET: public |
 | `/api/calendar/sync` | The planner's Sync now button: makes Google Calendar match the schedule. | POST: access code |
 | `/api/calendar/test-mode` | The planner's invitation test mode: invite only the addresses typed there until it is turned off. | POST: access code |
+| `/api/devices` | A browser that has chosen a name registers itself (the website keeps only a hash of its secret); the admin lists a person's devices and resets all of them. | GET: access code; POST: public; DELETE: access code |
+| `/api/devices/:id` | The admin resets one device's name lock. | DELETE: access code |
+| `/api/devices/me` | On opening, a browser asks whether its name lock still stands; after an admin reset it can choose a name again. | GET: public |
 | `/api/fridays` | The schedule: the list of Fridays. It also creates the coming ones. | GET: public |
 | `/api/fridays/:id` | Assign khatib and imam, set the venue or a note for one Friday. | PATCH: access code |
 | `/api/gatherings` | The admin adds one extra Ramadan day by hand. | POST: access code |
@@ -409,6 +414,7 @@ flowchart TD
 | `ramadan_pattern` | `0016_ramadan.sql` |
 | `gatherings` | `0016_ramadan.sql` |
 | `toa_rooms` | `0018_toa_rooms.sql` |
+| `device_locks` | `0019_device_locks.sql` |
 
 #### Database changes, in order
 
@@ -432,6 +438,7 @@ flowchart TD
 | `0016_ramadan.sql` | Ramadan: the dates, a weekly pattern, and one "gathering" (Isha + Tarawih, with a |
 | `0017_places_toa_room.sql` | The TOA app room (its id) that a place corresponds to. |
 | `0018_toa_rooms.sql` | The TOA app rooms that the TOA account is an admin of (id and name). |
+| `0019_device_locks.sql` | The name lock, remembered on the server: each browser that has chosen a name is one |
 
 #### Robot jobs (GitHub Actions)
 

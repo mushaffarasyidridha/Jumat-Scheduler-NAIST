@@ -26,6 +26,7 @@ export async function onRequestDelete({ request, env, params, waitUntil }) {
     env.DB.prepare("DELETE FROM availability WHERE person_id = ?").bind(id),
     env.DB.prepare("DELETE FROM reminder_log WHERE person_id = ?").bind(id),
     env.DB.prepare("DELETE FROM availability_alerts WHERE person_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM device_locks WHERE person_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET primary_khatib_id = NULL WHERE primary_khatib_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET secondary_khatib_id = NULL WHERE secondary_khatib_id = ?").bind(id),
     env.DB.prepare("UPDATE fridays SET imam_id = NULL WHERE imam_id = ?").bind(id),
