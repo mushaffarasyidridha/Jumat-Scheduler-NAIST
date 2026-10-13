@@ -94,6 +94,7 @@ flowchart TD
 | Members | My name isn't listed | Someone not on the roster types their name and details; the admin is told and adds them. Nothing is added automatically. | ✅ live |
 | Members | See the schedule | A calendar of the Fridays with khatib, imam and venue. | ✅ live |
 | Members | Friday details and announcement | Tap a Friday to read it and copy the weekly announcement. | ✅ live |
+| Members | My details | On a device locked to their name, a member presses My details (next to You are) to change their own email, WhatsApp number, other contact, Google Calendar address, affiliation, country, note and whether they get automatic reminders, and to link or unlink their own LINE (add the bot as a friend, send it the one-time code shown). Name, role, status, the admin flag and the khutbah checklist tick stay with the admin. The admins are emailed when someone changes their contact details. A shared device or a reset device cannot edit anyone. | ✅ live |
 | Members | Name locked on the device | After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). A person can use several devices: each one is remembered by the website, and the admin sees them under Edit person (with the device type and when it was last opened) and can reset one or all, after which that device can choose a name again the next time it opens the page. The admin can also tick Shared device on a device (with the access code entered): that device is never locked, so many people can choose their name on it. It is a guard in the page, not a login. | ✅ live |
 | Members | Say when you can or cannot come | Choose your name, then I'm available or I'm unavailable. No password. | ✅ live |
 | Members | Can't make it link | In every reminder and calendar event: one button that tells the admin you cannot come. | ✅ live |
@@ -144,10 +145,11 @@ flowchart TD
   F --> F1["Choose your name at the top, You are<br/>once: it is then fixed on this device<br/>use as many devices as you like (pick your name on each)<br/>wrong name or a lost phone: the admin resets that device"]
   F1 --> F2["Tap a Friday, then<br/>I'm available · I'm unavailable · Clear my mark"]
   F2 --> F3["The admin sees it when choosing<br/>who will be khatib or imam"]
+  F1 --> M["My details (next to You are, on your own locked device)<br/>change your email, WhatsApp, contact, country, note, reminders on or off<br/>Link my LINE: add the bot as a friend, send it the code shown<br/>name and role stay with the admin; the admin is emailed when contact details change"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
-  class A,B,C,D,E,F,F1,F2,N member
+  class A,B,C,D,E,F,F1,F2,N,M member
   class F3 robot
 ```
 
@@ -386,6 +388,8 @@ flowchart TD
 | `/api/join-requests` | Someone who cannot find their name sends their details (anyone can); the admin lists the waiting requests here. | POST: public; GET: access code |
 | `/api/join-requests/:id` | The admin closes a request: added to the roster, or dismissed. | PATCH: access code |
 | `/api/line/webhook` | Where LINE delivers messages to the bot. This is how a person links their LINE with the code. | POST: LINE signature |
+| `/api/me` | A member reads and changes their own details (email, WhatsApp, contact, country, note, reminders) from a device locked to their name; the admins are emailed when contact details change. | GET: public; PATCH: private link |
+| `/api/me/line` | A member gets their own one-time LINE link code (or unlinks LINE) from a device locked to their name. | POST: public; DELETE: public |
 | `/api/people` | The roster: read the list (contact details only with the code) and add a person. | GET: public, more with the code; POST: access code |
 | `/api/people/:id` | Edit or delete one person. | DELETE: access code; PATCH: access code |
 | `/api/people/:id/line` | Create or remove the code a person uses to link their LINE. | POST: access code; DELETE: access code |
@@ -466,10 +470,12 @@ flowchart TD
 | `LINE_CHANNEL_SECRET` | GitHub secret | LINE bot: lets the website check that a message really comes from LINE. |
 | `SCHEDULER_ACCESS_CODE` | GitHub secret | The community access code (GitHub keeps it; the setup workflow copies it to the website as ACCESS_CODE). |
 | `TOA_API_KEY` | GitHub secret | The secret integration key made in the TOA app (Settings, Integration keys). It lets the daily job add the Ramadan evenings to the TOA rooms its owner administers. |
+| `LINE_BOT_URL` | GitHub variable | Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details. |
 | `SITE_URL` | GitHub variable | Optional: the website address used inside calendar events and emails, if the site gets its own domain. |
 | `ACCESS_CODE` | Website setting | The community access code, as the website sees it. Anyone who knows it can edit the schedule and roster. |
 | `GCAL_BRIDGE_SECRET` | Website setting | The shared secret that the website and the Apps Script both must know. |
 | `GCAL_BRIDGE_URL` | Website setting | Address of the Google Apps Script that edits the shared Google Calendar. |
+| `LINE_BOT_URL` | Website setting | Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details. |
 | `LINE_CHANNEL_ACCESS_TOKEN` | Website setting | LINE bot: lets the website and the job send LINE messages. |
 | `LINE_CHANNEL_SECRET` | Website setting | LINE bot: lets the website check that a message really comes from LINE. |
 | `SITE_URL` | Website setting | Optional: the website address used inside calendar events and emails, if the site gets its own domain. |

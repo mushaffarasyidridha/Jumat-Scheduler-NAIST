@@ -234,6 +234,36 @@
       "note": "Where LINE delivers messages to the bot. This is how a person links their LINE with the code."
     },
     {
+      "route": "/api/me",
+      "file": "functions/api/me/index.js",
+      "methods": [
+        {
+          "method": "GET",
+          "access": "public"
+        },
+        {
+          "method": "PATCH",
+          "access": "private link"
+        }
+      ],
+      "note": "A member reads and changes their own details (email, WhatsApp, contact, country, note, reminders) from a device locked to their name; the admins are emailed when contact details change."
+    },
+    {
+      "route": "/api/me/line",
+      "file": "functions/api/me/line.js",
+      "methods": [
+        {
+          "method": "POST",
+          "access": "public"
+        },
+        {
+          "method": "DELETE",
+          "access": "public"
+        }
+      ],
+      "note": "A member gets their own one-time LINE link code (or unlinks LINE) from a device locked to their name."
+    },
+    {
       "route": "/api/people",
       "file": "functions/api/people/index.js",
       "methods": [
@@ -653,6 +683,14 @@
       "note": "The secret integration key made in the TOA app (Settings, Integration keys). It lets the daily job add the Ramadan evenings to the TOA rooms its owner administers."
     },
     {
+      "name": "LINE_BOT_URL",
+      "where": "GitHub variable",
+      "usedIn": [
+        "setup.yml"
+      ],
+      "note": "Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details."
+    },
+    {
       "name": "SITE_URL",
       "where": "GitHub variable",
       "usedIn": [
@@ -685,10 +723,19 @@
       "note": "Address of the Google Apps Script that edits the shared Google Calendar."
     },
     {
+      "name": "LINE_BOT_URL",
+      "where": "Website setting",
+      "usedIn": [
+        "functions/api/me/index.js"
+      ],
+      "note": "Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details."
+    },
+    {
       "name": "LINE_CHANNEL_ACCESS_TOKEN",
       "where": "Website setting",
       "usedIn": [
         "functions/api/line/webhook.js",
+        "functions/api/me/index.js",
         "functions/api/reminders/status.js"
       ],
       "note": "LINE bot: lets the website and the job send LINE messages."
@@ -698,6 +745,7 @@
       "where": "Website setting",
       "usedIn": [
         "functions/api/line/webhook.js",
+        "functions/api/me/index.js",
         "functions/api/reminders/status.js"
       ],
       "note": "LINE bot: lets the website check that a message really comes from LINE."
