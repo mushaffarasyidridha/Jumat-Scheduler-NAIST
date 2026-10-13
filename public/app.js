@@ -257,6 +257,8 @@
       : isOpenDevice()
       ? "Shared device: choose your name; you can switch it any time."
       : "Pick your name once: it cannot be changed afterwards without the admin.";
+    // A device locked to a name can edit that person's own details.
+    $("#me-open-btn").classList.toggle("hidden", !(locked && localStorage.getItem(LS_DEVICE)));
     // Only the admin (with the code entered) can make this browser a shared device or end that.
     $("#open-device-row").classList.toggle("hidden", !hasAccessCode());
     $("#open-device").checked = isOpenDevice();
@@ -267,6 +269,107 @@
     renderWhoami();
     toast(e.target.checked ? "Shared device: anyone can choose their name here" : "This device will lock a name again once one is chosen");
     if (!e.target.checked) await syncDeviceLock(); // a name already chosen here is registered, so it can be reset
+  });
+
+  // ---------- My details: a member edits their own entry ----------
+  // Proven by this device's name-lock token, not by the access code.
+  const meApi = (path, opts = {}) =>
+    api(path, { ...opts, headers: { ...(opts.headers || {}), "x-device-token": localStorage.getItem(LS_DEVICE) || "" } });
+
+  async function openMeModal() {
+    let me;
+    try {
+      me = await meApi("/api/me");
+    } catch (e) {
+      return toast(e.message, true);
+    }
+    const p = me.person;
+    $("#me-title").textContent = `My details: ${p.name}`;
+    $("#me-email").value = p.email || "";
+    $("#me-whatsapp").value = p.whatsapp || "";
+    $("#me-contact").value = p.contact || "";
+    $("#me-calendar-email").value = p.calendar_email || "";
+    $("#me-affiliation").value = p.affiliation || "naist_student";
+    $("#me-country").value = p.country || "";
+    $("#me-note").value = p.note || "";
+    $("#me-reminders").checked = !!p.reminders;
+    $("#me-error").classList.add("hidden");
+    renderMeLine(me);
+    $("#me-modal").classList.remove("hidden");
+  }
+
+  // LINE: the member links it themselves (a one-time code sent to the bot).
+  function renderMeLine(me, codeInfo = null) {
+    const box = $("#me-line");
+    if (!me.line.configured) return box.classList.add("hidden");
+    box.classList.remove("hidden");
+    const bot = me.line.bot_url
+      ? `<a href="${escapeHtml(me.line.bot_url)}" target="_blank" rel="noopener">add the community LINE bot as a friend</a>`
+      : "add the community LINE bot as a friend (ask the admin for it)";
+    if (me.person.line_linked) {
+      box.innerHTML = `<p><strong>LINE:</strong> ✅ linked: your reminders also come on LINE.</p>
+        <div class="line-box-actions"><button class="btn btn-sm btn-danger" data-me-line-unlink type="button">Unlink LINE</button></div>`;
+    } else if (codeInfo) {
+      const until = new Date(codeInfo.expires_at).toLocaleDateString(undefined, { dateStyle: "medium" });
+      box.innerHTML = `<p><strong>LINE:</strong> 1. ${bot}. 2. Send the bot this message:</p>
+        <div class="line-code">${escapeHtml(codeInfo.code)}</div>
+        <p class="muted small">Works once, until ${escapeHtml(until)}.</p>
+        <div class="line-box-actions"><button class="btn btn-sm" data-me-line-check type="button">Check if linked</button></div>`;
+    } else {
+      box.innerHTML = `<p><strong>LINE:</strong> not linked. Get your reminders on LINE too:</p>
+        <div class="line-box-actions"><button class="btn btn-sm" data-me-line-code type="button">Link my LINE</button></div>`;
+    }
+    box.querySelector("[data-me-line-code]")?.addEventListener("click", async () => {
+      try {
+        renderMeLine(me, await meApi("/api/me/line", { method: "POST" }));
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    box.querySelector("[data-me-line-check]")?.addEventListener("click", async () => {
+      try {
+        const fresh = await meApi("/api/me");
+        if (fresh.person.line_linked) toast("LINE linked");
+        else toast("Not linked yet: send the code to the bot first", true);
+        renderMeLine(fresh, fresh.person.line_linked ? null : codeInfo);
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+    box.querySelector("[data-me-line-unlink]")?.addEventListener("click", async () => {
+      if (!confirm("Unlink your LINE? Your reminders will stop coming on LINE.")) return;
+      try {
+        await meApi("/api/me/line", { method: "DELETE" });
+        renderMeLine({ ...me, person: { ...me.person, line_linked: false } });
+        toast("LINE unlinked");
+      } catch (e) {
+        toast(e.message, true);
+      }
+    });
+  }
+
+  $("#me-open-btn").addEventListener("click", openMeModal);
+  $("#me-cancel-btn").addEventListener("click", () => $("#me-modal").classList.add("hidden"));
+  $("#me-save-btn").addEventListener("click", async () => {
+    const payload = {
+      email: $("#me-email").value.trim(),
+      whatsapp: $("#me-whatsapp").value.trim(),
+      contact: $("#me-contact").value.trim(),
+      calendar_email: $("#me-calendar-email").value.trim(),
+      affiliation: $("#me-affiliation").value,
+      country: $("#me-country").value.trim(),
+      note: $("#me-note").value.trim(),
+      reminders: $("#me-reminders").checked,
+    };
+    try {
+      await meApi("/api/me", { method: "PATCH", body: JSON.stringify(payload) });
+      $("#me-modal").classList.add("hidden");
+      toast("Your details are saved");
+      await loadAll();
+    } catch (e) {
+      $("#me-error").textContent = e.message;
+      $("#me-error").classList.remove("hidden");
+    }
   });
 
   // ---------- The name lock, remembered on the server ----------
@@ -316,6 +419,7 @@
     localStorage.removeItem(LS_DEVICE); // a token belongs to one name; a new pick gets its own
     renderWhoami();
     await syncDeviceLock(); // locks this browser to the name on the server (not for the admin or a shared device)
+    renderWhoami(); // the token now exists, so "My details" can show
     // Without the access code, availability is fetched scoped to whoever is
     // selected - re-fetch so switching names shows the right person's marks.
     if (!hasAccessCode()) await loadAll();

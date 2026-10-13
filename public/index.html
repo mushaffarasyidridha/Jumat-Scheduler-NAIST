@@ -19,6 +19,7 @@
         <small id="whoami-note" class="muted"></small>
         <label id="open-device-row" class="check-row small hidden"><input id="open-device" type="checkbox" /> <span>Shared device: anyone can choose their name here (not locked)</span></label>
         <button id="join-open-btn" class="linklike" type="button">My name isn't listed</button>
+        <button id="me-open-btn" class="linklike hidden" type="button">✏️ My details</button>
       </div>
     </div>
   </header>
@@ -234,6 +235,47 @@
         <button id="place-toa-add-btn" class="btn btn-primary" type="button">Add ticked rooms</button>
       </div>
       <p id="place-toa-error" class="error small hidden"></p>
+    </div>
+  </div>
+
+  <div id="me-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="me-title">My details</h3>
+      <p class="small muted">Only you see these on this device, and the admin. Your name and role can only be changed by the admin.</p>
+      <label>Email <span class="muted small">(automatic reminders and the Google Calendar invitation)</span>
+        <input id="me-email" type="email" maxlength="120" autocomplete="email" placeholder="optional" />
+      </label>
+      <label>WhatsApp number <span class="muted small">(so the admin can message you)</span>
+        <input id="me-whatsapp" type="tel" maxlength="30" autocomplete="tel" placeholder="+81 90 1234 5678" />
+      </label>
+      <label>Other contact <span class="muted small">(phone, Facebook ...)</span>
+        <input id="me-contact" type="text" maxlength="200" placeholder="optional" />
+      </label>
+      <label>Different address for Google Calendar invitations <span class="muted small">(usually empty: only if your Google account is another address)</span>
+        <input id="me-calendar-email" type="email" maxlength="120" autocomplete="off" placeholder="usually empty" />
+      </label>
+      <label>Who
+        <select id="me-affiliation">
+          <option value="naist_student">NAIST Student</option>
+          <option value="naist_staff">NAIST Staff</option>
+          <option value="dependent">Dependent (e.g. spouse of a student)</option>
+          <option value="outside">Outside NAIST</option>
+        </select>
+      </label>
+      <label>Country <input id="me-country" type="text" maxlength="60" /></label>
+      <label>Note <span class="muted small">(e.g. leaving NAIST around ...)</span>
+        <input id="me-note" type="text" maxlength="300" placeholder="optional" />
+      </label>
+      <label class="check-row">
+        <input id="me-reminders" type="checkbox" />
+        <span>Send me automatic reminders and calendar invitations</span>
+      </label>
+      <div id="me-line" class="line-box hidden"></div>
+      <div class="modal-actions">
+        <button id="me-cancel-btn" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="me-save-btn" class="btn btn-primary" type="button">Save</button>
+      </div>
+      <p id="me-error" class="error small hidden"></p>
     </div>
   </div>
 
