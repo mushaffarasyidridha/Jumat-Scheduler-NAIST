@@ -466,16 +466,17 @@ flowchart TD
 | `GCAL_BRIDGE_URL` | GitHub secret | Address of the Google Apps Script that edits the shared Google Calendar. |
 | `GMAIL_APP_PASSWORD` | GitHub secret | The Gmail app password (16 characters) used to send those emails. |
 | `GMAIL_USER` | GitHub secret | The community Gmail address that sends the reminder emails. |
+| `LINE_BOT_URL` | GitHub secret | Optional (a GitHub secret or variable): the LINE bot's add-friend link, shown wherever someone links LINE (My details, and the admin's person form). |
 | `LINE_CHANNEL_ACCESS_TOKEN` | GitHub secret | LINE bot: lets the website and the job send LINE messages. |
 | `LINE_CHANNEL_SECRET` | GitHub secret | LINE bot: lets the website check that a message really comes from LINE. |
 | `SCHEDULER_ACCESS_CODE` | GitHub secret | The community access code (GitHub keeps it; the setup workflow copies it to the website as ACCESS_CODE). |
 | `TOA_API_KEY` | GitHub secret | The secret integration key made in the TOA app (Settings, Integration keys). It lets the daily job add the Ramadan evenings to the TOA rooms its owner administers. |
-| `LINE_BOT_URL` | GitHub variable | Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details. |
+| `LINE_BOT_URL` | GitHub variable | Optional (a GitHub secret or variable): the LINE bot's add-friend link, shown wherever someone links LINE (My details, and the admin's person form). |
 | `SITE_URL` | GitHub variable | Optional: the website address used inside calendar events and emails, if the site gets its own domain. |
 | `ACCESS_CODE` | Website setting | The community access code, as the website sees it. Anyone who knows it can edit the schedule and roster. |
 | `GCAL_BRIDGE_SECRET` | Website setting | The shared secret that the website and the Apps Script both must know. |
 | `GCAL_BRIDGE_URL` | Website setting | Address of the Google Apps Script that edits the shared Google Calendar. |
-| `LINE_BOT_URL` | Website setting | Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details. |
+| `LINE_BOT_URL` | Website setting | Optional (a GitHub secret or variable): the LINE bot's add-friend link, shown wherever someone links LINE (My details, and the admin's person form). |
 | `LINE_CHANNEL_ACCESS_TOKEN` | Website setting | LINE bot: lets the website and the job send LINE messages. |
 | `LINE_CHANNEL_SECRET` | Website setting | LINE bot: lets the website check that a message really comes from LINE. |
 | `SITE_URL` | Website setting | Optional: the website address used inside calendar events and emails, if the site gets its own domain. |

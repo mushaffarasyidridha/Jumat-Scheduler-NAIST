@@ -30,7 +30,7 @@ export const SETTING_NOTES = {
   GMAIL_USER: "The community Gmail address that sends the reminder emails.",
   GMAIL_APP_PASSWORD: "The Gmail app password (16 characters) used to send those emails.",
   LINE_CHANNEL_SECRET: "LINE bot: lets the website check that a message really comes from LINE.",
-  LINE_BOT_URL: "Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details.",
+  LINE_BOT_URL: "Optional (a GitHub secret or variable): the LINE bot's add-friend link, shown wherever someone links LINE (My details, and the admin's person form).",
   LINE_CHANNEL_ACCESS_TOKEN: "LINE bot: lets the website and the job send LINE messages.",
   GCAL_BRIDGE_URL: "Address of the Google Apps Script that edits the shared Google Calendar.",
   GCAL_BRIDGE_SECRET: "The shared secret that the website and the Apps Script both must know.",

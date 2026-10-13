@@ -31,5 +31,7 @@ export async function onRequestGet({ request, env }) {
     last_run: run ? { ran_at: sqliteUtcToIso(run.ran_at), sent: run.sent, failed: run.failed } : null,
     admins: { total: admins.total, reachable: admins.reachable },
     line_configured: !!(env.LINE_CHANNEL_SECRET && env.LINE_CHANNEL_ACCESS_TOKEN),
+    // The bot's add-friend link (optional), shown next to a LINE link code.
+    line_bot_url: /^https:\/\/\S+$/.test(env.LINE_BOT_URL || "") ? env.LINE_BOT_URL : null,
   });
 }
