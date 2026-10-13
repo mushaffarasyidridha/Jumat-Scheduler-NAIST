@@ -650,6 +650,14 @@
       "note": "The community Gmail address that sends the reminder emails."
     },
     {
+      "name": "LINE_BOT_URL",
+      "where": "GitHub secret",
+      "usedIn": [
+        "setup.yml"
+      ],
+      "note": "Optional (a GitHub secret or variable): the LINE bot's add-friend link, shown wherever someone links LINE (My details, and the admin's person form)."
+    },
+    {
       "name": "LINE_CHANNEL_ACCESS_TOKEN",
       "where": "GitHub secret",
       "usedIn": [
@@ -688,7 +696,7 @@
       "usedIn": [
         "setup.yml"
       ],
-      "note": "Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details."
+      "note": "Optional (a GitHub secret or variable): the LINE bot's add-friend link, shown wherever someone links LINE (My details, and the admin's person form)."
     },
     {
       "name": "SITE_URL",
@@ -726,9 +734,10 @@
       "name": "LINE_BOT_URL",
       "where": "Website setting",
       "usedIn": [
-        "functions/api/me/index.js"
+        "functions/api/me/index.js",
+        "functions/api/reminders/status.js"
       ],
-      "note": "Optional (a GitHub variable, not a secret): the LINE bot's add-friend link, shown to members who link their own LINE under My details."
+      "note": "Optional (a GitHub secret or variable): the LINE bot's add-friend link, shown wherever someone links LINE (My details, and the admin's person form)."
     },
     {
       "name": "LINE_CHANNEL_ACCESS_TOKEN",

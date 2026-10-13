@@ -1721,7 +1721,11 @@
     } else if (codeInfo) {
       const until = new Date(codeInfo.expires_at).toLocaleDateString(undefined, { dateStyle: "medium" });
       box.innerHTML = `
-        <p><strong>LINE:</strong> ask ${escapeHtml(person.name)} to add the LINE bot as a friend, then send the bot this message:</p>
+        <p><strong>LINE:</strong> ask ${escapeHtml(person.name)} to add the LINE bot as a friend${
+          state.reminderStatus?.line_bot_url
+            ? ` (<a href="${escapeHtml(state.reminderStatus.line_bot_url)}" target="_blank" rel="noopener">add-friend link</a>: send it to them too)`
+            : ""
+        }, then send the bot this message:</p>
         <div class="line-code">${escapeHtml(codeInfo.code)}</div>
         <p class="muted small">Works once, until ${escapeHtml(until)}.</p>
         <div class="line-box-actions"><button class="btn btn-sm" data-line-check type="button">Check if linked</button></div>`;

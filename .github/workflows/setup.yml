@@ -54,9 +54,9 @@ jobs:
         env:
           LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
-          # Optional, not secret: the bot's add-friend link (https://lin.ee/... or https://line.me/R/ti/p/@...),
+          # Optional (a GitHub secret or variable): the bot's add-friend link (https://lin.ee/... or https://line.me/R/ti/p/@...),
           # shown to members who link their own LINE under My details.
-          LINE_BOT_URL: ${{ vars.LINE_BOT_URL }}
+          LINE_BOT_URL: ${{ secrets.LINE_BOT_URL || vars.LINE_BOT_URL }}
         run: |
           if [ -n "$LINE_CHANNEL_SECRET" ] && [ -n "$LINE_CHANNEL_ACCESS_TOKEN" ]; then
             printf '%s' "$LINE_CHANNEL_SECRET" | npx wrangler pages secret put LINE_CHANNEL_SECRET --project-name=jumat-scheduler-naist
