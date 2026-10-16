@@ -10,6 +10,7 @@ import {
   parseEmail,
   parseWhatsapp,
 } from "../_utils.js";
+import { parseLeavingOn } from "../_me.mjs";
 import { syncAfterEdit } from "../_gcal_runtime.mjs";
 
 export async function onRequestDelete({ request, env, params, waitUntil }) {
@@ -105,6 +106,12 @@ export async function onRequestPatch({ request, env, params, waitUntil }) {
   if (typeof body.is_admin === "boolean") {
     fields.push("is_admin = ?");
     values.push(body.is_admin ? 1 : 0);
+  }
+  if (body.leaving_on !== undefined) {
+    const leavingOn = parseLeavingOn(body.leaving_on);
+    if (leavingOn.error) return badRequest(leavingOn.error);
+    fields.push("leaving_on = ?");
+    values.push(leavingOn.value);
   }
   if (typeof body.khutbah_checklist === "boolean") {
     fields.push("khutbah_checklist = ?");

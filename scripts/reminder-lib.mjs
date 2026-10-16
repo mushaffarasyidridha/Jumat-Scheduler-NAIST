@@ -362,3 +362,101 @@ export function buildKultumEmail({ gathering: g, person, days, minutes, siteUrl 
 export function buildKultumLineText(args) {
   return kultumChatText(args);
 }
+
+// ---------- People who have left ----------
+//
+// A person with an expected leaving date (NAIST or Nara) who is still active is moved to
+// "No longer at NAIST" by the daily job once that day has passed. people: rows with
+// id, status, leaving_on.
+export function leaversDue(people, today) {
+  return people.filter((p) => p.status === "active" && p.leaving_on && p.leaving_on < today);
+}
+
+// ---------- The month's full schedule, on the 1st ----------
+//
+// On the first day of each month (Japan time) the admins and everyone scheduled that month get
+// the whole month's schedule: every Friday with its khatib, imam and place, and the Ramadan
+// evenings. Logged once per person and channel under MONTH_ID_OFFSET + yyyymm (kind "month"),
+// so the second run of the same day never repeats it.
+export const MONTH_ID_OFFSET = 2_000_000;
+
+export const monthLogId = (today) => MONTH_ID_OFFSET + Number(today.slice(0, 4)) * 100 + Number(today.slice(5, 7));
+
+// "October 2026" from any date in that month.
+export const monthNameOf = (iso) => formatDateShort(`${iso.slice(0, 8)}01`).split(" ").slice(1).join(" ");
+
+export const isFirstOfMonth = (today) => today.slice(8, 10) === "01";
+
+// fridays: rows of the month with date, venue, the three slot ids and primary_name / secondary_name /
+// imam_name. gatherings: rows of the month with date, place, start_time, kultum, speaker.
+// people: rows with id, name, status, is_admin, email, reminders, line_user_id, reminder_token.
+export function dueMonthlyReminders({ today, fridays, gatherings = [], people, sentKeys }) {
+  if (!isFirstOfMonth(today) || (!fridays.length && !gatherings.length)) return [];
+  const scheduled = new Set();
+  for (const f of fridays) for (const slot of ROLE_SLOTS) if (slot.notify !== false && f[slot.field] != null) scheduled.add(f[slot.field]);
+  const logId = monthLogId(today);
+  const due = [];
+  for (const person of people) {
+    if (person.status !== "active" || !person.reminders) continue;
+    if (!person.is_admin && !scheduled.has(person.id)) continue;
+    const mine = fridays
+      .map((f) => ({ date: f.date, roles: ROLE_SLOTS.filter((s) => s.notify !== false && f[s.field] === person.id).map((s) => s.label) }))
+      .filter((m) => m.roles.length);
+    const channels = [];
+    if (person.email) channels.push("email");
+    if (person.line_user_id) channels.push("line");
+    for (const channel of channels) {
+      const key = sentKey(logId, person.id, "month", channel);
+      if (sentKeys.has(key)) continue;
+      due.push({ type: "month", key, person, kind: "month", channel, days: 0, logId, month: monthNameOf(today), fridays, gatherings, mine, open: openSlotDates(fridays) });
+    }
+  }
+  return due;
+}
+
+// The Fridays that still miss a khatib or an imam (the secondary is standby and not counted).
+function openSlotDates(fridays) {
+  return fridays.filter((f) => !f.primary_name || !f.imam_name).map((f) => formatDateShort(f.date));
+}
+
+function fridayLine(f) {
+  const place = (f.venue || "").trim() || "place to be announced";
+  return `${formatDateShort(f.date)}: khatib ${f.primary_name || "(open)"} · imam ${f.imam_name || "(open)"} · ${place}`;
+}
+
+function gatheringLine(g) {
+  const talk = g.kultum ? `, kultum ${g.speaker || "(speaker open)"}` : "";
+  return `${formatDateWithWeekday(g.date)}: Isha + Tarawih ${g.start_time}, ${(g.place || "").trim() || "place to be announced"}${talk}`;
+}
+
+function monthBlocks({ month, fridays, gatherings, mine, open, person }) {
+  const blocks = [];
+  blocks.push([`Jumat prayer, ${month} (${PRAYER_TIME}):`, ...(fridays.length ? fridays.map((f) => `  ${fridayLine(f)}`) : ["  no Friday on the schedule yet"])].join("\n"));
+  if (gatherings.length) blocks.push(["Ramadan evenings:", ...gatherings.map((g) => `  ${gatheringLine(g)}`)].join("\n"));
+  if (mine.length) blocks.push(["You are scheduled on:", ...mine.map((m) => `  ${formatDateShort(m.date)} (${m.roles.join(" + ")})`)].join("\n"));
+  if (person.is_admin && open.length) blocks.push(`Admin: still open (khatib or imam): ${open.join(", ")}`);
+  return blocks;
+}
+
+export function buildMonthEmail({ month, fridays, gatherings, mine, open, person, siteUrl }) {
+  const unsubscribeUrl = `${siteUrl}/api/reminders/unsubscribe?t=${person.reminder_token}`;
+  const text = [
+    `Assalamu'alaikum ${person.name},`,
+    "",
+    `The first of the month: here is the whole schedule for ${month}.`,
+    "",
+    ...monthBlocks({ month, fridays, gatherings, mine, open, person }).flatMap((b) => [b, ""]),
+    `Changes and the latest version: ${siteUrl}`,
+    "",
+    "JazakAllahu khairan.",
+    "",
+    "--",
+    "You get this because you are on the NAIST Jumat roster with this email address and are scheduled this month (or are an admin).",
+    `Stop these reminders: ${unsubscribeUrl}`,
+  ].join("\n");
+  return { subject: `Jumat schedule for ${month}`, text, unsubscribeUrl };
+}
+
+export function buildMonthLineText({ month, fridays, gatherings, mine, open, person, siteUrl = FALLBACK_SITE_URL }) {
+  return [`📅 Jumat schedule, ${month}`, `Assalamu'alaikum ${person.name}:`, ...monthBlocks({ month, fridays, gatherings, mine, open, person }), siteUrl].join("\n\n");
+}

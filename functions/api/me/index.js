@@ -1,5 +1,5 @@
-import { json, badRequest, PERSON_COLUMNS, shapePerson, AFFILIATIONS, parseEmail, parseWhatsapp } from "../_utils.js";
-import { deviceOwner, parseSelfEdit, changedContacts, buildSelfEditEmail } from "../_me.mjs";
+import { json, badRequest, checkAccess, PERSON_COLUMNS, shapePerson, AFFILIATIONS, parseEmail, parseWhatsapp } from "../_utils.js";
+import { meTarget, parseSelfEdit, changedContacts, buildSelfEditEmail } from "../_me.mjs";
 import { joinRecipients } from "../_joinmail.mjs";
 import { bridgeFrom, syncAfterEdit } from "../_gcal_runtime.mjs";
 import { siteUrlFrom } from "../_site.mjs";
@@ -14,28 +14,30 @@ const lineInfo = (env) => ({
 
 // A member reads their own details (contact details included) from their own device.
 export async function onRequestGet({ request, env }) {
-  const id = await deviceOwner(request, env);
-  if (!id) return json({ error: NOT_MINE }, { status: 403 });
-  const row = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`).bind(id).first();
+  const target = await meTarget(request, env, checkAccess(request, env));
+  if (!target) return json({ error: NOT_MINE }, { status: 403 });
+  const row = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`).bind(target.id).first();
   return json({ person: shapePerson(row, true), line: lineInfo(env) });
 }
 
 // A member changes their own contact details and preferences. Admins are emailed when an
-// email, WhatsApp or contact changes, so a wrong edit is noticed.
+// email, WhatsApp, contact or leaving date changes, so a wrong edit is noticed (not when an
+// admin made the edit for them on a shared device).
 export async function onRequestPatch({ request, env, waitUntil }) {
-  const id = await deviceOwner(request, env);
-  if (!id) return json({ error: NOT_MINE }, { status: 403 });
+  const target = await meTarget(request, env, checkAccess(request, env));
+  if (!target) return json({ error: NOT_MINE }, { status: 403 });
+  const id = target.id;
   const parsed = parseSelfEdit(await request.json().catch(() => null), { parseEmail, parseWhatsapp, affiliations: AFFILIATIONS });
   if (parsed.error) return badRequest(parsed.error);
 
-  const before = await env.DB.prepare("SELECT name, email, whatsapp, calendar_email, contact FROM people WHERE id = ?").bind(id).first();
+  const before = await env.DB.prepare("SELECT name, email, whatsapp, calendar_email, contact, leaving_on FROM people WHERE id = ?").bind(id).first();
   const columns = Object.keys(parsed.set);
   await env.DB.prepare(`UPDATE people SET ${columns.map((c) => `${c} = ?`).join(", ")}, updated_at = datetime('now') WHERE id = ?`)
     .bind(...columns.map((c) => parsed.set[c]), id)
     .run();
 
   const changes = changedContacts(before, parsed.set);
-  if (changes.length) waitUntil(tellAdmins(env, before, changes));
+  if (changes.length && !target.byAdmin) waitUntil(tellAdmins(env, before, changes));
   waitUntil(syncAfterEdit(env)); // the calendar invitation follows the email
 
   const row = await env.DB.prepare(`SELECT ${PERSON_COLUMNS} FROM people WHERE id = ?`).bind(id).first();

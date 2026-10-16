@@ -94,7 +94,7 @@ flowchart TD
 | Members | My name isn't listed | Someone not on the roster types their name and details; the admin is told and adds them. Nothing is added automatically. | ✅ live |
 | Members | See the schedule | A calendar of the Fridays with khatib, imam and venue. | ✅ live |
 | Members | Friday details and announcement | Tap a Friday to read it and copy the weekly announcement. | ✅ live |
-| Members | My details | On a device locked to their name, a member presses My details (next to You are) to change their own email, WhatsApp number, other contact, Google Calendar address, affiliation, country, note and whether they get automatic reminders, and to link or unlink their own LINE (add the bot as a friend, send it the one-time code shown). Name, role, status, the admin flag and the khutbah checklist tick stay with the admin. The admins are emailed when someone changes their contact details. A shared device or a reset device cannot edit anyone. | ✅ live |
+| Members | My details | On a device locked to their name, a member presses My details (next to You are) to change their own email, WhatsApp number, other contact, Google Calendar address, affiliation, country, note, the day they expect to leave NAIST or Nara and whether they get automatic reminders, and to link or unlink their own LINE (add the bot as a friend, send it the one-time code shown). Name, role, status, the admin flag and the khutbah checklist tick stay with the admin. The admins are emailed when someone changes their contact details or leaving date. A shared device or a reset device cannot edit anyone (except for the admin, see Admin edits anyone's details on a shared device). | ✅ live |
 | Members | Name locked on the device | After a member picks their name under You are, it cannot be changed on that device (so nobody marks or looks at someone else's availability). A person can use several devices: each one is remembered by the website, and the admin sees them under Edit person (with the device type and when it was last opened) and can reset one or all, after which that device can choose a name again the next time it opens the page. The admin can also tick Shared device on a device (with the access code entered): that device is never locked, so many people can choose their name on it. It is a guard in the page, not a login. | ✅ live |
 | Members | Say when you can or cannot come | Choose your name, then I'm available or I'm unavailable. No password. | ✅ live |
 | Members | Can't make it link | In every reminder and calendar event: one button that tells the admin you cannot come. | ✅ live |
@@ -105,6 +105,9 @@ flowchart TD
 | Members | Khutbah checklist for the khatib | A khatib's reminders (email, LINE, and the Copy / WhatsApp text) carry the five rukun of the Friday khutbah in the Shafi'i madzhab: hamdalah, shalawat on the Prophet and wasiat taqwa in both khutbahs, a verse of the Qur'an in one of them, and du'a for the believers in the second; plus the main conditions (the rukun in Arabic, standing, sitting briefly between the two khutbahs, wudu, audible, within Zuhr time, no long break). A tick on each person in the roster (on by default) turns it off for someone who does not need it. | ✅ live |
 | Scheduled people | Add to Google Calendar link | In every reminder: a ready-made calendar event with their role. | ✅ live |
 | Scheduled people | Google Calendar invitation | Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off. | ✅ live |
+| Admin | Admin edits anyone's details on a shared device | A hidden option that shows only to the admin: with the access code entered and Shared device ticked, a second tick (Admin edits anyone's details) appears. With it on and the admin's own name chosen under You are, My details opens for any active person the admin picks from a list, so the admin can fill in the member-editable details on a shared device. The person is not emailed about it. Unticking Shared device switches it off. | ✅ live |
+| Admin | Expected leaving date | Optional date on each person (Edit person, or the member's own My details): when they expect to leave NAIST or Nara. The day after it, the daily job moves them to No longer at NAIST by itself (they stay in the history, reminders and invitations stop). Untick or clear the date to cancel; Mark active brings them back. | ✅ live |
+| Scheduled people | Monthly schedule on the 1st | On the first day of each month (Japan time) the admins and everyone scheduled as khatib or imam that month get one message with the whole month: every Friday with khatib, imam and place, the Ramadan evenings, their own days and, for an admin, the slots still open. By email and LINE like the other reminders, once only, unless reminders are switched off. | ✅ live |
 | Admin | Access code | Unlocks editing. Members never need it. | ✅ live |
 | Admin | Roster | Add, edit, mark left NAIST or delete people; their contact details are visible only with the code. | ✅ live |
 | Admin | Planner | Pick primary khatib, secondary khatib and imam for every coming Friday, with availability and turns shown. The secondary (standby, usually next week's khatib) gets no automatic reminder or invitation. | ✅ live |
@@ -145,7 +148,7 @@ flowchart TD
   F --> F1["Choose your name at the top, You are<br/>once: it is then fixed on this device<br/>use as many devices as you like (pick your name on each)<br/>wrong name or a lost phone: the admin resets that device"]
   F1 --> F2["Tap a Friday, then<br/>I'm available · I'm unavailable · Clear my mark"]
   F2 --> F3["The admin sees it when choosing<br/>who will be khatib or imam"]
-  F1 --> M["My details (next to You are, on your own locked device)<br/>change your email, WhatsApp, contact, country, note, reminders on or off<br/>Link my LINE: add the bot as a friend, send it the code shown<br/>name and role stay with the admin; the admin is emailed when contact details change"]
+  F1 --> M["My details (next to You are, on your own locked device)<br/>change your email, WhatsApp, contact, country, note, when you expect to leave NAIST or Nara, reminders on or off<br/>Link my LINE: add the bot as a friend, send it the code shown<br/>name and role stay with the admin; the admin is emailed when contact details change"]
 
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   classDef robot fill:#eceff3,stroke:#6b7280,color:#1f2937
@@ -160,7 +163,7 @@ How you are told, and what to do if you cannot come.
 ```mermaid
 flowchart TD
   A["The admin picks you for a Friday"] --> B["You are told in the way the admin can reach you:<br/>Email, if your email is on the roster<br/>LINE, if you linked LINE<br/>a WhatsApp or Facebook message from the admin, if neither<br/>a Google Calendar invitation, to the same email"]
-  B --> C["Reminders: 7 days before and the day before<br/>for the primary khatib and the imam; the secondary khatib (standby, usually next week's khatib) gets none"]
+  B --> C["Reminders: on the 1st of the month the whole month's schedule,<br/>then 7 days before and the day before<br/>for the primary khatib and the imam; the secondary khatib (standby, usually next week's khatib) gets none"]
   C --> K["Khatib: the reminder carries the khutbah checklist<br/>the 5 rukun in the Shafi'i madzhab: hamdalah, shalawat and wasiat taqwa in both khutbahs,<br/>a Qur'an verse in one, du'a for the believers in the second<br/>plus the main conditions (rukun in Arabic, standing, sitting between the two)<br/>unless the admin unticked it on the roster"]
   K --> D{"Can you still come?"}
   D -->|"yes"| E["Jumat prayer starts at 12:35<br/>the calendar event runs 12:35 to 13:05"]
@@ -224,17 +227,19 @@ flowchart TD
   A["Roster: + Add person<br/>or Edit on an existing person"] --> B["Name, role (khatib, imam or both),<br/>affiliation, country, note"]
   B --> C["How can this person be reached? Fill in any of these:<br/>Email: automatic reminder emails and the Google Calendar invitation, keep the reminders box ticked<br/>LINE: press Get LINE link code, the person sends the code to the bot<br/>WhatsApp number like +81 90 1234 5678: a one-tap button in the planner<br/>Different address for Google Calendar: only if the Google account is another address<br/>Nothing yet: you copy the reminder and send it by hand"]
   C --> K["Khutbah checklist box (khatib, ticked by default)<br/>their reminders carry the 5 rukun of the khutbah (Shafi'i) and its main conditions<br/>untick it for someone who does not need it"]
-  K --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
+  K --> L["Expected to leave NAIST or Nara on (a date, optional)<br/>the member can also enter it under My details<br/>the day after it, the robot moves the person to No longer at NAIST<br/>(reminders and invitations stop)"]
+  L --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
   D --> H["Devices with the name locked (Edit person)<br/>see each device and when it was last opened<br/>Reset one, or Reset all: it can choose a name again at its next visit"]
   H --> G{"Later, if something changes"}
   G -->|"left NAIST"| E["Mark left NAIST<br/>the person stays in the history but is no longer offered"]
   G -->|"a device to hand around"| I["With the access code entered, tick Shared device under You are<br/>that device is never locked, so many people can choose their name on it<br/>untick it to lock names there again"]
+  I --> N["Hidden option under it: Admin edits anyone's details<br/>with your own admin name chosen, My details opens for any active person you pick<br/>(for helping someone on the shared device; they are not emailed about it)"]
   G -->|"added by mistake"| F["Delete<br/>only for a mistake or a duplicate"]
 
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,B,D,E,G,H,I,K admin
+  class A,B,D,E,G,H,I,K,L,N admin
   class C out
   class F warn
 ```
@@ -339,9 +344,10 @@ flowchart TD
   end
 
   subgraph t2["⏰ Twice a day - 08:23 and 14:23 Japan time"]
-    R1["Who is scheduled in the next 7 days?"] --> R2["Reminders 7 days before and 1 day before<br/>by email and LINE, each sent only once<br/>a reminder for today is dropped after 11:00<br/>Ramadan: the kultum speaker 3, 2, 1 day before and the day"]
+    R1["First: people past their expected leaving date<br/>are moved to No longer at NAIST<br/>Who is scheduled in the next 7 days?"] --> R2["Reminders 7 days before and 1 day before<br/>by email and LINE, each sent only once<br/>a reminder for today is dropped after 11:00<br/>Ramadan: the kultum speaker 3, 2, 1 day before and the day"]
     R2 --> R3["The admin to-do messages"]
-    R3 --> R4["Alert emails that were not sent yet"]
+    R3 --> RM["On the 1st of the month:<br/>the whole month's schedule<br/>to the admins and everyone<br/>scheduled that month"]
+    RM --> R4["Alert emails that were not sent yet"]
     R4 --> R5["Google Calendar safety re-sync<br/>Fridays and Ramadan evenings"]
     R5 --> R5b["TOA app: the rooms its key administers are listed for the Places card<br/>Ramadan evenings are added, changed or removed in the linked rooms<br/>book-only rooms get a booking for every Friday prayer and evening<br/>once the TOA key is set up"]
     R5b --> R6["A heartbeat is saved<br/>the planner shows when the job last ran"]
@@ -360,7 +366,7 @@ flowchart TD
   classDef member fill:#e8f1fb,stroke:#3b78b8,color:#10253d
   class E1 admin
   class U1,J1 member
-  class E2,E3,U2,U3,J2,J3,R1,R2,R3,R4,R5,R5b,R6,D1,D2 robot
+  class E2,E3,U2,U3,J2,J3,R1,R2,R3,RM,R4,R5,R5b,R6,D1,D2 robot
 ```
 
 ### The exact list, from the code
@@ -388,8 +394,8 @@ flowchart TD
 | `/api/join-requests` | Someone who cannot find their name sends their details (anyone can); the admin lists the waiting requests here. | POST: public; GET: access code |
 | `/api/join-requests/:id` | The admin closes a request: added to the roster, or dismissed. | PATCH: access code |
 | `/api/line/webhook` | Where LINE delivers messages to the bot. This is how a person links their LINE with the code. | POST: LINE signature |
-| `/api/me` | A member reads and changes their own details (email, WhatsApp, contact, country, note, reminders) from a device locked to their name; the admins are emailed when contact details change. | GET: public; PATCH: private link |
-| `/api/me/line` | A member gets their own one-time LINE link code (or unlinks LINE) from a device locked to their name. | POST: public; DELETE: public |
+| `/api/me` | A member reads and changes their own details (email, WhatsApp, contact, country, note, expected leaving date, reminders) from a device locked to their name (or, for the admin on a shared device, for the person picked); the admins are emailed when contact details change. | GET: public, more with the code; PATCH: private link |
+| `/api/me/line` | A member gets their own one-time LINE link code (or unlinks LINE) from a device locked to their name (or, for the admin on a shared device, for the person picked). | POST: public, more with the code; DELETE: public, more with the code |
 | `/api/people` | The roster: read the list (contact details only with the code) and add a person. | GET: public, more with the code; POST: access code |
 | `/api/people/:id` | Edit or delete one person. | DELETE: access code; PATCH: access code |
 | `/api/people/:id/line` | Create or remove the code a person uses to link their LINE. | POST: access code; DELETE: access code |
@@ -447,6 +453,7 @@ flowchart TD
 | `0018_toa_rooms.sql` | The TOA app rooms that the TOA account is an admin of (id and name). |
 | `0019_device_locks.sql` | The name lock, remembered on the server: each browser that has chosen a name is one |
 | `0020_khutbah_checklist.sql` | The khutbah checklist: when ticked (the default), a khatib's reminders carry the five |
+| `0021_leaving_on.sql` | Expected leaving date (NAIST or Nara), YYYY-MM-DD. |
 
 #### Robot jobs (GitHub Actions)
 

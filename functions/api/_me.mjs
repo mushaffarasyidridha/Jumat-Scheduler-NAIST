@@ -3,6 +3,20 @@
 // device, or one the admin has reset, has none and so cannot edit anything.
 import { hashDeviceToken } from "./_devices.mjs";
 
+// Who a "My details" request is about: the person this device is locked to, or - when the
+// admin has entered the access code on a shared device and names a person (x-person-id) -
+// that active person. `accessOk` is checkAccess() from _utils.js, passed in so this file
+// also loads in the Node tests. -> { id, byAdmin } or null.
+export async function meTarget(request, env, accessOk) {
+  const asked = Number(request.headers.get("x-person-id"));
+  if (Number.isInteger(asked) && asked > 0 && request.headers.get("x-access-code") && accessOk) {
+    const row = await env.DB.prepare("SELECT id FROM people WHERE id = ? AND status = 'active'").bind(asked).first();
+    return row ? { id: row.id, byAdmin: true } : null;
+  }
+  const id = await deviceOwner(request, env);
+  return id ? { id, byAdmin: false } : null;
+}
+
 // The person this device is locked to (an active one), or null.
 export async function deviceOwner(request, env) {
   const token = request.headers.get("x-device-token") || "";
@@ -17,8 +31,19 @@ export async function deviceOwner(request, env) {
 
 // What a member may change about themselves. Name, role, status, the admin flag and the
 // khutbah checklist tick stay with the admin.
-export const SELF_FIELDS = ["email", "whatsapp", "calendar_email", "contact", "country", "affiliation", "note", "reminders"];
-const CONTACT_FIELDS = ["email", "whatsapp", "calendar_email", "contact"];
+export const SELF_FIELDS = ["email", "whatsapp", "calendar_email", "contact", "country", "affiliation", "note", "reminders", "leaving_on"];
+const CONTACT_FIELDS = ["email", "whatsapp", "calendar_email", "contact", "leaving_on"];
+
+// The expected leaving date: blank clears it, otherwise a real calendar day "2027-03-31".
+export function parseLeavingOn(value) {
+  if (value === null || value === undefined || value === "") return { value: null };
+  const hint = "Enter the expected leaving date as a real day, e.g. 2027-03-31";
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return { error: hint };
+  const day = value.trim();
+  const d = new Date(`${day}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== day) return { error: hint };
+  return { value: day };
+}
 
 // -> { set: {column: value}, error }. The parsers come from _utils.js (passed in, so this
 // module also loads in the Node tests).
@@ -47,6 +72,11 @@ export function parseSelfEdit(body, { parseEmail, parseWhatsapp, affiliations })
     if (!affiliations.includes(body.affiliation)) return { error: "unknown affiliation" };
     set.affiliation = body.affiliation;
   }
+  if (body.leaving_on !== undefined) {
+    const parsed = parseLeavingOn(body.leaving_on);
+    if (parsed.error) return { error: parsed.error };
+    set.leaving_on = parsed.value;
+  }
   if (body.reminders !== undefined) {
     if (typeof body.reminders !== "boolean") return { error: "reminders must be true or false" };
     set.reminders = body.reminders ? 1 : 0;
@@ -64,7 +94,7 @@ export function changedContacts(before, set) {
   }));
 }
 
-const LABELS = { email: "Email", whatsapp: "WhatsApp", calendar_email: "Google Calendar address", contact: "Contact" };
+const LABELS = { email: "Email", whatsapp: "WhatsApp", calendar_email: "Google Calendar address", contact: "Contact", leaving_on: "Expected to leave on" };
 
 // The email to each admin when a member changed their own contact details.
 export function buildSelfEditEmail({ person, changes, admin, siteUrl }) {
