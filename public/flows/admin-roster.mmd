@@ -2,16 +2,18 @@ flowchart TD
   A["Roster: + Add person<br/>or Edit on an existing person"] --> B["Name, role (khatib, imam or both),<br/>affiliation, country, note"]
   B --> C["How can this person be reached? Fill in any of these:<br/>Email: automatic reminder emails and the Google Calendar invitation, keep the reminders box ticked<br/>LINE: press Get LINE link code, the person sends the code to the bot<br/>WhatsApp number like +81 90 1234 5678: a one-tap button in the planner<br/>Different address for Google Calendar: only if the Google account is another address<br/>Nothing yet: you copy the reminder and send it by hand"]
   C --> K["Khutbah checklist box (khatib, ticked by default)<br/>their reminders carry the 5 rukun of the khutbah (Shafi'i) and its main conditions<br/>untick it for someone who does not need it"]
-  K --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
+  K --> L["Expected to leave NAIST or Nara on (a date, optional)<br/>the member can also enter it under My details<br/>the day after it, the robot moves the person to No longer at NAIST<br/>(reminders and invitations stop)"]
+  L --> D["Admin this period box<br/>ticked: you get the to-do messages and the can't-make-it alerts<br/>needs an email or a LINE link"]
   D --> H["Devices with the name locked (Edit person)<br/>see each device and when it was last opened<br/>Reset one, or Reset all: it can choose a name again at its next visit"]
   H --> G{"Later, if something changes"}
   G -->|"left NAIST"| E["Mark left NAIST<br/>the person stays in the history but is no longer offered"]
   G -->|"a device to hand around"| I["With the access code entered, tick Shared device under You are<br/>that device is never locked, so many people can choose their name on it<br/>untick it to lock names there again"]
+  I --> N["Hidden option under it: Admin edits anyone's details<br/>with your own admin name chosen, My details opens for any active person you pick<br/>(for helping someone on the shared device; they are not emailed about it)"]
   G -->|"added by mistake"| F["Delete<br/>only for a mistake or a duplicate"]
 
   classDef admin fill:#e3f4ec,stroke:#1f7a5c,color:#12372a
   classDef out fill:#fdf0e1,stroke:#c77b1c,color:#4a2b05
   classDef warn fill:#fbe9e7,stroke:#b3261e,color:#4a0f0b
-  class A,B,D,E,G,H,I,K admin
+  class A,B,D,E,G,H,I,K,L,N admin
   class C out
   class F warn

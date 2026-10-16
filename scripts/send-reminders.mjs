@@ -26,6 +26,12 @@ import {
   tooLateToSend,
   tooLateForKultum,
   dueKultumReminders,
+  leaversDue,
+  monthLogId,
+  isFirstOfMonth,
+  dueMonthlyReminders,
+  buildMonthEmail,
+  buildMonthLineText,
   buildKultumEmail,
   buildKultumLineText,
   GATHERING_ID_OFFSET,
@@ -113,11 +119,13 @@ async function getTransporter() {
 
 // A reminder for a person on a Friday, or (type "admin") the admin's to-do.
 function emailFor(item) {
+  if (item.type === "month") return buildMonthEmail({ ...item, siteUrl: SITE_URL });
   if (item.type === "kultum") return buildKultumEmail({ ...item, siteUrl: SITE_URL });
   return item.type === "admin" ? buildAdminEmail({ ...item, siteUrl: SITE_URL }) : buildEmail({ ...item, siteUrl: SITE_URL });
 }
 
 function chatFor(item) {
+  if (item.type === "month") return buildMonthLineText({ ...item, siteUrl: SITE_URL });
   if (item.type === "kultum") return buildKultumLineText(item);
   return item.type === "admin" ? buildAdminChatText({ ...item, siteUrl: SITE_URL }) : buildLineText({ ...item, siteUrl: SITE_URL });
 }
@@ -199,6 +207,13 @@ const FRIDAYS_SQL = `
   LEFT JOIN people ip ON ip.id = f.imam_id
   WHERE f.is_history = 0 AND f.date >= ? AND f.date <= ?
   ORDER BY f.date`;
+
+// The whole month, for the first-of-the-month schedule message.
+const MONTH_GATHERINGS_SQL = `
+  SELECT g.date, g.place, g.start_time, g.kultum, COALESCE(p.name, g.speaker_name) AS speaker
+  FROM gatherings g LEFT JOIN people p ON p.id = g.speaker_id
+  WHERE g.date >= ? AND g.date <= ?
+  ORDER BY g.date, g.start_time`;
 
 // Ramadan days in the window that have a kultum, reminders on and a roster speaker.
 const KULTUM_SQL = `
@@ -308,7 +323,7 @@ async function sendJoinEmails({ people }) {
 function printSamples(due) {
   const seen = new Set();
   for (const item of due) {
-    const sample = item.type === "admin" ? `admin ${item.channel}` : item.type === "kultum" ? `kultum ${item.channel}` : item.channel;
+    const sample = item.type === "admin" ? `admin ${item.channel}` : item.type === "kultum" ? `kultum ${item.channel}` : item.type === "month" ? `month ${item.channel}` : item.channel;
     if (seen.has(sample)) continue;
     seen.add(sample);
     let body;
@@ -462,6 +477,21 @@ async function main() {
   }
   console.log(`${DRY_RUN ? "DRY RUN - nothing is sent or recorded. " : ""}Today in Japan: ${today}`);
 
+  // Expected leaving date passed: move the person to "No longer at NAIST" before anything is sent.
+  // (Counts only in the log: this repository is public.)
+  try {
+    const leavers = leaversDue(await d1("SELECT id, status, leaving_on FROM people WHERE status = 'active' AND leaving_on IS NOT NULL"), today);
+    if (leavers.length) {
+      if (DRY_RUN) console.log(`would move ${leavers.length} person(s) to No longer at NAIST (leaving date passed).`);
+      else {
+        for (const p of leavers) await d1("UPDATE people SET status = 'inactive', updated_at = datetime('now') WHERE id = ? AND status = 'active'", [p.id]);
+        console.log(`Moved ${leavers.length} person(s) to No longer at NAIST (leaving date passed).`);
+      }
+    }
+  } catch (e) {
+    console.log(`Leaving dates are not available yet (${redact(e.message)}); skipped.`);
+  }
+
   const fridays = await d1(FRIDAYS_SQL, [today, addDays(today, WINDOW_DAYS)]);
   const people = await d1(
     "SELECT id, name, status, is_admin, email, reminders, khutbah_checklist, line_user_id, reminder_token FROM people WHERE email IS NOT NULL OR line_user_id IS NOT NULL"
@@ -477,7 +507,21 @@ async function main() {
     console.log(`Ramadan days are not available yet (${redact(e.message)}); skipped.`);
   }
 
-  const logIds = [...fridays.map((f) => f.id), ...gatherings.map((g) => GATHERING_ID_OFFSET + g.id)];
+  // The 1st of the month: the whole month's schedule to the admins and everyone scheduled in it.
+  let monthFridays = [];
+  let monthGatherings = [];
+  if (isFirstOfMonth(today)) {
+    const monthStart = today;
+    const monthEnd = `${today.slice(0, 8)}31`; // dates compare as text, so day 31 bounds every month
+    monthFridays = await d1(FRIDAYS_SQL, [monthStart, monthEnd]);
+    try {
+      monthGatherings = await d1(MONTH_GATHERINGS_SQL, [monthStart, monthEnd]);
+    } catch {
+      // Ramadan tables not available yet: the Fridays alone are sent.
+    }
+  }
+
+  const logIds = [...fridays.map((f) => f.id), ...gatherings.map((g) => GATHERING_ID_OFFSET + g.id), ...(isFirstOfMonth(today) ? [monthLogId(today)] : [])];
   let sentKeys = new Set();
   if (logIds.length) {
     const rows = await d1(
@@ -491,10 +535,11 @@ async function main() {
     ...dueReminders({ today, fridays, people, sentKeys }),
     ...dueAdminTodos({ today, fridays, people, sentKeys }),
     ...dueKultumReminders({ today, gatherings, settings: ramadan, people, sentKeys }),
+    ...dueMonthlyReminders({ today, fridays: monthFridays, gatherings: monthGatherings, people, sentKeys }),
   ].sort((a, b) => a.days - b.days || a.person.name.localeCompare(b.person.name));
   // Not logged as sent: it was never sent, and it is moot once the day is over.
   const nowMinutes = minutesInTokyo();
-  const lateItem = (d) => (d.type === "kultum" ? tooLateForKultum(d.days, nowMinutes, d.gathering.start_time) : tooLateToSend(d.days, nowMinutes));
+  const lateItem = (d) => (d.type === "month" ? false : d.type === "kultum" ? tooLateForKultum(d.days, nowMinutes, d.gathering.start_time) : tooLateToSend(d.days, nowMinutes));
   const tooLate = allDue.filter(lateItem);
   const due = allDue.filter((d) => !lateItem(d));
   console.log(`${fridays.length} Friday(s) in the next ${WINDOW_DAYS} days${gatherings.length ? `, ${gatherings.length} Ramadan day(s) with a kultum speaker` : ""}; ${due.length} reminder(s) due.`);
@@ -510,8 +555,8 @@ async function main() {
   let lineUsed = 0;
 
   for (const item of due) {
-    const when = item.type === "kultum" ? item.gathering.date : item.friday.date;
-    const label = `${item.channel.padEnd(5)} ${item.person.name} - ${item.type === "kultum" ? "kultum " : ""}${formatDateShort(when)} (${item.kind})`;
+    const when = item.type === "kultum" ? item.gathering.date : item.type === "month" ? today : item.friday.date;
+    const label = `${item.channel.padEnd(5)} ${item.person.name} - ${item.type === "kultum" ? "kultum " : item.type === "month" ? "month schedule " : ""}${formatDateShort(when)} (${item.kind})`;
     if (DRY_RUN) {
       console.log(`would send: ${label}`);
       continue;

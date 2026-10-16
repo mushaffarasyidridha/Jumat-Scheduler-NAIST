@@ -5,6 +5,7 @@
   const LS_ACCESS = "jumat_access_code";
   const LS_DEVICE = "jumat_device_token"; // this browser's name-lock token (the server keeps its hash)
   const LS_OPEN = "jumat_open_device"; // set by the admin: a shared device, never locked
+  const LS_ADMIN_EDIT = "jumat_admin_edit_any"; // set by the admin on a shared device: My details opens for anyone
 
   const state = {
     people: [],
@@ -257,15 +258,33 @@
       : isOpenDevice()
       ? "Shared device: choose your name; you can switch it any time."
       : "Pick your name once: it cannot be changed afterwards without the admin.";
-    // A device locked to a name can edit that person's own details.
-    $("#me-open-btn").classList.toggle("hidden", !(locked && localStorage.getItem(LS_DEVICE)));
+    // A device locked to a name can edit that person's own details; so can the admin who
+    // switched on the hidden setting below.
+    $("#me-open-btn").classList.toggle("hidden", !((locked && localStorage.getItem(LS_DEVICE)) || adminEditsAny()));
     // Only the admin (with the code entered) can make this browser a shared device or end that.
     $("#open-device-row").classList.toggle("hidden", !hasAccessCode());
     $("#open-device").checked = isOpenDevice();
+    $("#admin-edit-row").classList.toggle("hidden", !(hasAccessCode() && isOpenDevice()));
+    $("#admin-edit").checked = localStorage.getItem(LS_ADMIN_EDIT) === "1";
   }
+  // The hidden setting: on a shared device, with the access code entered and an admin's own
+  // name chosen, My details opens for every active person (picked in the form).
+  function adminEditsAny() {
+    if (!(hasAccessCode() && isOpenDevice() && localStorage.getItem(LS_ADMIN_EDIT) === "1")) return false;
+    const me = state.people.find((p) => String(p.id) === localStorage.getItem(LS_WHOAMI));
+    return !!(me && me.is_admin && me.status === "active");
+  }
+  $("#admin-edit").addEventListener("change", (e) => {
+    if (e.target.checked) localStorage.setItem(LS_ADMIN_EDIT, "1");
+    else localStorage.removeItem(LS_ADMIN_EDIT);
+    renderWhoami();
+  });
   $("#open-device").addEventListener("change", async (e) => {
     if (e.target.checked) localStorage.setItem(LS_OPEN, "1");
-    else localStorage.removeItem(LS_OPEN);
+    else {
+      localStorage.removeItem(LS_OPEN);
+      localStorage.removeItem(LS_ADMIN_EDIT); // the setting only makes sense on a shared device
+    }
     renderWhoami();
     toast(e.target.checked ? "Shared device: anyone can choose their name here" : "This device will lock a name again once one is chosen");
     if (!e.target.checked) await syncDeviceLock(); // a name already chosen here is registered, so it can be reset
@@ -273,10 +292,28 @@
 
   // ---------- My details: a member edits their own entry ----------
   // Proven by this device's name-lock token, not by the access code.
+  // In admin mode the form is about the person picked in it (sent with the access code).
+  let meTargetId = null;
   const meApi = (path, opts = {}) =>
-    api(path, { ...opts, headers: { ...(opts.headers || {}), "x-device-token": localStorage.getItem(LS_DEVICE) || "" } });
+    api(path, {
+      ...opts,
+      headers: {
+        ...(opts.headers || {}),
+        ...(meTargetId ? { "x-person-id": String(meTargetId) } : { "x-device-token": localStorage.getItem(LS_DEVICE) || "" }),
+      },
+    });
 
-  async function openMeModal() {
+  async function openMeModal(personId = null) {
+    const anyone = adminEditsAny();
+    meTargetId = anyone ? Number(personId || localStorage.getItem(LS_WHOAMI)) : null;
+    $("#me-person-row").classList.toggle("hidden", !anyone);
+    if (anyone) {
+      $("#me-person").innerHTML = state.people
+        .filter((p) => p.status === "active")
+        .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+        .join("");
+      $("#me-person").value = String(meTargetId);
+    }
     let me;
     try {
       me = await meApi("/api/me");
@@ -292,6 +329,7 @@
     $("#me-affiliation").value = p.affiliation || "naist_student";
     $("#me-country").value = p.country || "";
     $("#me-note").value = p.note || "";
+    $("#me-leaving").value = p.leaving_on || "";
     $("#me-reminders").checked = !!p.reminders;
     $("#me-error").classList.add("hidden");
     renderMeLine(me);
@@ -348,7 +386,8 @@
     });
   }
 
-  $("#me-open-btn").addEventListener("click", openMeModal);
+  $("#me-open-btn").addEventListener("click", () => openMeModal());
+  $("#me-person").addEventListener("change", (e) => openMeModal(Number(e.target.value)));
   $("#me-cancel-btn").addEventListener("click", () => $("#me-modal").classList.add("hidden"));
   $("#me-save-btn").addEventListener("click", async () => {
     const payload = {
@@ -359,6 +398,7 @@
       affiliation: $("#me-affiliation").value,
       country: $("#me-country").value.trim(),
       note: $("#me-note").value.trim(),
+      leaving_on: $("#me-leaving").value,
       reminders: $("#me-reminders").checked,
     };
     try {
@@ -1525,6 +1565,7 @@
           ${p.whatsapp ? `<div class="roster-meta">💬 ${escapeHtml(p.whatsapp)}</div>` : ""}
           ${p.reminders && (p.calendar_email || p.email) ? `<div class="roster-meta">📆 calendar invites to ${escapeHtml(p.calendar_email || p.email)}</div>` : ""}
           ${reminderReach(p) ? `<div class="roster-meta">${escapeHtml(reminderReach(p).text)}</div>` : ""}
+          ${p.leaving_on && p.status === "active" ? `<div class="roster-meta">🧳 Expected to leave on ${escapeHtml(p.leaving_on)}: moved to No longer at NAIST after that day</div>` : ""}
           ${p.is_admin ? '<div class="roster-meta">🛠 Admin this period: gets the to-do reminders</div>' : ""}
           ${p.khutbah_checklist && p.role !== "imam" ? '<div class="roster-meta">📜 Khutbah checklist (5 rukun) in the reminders</div>' : ""}
         </div>
@@ -1613,6 +1654,7 @@
     $("#person-country").value = person ? person.country || "" : "";
     $("#person-role").value = person ? person.role : "khatib";
     $("#person-note").value = person ? person.note || "" : "";
+    $("#person-leaving").value = person && person.leaving_on ? person.leaving_on : "";
     // Blank (not "no contact") when we don't have read access to it, so
     // saving from this state can't accidentally overwrite it with nothing.
     $("#person-contact").value = person && "contact" in person ? person.contact || "" : "";
@@ -1802,6 +1844,7 @@
       payload.reminders = $("#person-reminders").checked;
       payload.is_admin = $("#person-admin").checked;
       payload.khutbah_checklist = $("#person-khutbah").checked;
+      payload.leaving_on = $("#person-leaving").value;
     }
     if (!name) {
       $("#person-error").textContent = "Name is required";

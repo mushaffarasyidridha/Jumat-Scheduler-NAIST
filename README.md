@@ -300,6 +300,19 @@ have an email address in their roster entry. The **secondary khatib** (standby, 
 khatib) gets **no** automatic reminder and no Google Calendar invitation: they are told when they are the
 primary. They still appear in everyone's line-up, and the admin can use *Copy reminder* by hand.
 
+**The month's schedule, on the 1st.** On the first day of each month (Japan time) the same job sends the admins and
+everyone scheduled as primary khatib or imam that month one message with the whole month: every Friday with khatib,
+imam and place, the Ramadan evenings, their own days and, for an admin, the slots still open. Email and LINE, once per
+person (logged under kind `month`), skipped when reminders are off.
+
+**Leaving NAIST or Nara.** A person can have an *expected leaving date* (admin: *Edit person*; the member: *My details*).
+At the start of each daily run, anyone still active whose date has passed is moved to *No longer at NAIST* (the
+database column is `people.leaving_on`, migration `0021`); *Mark active* brings them back.
+
+**Shared device, admin helps.** With the access code entered and *Shared device* ticked, a second tick appears (*Admin
+edits anyone's details*, kept only in that browser). With it on and the admin's own name chosen under *You are*, *My
+details* opens for any active person picked in the form (`x-person-id` plus the access code on `/api/me`).
+
 GitHub starts scheduled jobs when it has capacity, so "about" can mean minutes
 or, at busy moments, hours late. Reminders are therefore for the *day before*
 (plenty of slack). A reminder for a prayer that is *today* is dropped after

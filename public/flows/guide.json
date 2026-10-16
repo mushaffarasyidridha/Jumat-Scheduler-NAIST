@@ -179,7 +179,7 @@
     {
       "audience": "Members",
       "name": "My details",
-      "what": "On a device locked to their name, a member presses My details (next to You are) to change their own email, WhatsApp number, other contact, Google Calendar address, affiliation, country, note and whether they get automatic reminders, and to link or unlink their own LINE (add the bot as a friend, send it the one-time code shown). Name, role, status, the admin flag and the khutbah checklist tick stay with the admin. The admins are emailed when someone changes their contact details. A shared device or a reset device cannot edit anyone.",
+      "what": "On a device locked to their name, a member presses My details (next to You are) to change their own email, WhatsApp number, other contact, Google Calendar address, affiliation, country, note, the day they expect to leave NAIST or Nara and whether they get automatic reminders, and to link or unlink their own LINE (add the bot as a friend, send it the one-time code shown). Name, role, status, the admin flag and the khutbah checklist tick stay with the admin. The admins are emailed when someone changes their contact details or leaving date. A shared device or a reset device cannot edit anyone (except for the admin, see Admin edits anyone's details on a shared device).",
       "status": "live"
     },
     {
@@ -240,6 +240,24 @@
       "audience": "Scheduled people",
       "name": "Google Calendar invitation",
       "what": "Invited automatically, at the email on the roster (or a separate Google Calendar address if one is saved), unless reminders are off.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Admin edits anyone's details on a shared device",
+      "what": "A hidden option that shows only to the admin: with the access code entered and Shared device ticked, a second tick (Admin edits anyone's details) appears. With it on and the admin's own name chosen under You are, My details opens for any active person the admin picks from a list, so the admin can fill in the member-editable details on a shared device. The person is not emailed about it. Unticking Shared device switches it off.",
+      "status": "live"
+    },
+    {
+      "audience": "Admin",
+      "name": "Expected leaving date",
+      "what": "Optional date on each person (Edit person, or the member's own My details): when they expect to leave NAIST or Nara. The day after it, the daily job moves them to No longer at NAIST by itself (they stay in the history, reminders and invitations stop). Untick or clear the date to cancel; Mark active brings them back.",
+      "status": "live"
+    },
+    {
+      "audience": "Scheduled people",
+      "name": "Monthly schedule on the 1st",
+      "what": "On the first day of each month (Japan time) the admins and everyone scheduled as khatib or imam that month get one message with the whole month: every Friday with khatib, imam and place, the Ramadan evenings, their own days and, for an admin, the slots still open. By email and LINE like the other reminders, once only, unless reminders are switched off.",
       "status": "live"
     },
     {

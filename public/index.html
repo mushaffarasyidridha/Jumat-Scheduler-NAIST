@@ -18,6 +18,7 @@
         <select id="whoami-select"></select>
         <small id="whoami-note" class="muted"></small>
         <label id="open-device-row" class="check-row small hidden"><input id="open-device" type="checkbox" /> <span>Shared device: anyone can choose their name here (not locked)</span></label>
+        <label id="admin-edit-row" class="check-row small hidden"><input id="admin-edit" type="checkbox" /> <span>Admin: on this shared device, My details opens for anyone I pick (needs my own name chosen above)</span></label>
         <button id="join-open-btn" class="linklike" type="button">My name isn't listed</button>
         <button id="me-open-btn" class="linklike hidden" type="button">✏️ My details</button>
       </div>
@@ -152,8 +153,11 @@
           <option value="both">Khatib &amp; Imam</option>
         </select>
       </label>
-      <label>Note <span class="muted small">(e.g. expected to leave NAIST around ...)</span>
+      <label>Note <span class="muted small">(anything useful to know)</span>
         <input id="person-note" type="text" placeholder="optional" />
+      </label>
+      <label>Expected to leave NAIST or Nara on <span class="muted small">(optional: after this day the daily job moves the person to No longer at NAIST by itself)</span>
+        <input id="person-leaving" type="date" />
       </label>
       <label>Contact <span class="muted small">(only visible to people with the access code)</span>
         <input id="person-contact" type="text" placeholder="e.g. phone / WhatsApp / Facebook" />
@@ -241,6 +245,9 @@
   <div id="me-modal" class="modal hidden">
     <div class="modal-box">
       <h3 id="me-title">My details</h3>
+      <label id="me-person-row" class="hidden">Whose details (admin on a shared device)
+        <select id="me-person"></select>
+      </label>
       <p class="small muted">Only you see these on this device, and the admin. Your name and role can only be changed by the admin.</p>
       <label>Email <span class="muted small">(automatic reminders and the Google Calendar invitation)</span>
         <input id="me-email" type="email" maxlength="120" autocomplete="email" placeholder="optional" />
@@ -263,8 +270,11 @@
         </select>
       </label>
       <label>Country <input id="me-country" type="text" maxlength="60" /></label>
-      <label>Note <span class="muted small">(e.g. leaving NAIST around ...)</span>
+      <label>Note <span class="muted small">(anything useful to know)</span>
         <input id="me-note" type="text" maxlength="300" placeholder="optional" />
+      </label>
+      <label>Expected to leave NAIST or Nara on <span class="muted small">(optional: after this day you are moved to No longer at NAIST and the reminders stop)</span>
+        <input id="me-leaving" type="date" />
       </label>
       <label class="check-row">
         <input id="me-reminders" type="checkbox" />

@@ -239,14 +239,14 @@
       "methods": [
         {
           "method": "GET",
-          "access": "public"
+          "access": "public, more with the code"
         },
         {
           "method": "PATCH",
           "access": "private link"
         }
       ],
-      "note": "A member reads and changes their own details (email, WhatsApp, contact, country, note, reminders) from a device locked to their name; the admins are emailed when contact details change."
+      "note": "A member reads and changes their own details (email, WhatsApp, contact, country, note, expected leaving date, reminders) from a device locked to their name (or, for the admin on a shared device, for the person picked); the admins are emailed when contact details change."
     },
     {
       "route": "/api/me/line",
@@ -254,14 +254,14 @@
       "methods": [
         {
           "method": "POST",
-          "access": "public"
+          "access": "public, more with the code"
         },
         {
           "method": "DELETE",
-          "access": "public"
+          "access": "public, more with the code"
         }
       ],
-      "note": "A member gets their own one-time LINE link code (or unlinks LINE) from a device locked to their name."
+      "note": "A member gets their own one-time LINE link code (or unlinks LINE) from a device locked to their name (or, for the admin on a shared device, for the person picked)."
     },
     {
       "route": "/api/people",
@@ -566,6 +566,10 @@
     {
       "file": "0020_khutbah_checklist.sql",
       "note": "The khutbah checklist: when ticked (the default), a khatib's reminders carry the five"
+    },
+    {
+      "file": "0021_leaving_on.sql",
+      "note": "Expected leaving date (NAIST or Nara), YYYY-MM-DD."
     }
   ],
   "workflows": [
